@@ -1,4 +1,9 @@
-// data-card.js — 通用卡片渲染（v103.0.20）
+// ============================================
+// data-card.js — 通用卡片渲染（v103.0.22）
+// v103.0.22（B25-3a）：
+//   ✅ R3 修正：hasActions 補上 customActions 判斷（anchor 0.21）
+//   ✅ customActions 與引擎預設互斥
+// ============================================
 import { getEntityDef, getEntityUi } from '../entity/entity-definitions.js';
 import { esc as escapeHtml } from '../lib/dom.js';
 import { formatCellValue } from '../lib/format.js';
@@ -12,12 +17,18 @@ export function renderDataCard(options) {
 
   const def = getEntityDef(entityKey);
   const customCols = extra.columns || extra.fields;
-  const hasCustom = Array.isArray(customCols) && customCols.length > 0;
-  if (!def && !hasCustom) return null;
+  const hasCustomCols = Array.isArray(customCols) && customCols.length > 0;
+  if (!def && !hasCustomCols) return null;
 
   const effectiveDef = def || { fields: [] };
   const effectiveUi = def ? (getEntityUi(entityKey) || {}) : { canEdit: false, canDelete: false };
   const { gridClass = 'grid grid-3', resolvers = {} } = extra;
+
+  /* 🆕 v103.0.22（anchor 0.21） */
+  const hasCustomActions = typeof hooks.customActions === 'function';
+  const hasBuiltin = (effectiveUi.canEdit !== false) || (effectiveUi.canDelete !== false);
+  const allowBuiltin = !hasCustomActions || extra.disableBuiltinActions === false;
+  const hasActions = hasCustomActions || (hasBuiltin && allowBuiltin);
 
   const fieldMap = {};
   (effectiveDef.fields || []).forEach((f) => { fieldMap[f.id] = f; });
@@ -29,7 +40,6 @@ export function renderDataCard(options) {
   const cardFields = effectiveUi.cardFields
     || (customCols ? customCols.slice(1, 4).map((c) => c.id) : (effectiveDef.fields || []).filter((f) => f.id !== primaryColumn).slice(0, 3).map((f) => f.id));
 
-  const hasActions = (effectiveUi.canEdit !== false) || (effectiveUi.canDelete !== false);
   const _rows = typeof hooks.beforeRender === 'function' ? (hooks.beforeRender(rows) || rows) : rows;
 
   _paint();
@@ -72,11 +82,14 @@ export function renderDataCard(options) {
   function _defaultFooter(row) {
     if (!hasActions) return '';
     let h = '';
-    if (typeof hooks.customActions === 'function') {
+    if (hasCustomActions) {
       h += (hooks.customActions(row) || []).map((a) => `<button type="button" class="btn btn-sm ${escapeHtml(a.className || 'btn-ghost')}" data-action="${escapeHtml(a.action || 'custom')}">${a.icon ? `<i data-lucide="${escapeHtml(a.icon)}" style="width:14px;height:14px;"></i>` : ''}${escapeHtml(a.label)}</button>`).join('');
     }
-    if (effectiveUi.canEdit !== false) h += `<button type="button" class="btn btn-sm btn-ghost" data-action="edit"><i data-lucide="pencil" style="width:14px;height:14px;"></i> 編輯</button>`;
-    if (effectiveUi.canDelete !== false) h += `<button type="button" class="btn btn-sm btn-danger" data-action="delete"><i data-lucide="trash-2" style="width:14px;height:14px;"></i> 刪除</button>`;
+    if (allowBuiltin) {
+      if (effectiveUi.canEdit !== false) h += `<button type="button" class="btn btn-sm btn-ghost" data-action="edit"><i data-lucide="pencil" style="width:14px;height:14px;"></i> 編輯</button>`;
+      if (effectiveUi.canDelete !== false) h += `<button type="button" class="btn btn-sm btn-danger" data-action="delete"><i data-lucide="trash-2" style="width:14px;height:14px;"></i> 刪除</button>`;
+    }
+    if (!h) return '';
     return `<div class="data-card-footer" style="margin-top:12px;padding-top:12px;border-top:1px dashed rgba(255,255,255,0.08);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;">${h}</div>`;
   }
 
@@ -98,7 +111,7 @@ export function renderDataCard(options) {
         const row = _rows[Number(card.dataset.rowIndex)];
         if (!row) return;
         const action = btn.dataset.action;
-        if (typeof hooks.customActions === 'function') {
+        if (hasCustomActions) {
           const m = (hooks.customActions(row) || []).find((a) => (a.action || 'custom') === action);
           if (m?.onClick) { e.stopPropagation(); m.onClick(row); return; }
         }
@@ -134,6 +147,6 @@ function _resolveEl(t) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/shared/data-card.js
-   Version: v103.0.20
-   Batch: B22
+   Version: v103.0.22
+   Batch: B25-3a
    ═══════════════════════════════════════════ */

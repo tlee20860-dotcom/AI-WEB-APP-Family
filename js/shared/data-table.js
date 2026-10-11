@@ -1,4 +1,8 @@
-// data-table.js — 通用表格渲染（v103.0.18）
+// ============================================
+// data-table.js — 通用表格渲染（v103.0.22）
+// v103.0.22（B25-3a）：
+//   ✅ R2 修正：customActions 與引擎預設 action 互斥（anchor 0.21）
+// ============================================
 import { getEntityDef, getEntityUi } from '../entity/entity-definitions.js';
 import { esc as escapeHtml } from '../lib/dom.js';
 import { formatCellValue } from '../lib/format.js';
@@ -22,8 +26,8 @@ export function renderDataTable(options) {
 
   const def = getEntityDef(entityKey);
   const customCols = extra.columns;
-  const hasCustom = Array.isArray(customCols) && customCols.length > 0;
-  if (!def && !hasCustom) return null;
+  const hasCustomCols = Array.isArray(customCols) && customCols.length > 0;
+  if (!def && !hasCustomCols) return null;
 
   const effectiveDef = def || { fields: [] };
   const effectiveUi = def ? (getEntityUi(entityKey) || {}) : { canEdit: false, canDelete: false };
@@ -35,12 +39,18 @@ export function renderDataTable(options) {
     headerActions = [], storageKey = _tableId,
   } = extra;
 
+  /* 🆕 v103.0.22（anchor 0.21）：customActions 與引擎預設互斥 */
+  const hasCustom = typeof hooks.customActions === 'function';
+  const hasBuiltin = (effectiveUi.canEdit !== false) || (effectiveUi.canDelete !== false);
+  const allowBuiltin = !hasCustom || extra.disableBuiltinActions === false;
+  const shouldActions = hasCustom || (hasBuiltin && allowBuiltin);
+
   const finalClass = ['data-table', mobileCardMode ? 'mobile-cards' : '', tableClass].filter(Boolean).join(' ');
   const fieldMap = {};
   (effectiveDef.fields || []).forEach((f) => { fieldMap[f.id] = f; });
 
   let allCols;
-  if (hasCustom) allCols = customCols.map((c) => ({ ...c }));
+  if (hasCustomCols) allCols = customCols.map((c) => ({ ...c }));
   else {
     const listCols = effectiveUi.listColumns || (effectiveDef.fields || []).map((f) => f.id);
     allCols = listCols.map((id) => {
@@ -49,9 +59,6 @@ export function renderDataTable(options) {
     });
   }
 
-  const hasBuiltin = (effectiveUi.canEdit !== false) || (effectiveUi.canDelete !== false);
-  const hasCustomActions = typeof hooks.customActions === 'function';
-  const shouldActions = hasBuiltin || hasCustomActions;
   if (shouldActions && !allCols.some((c) => c.id === '__actions__')) {
     allCols.push({ id: '__actions__', label: '操作', type: 'actions', defaultVisible: true, defaultWidth: 180 });
   }
@@ -111,11 +118,13 @@ export function renderDataTable(options) {
 
   function _actions(col, row) {
     let h = '';
-    if (typeof hooks.customActions === 'function') {
+    if (hasCustom) {
       h += (hooks.customActions(row) || []).map((a) => `<button type="button" class="btn btn-sm ${escapeHtml(a.className || 'btn-ghost')}" data-action="${escapeHtml(a.action || 'custom')}">${a.icon ? `<i data-lucide="${escapeHtml(a.icon)}" style="width:14px;height:14px;"></i>` : ''}${escapeHtml(a.label)}</button>`).join('');
     }
-    if (effectiveUi.canEdit !== false) h += `<button type="button" class="btn btn-sm btn-ghost" data-action="edit"><i data-lucide="pencil" style="width:14px;height:14px;"></i> 編輯</button>`;
-    if (effectiveUi.canDelete !== false) h += `<button type="button" class="btn btn-sm btn-danger" data-action="delete"><i data-lucide="trash-2" style="width:14px;height:14px;"></i> 刪除</button>`;
+    if (allowBuiltin) {
+      if (effectiveUi.canEdit !== false) h += `<button type="button" class="btn btn-sm btn-ghost" data-action="edit"><i data-lucide="pencil" style="width:14px;height:14px;"></i> 編輯</button>`;
+      if (effectiveUi.canDelete !== false) h += `<button type="button" class="btn btn-sm btn-danger" data-action="delete"><i data-lucide="trash-2" style="width:14px;height:14px;"></i> 刪除</button>`;
+    }
     return h;
   }
 
@@ -142,7 +151,7 @@ export function renderDataTable(options) {
         if (!tr) return;
         const row = _rows[Number(tr.dataset.rowIndex)];
         if (!row) return;
-        if (typeof hooks.customActions === 'function') {
+        if (hasCustom) {
           const m = (hooks.customActions(row) || []).find((x) => (x.action || 'custom') === a);
           if (m?.onClick) { e.stopPropagation(); m.onClick(row); return; }
         }
@@ -175,3 +184,10 @@ function _resolveEl(t) {
   if (t instanceof HTMLElement) return t;
   return null;
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: js/shared/data-table.js
+   Version: v103.0.22
+   Batch: B25-3a
+   ═══════════════════════════════════════════ */
