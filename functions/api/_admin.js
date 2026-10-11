@@ -1,12 +1,36 @@
 // ============================================
-// _admin.js — 平台管理 lib（v103.0.2）
+// _admin.js — 平台管理 lib（v103.0.22）
 // 位置：functions/api/_admin.js
+// ============================================
+// v103.0.22（B25-6）：
+//   ✅ 加 handleAdminMigrate（一次性遷移舊資料）
 // ============================================
 import { dbGet, dbPut, dbDelete } from './_config.js';
 import {
   authenticate, errorResponse, handleError,
   successResponse, requireFields,
 } from './_helpers.js';
+
+/* 🆕 v103.0.22：狀態正規化表（與 status-registry.js 對齊） */
+const LEGACY_STATUS_MAP = {
+  '未處理': 'pending',
+  '未還款': 'pending',
+  '未付款': 'pending',
+  '未扣款': 'pending',
+  '未轉入': 'pending',
+  '已處理': 'done',
+  '已還款': 'done',
+  '已付款': 'done',
+  '已扣款': 'done',
+  '已轉入': 'done',
+  '不適用': 'skipped',
+};
+
+function _normalizeStatus(raw) {
+  if (raw == null || raw === '') return 'pending';
+  if (raw === 'pending' || raw === 'done' || raw === 'skipped') return raw;
+  return LEGACY_STATUS_MAP[raw] || 'pending';
+}
 
 const FALLBACK = {
   members: {
@@ -238,6 +262,141 @@ export async function handleAdminInitFamily(request) {
 }
 
 /* ============================================
+   Handler 3：admin-migrate（🆕 v103.0.22）
+   ============================================ */
+export async function handleAdminMigrate(request) {
+  try {
+    const body = await request.json();
+    const { familyId, confirm } = body || {};
+    if (!familyId) return errorResponse('MISSING_FIELDS', '缺少 familyId');
+    if (confirm !== 'MIGRATE_ALL') {
+      return errorResponse('BAD_REQUEST', '必須提供確認參數 confirm="MIGRATE_ALL"');
+    }
+
+    const auth = await authenticate(request, { needSuperAdmin: true });
+    if (auth instanceof Response) return auth;
+    const { token } = auth;
+
+    const basePath = `families/${familyId}`;
+    const summary = {
+      expenses:    { scanned: 0, normalized: 0 },
+      payments:    { scanned: 0, normalized: 0 },
+      policies:    { scanned: 0, patched: 0 },
+      funds:       { scanned: 0, patched: 0 },
+    };
+
+    /* ---------- 1. 遷移 expenses 狀態 ---------- */
+    try {
+      const expensesSnap = await dbGet(`${basePath}/expenses`, token);
+      const expensesUpd = {};
+      if (expensesSnap && typeof expensesSnap === 'object') {
+        Object.entries(expensesSnap).forEach(([y, months]) => {
+          Object.entries(months || {}).forEach(([m, monthData]) => {
+            Object.entries(monthData?.member_expenses || {}).forEach(([mid, items]) => {
+              Object.entries(items || {}).forEach(([eid, e]) => {
+                if (!e || typeof e !== 'object') return;
+                summary.expenses.scanned++;
+
+                const patch = {};
+                const newStatus = _normalizeStatus(e.status);
+                if (e.status !== newStatus) {
+                  patch.status = newStatus;
+                }
+                if (e.isAutoLinked === undefined) {
+                  patch.isAutoLinked = !!e.policyId;
+                }
+                if (Object.keys(patch).length > 0) {
+                  expensesUpd[`${basePath}/expenses/${y}/${m}/member_expenses/${mid}/${eid}`] = { ...e, ...patch };
+                  summary.expenses.normalized++;
+                }
+              });
+            });
+          });
+        });
+        if (Object.keys(expensesUpd).length > 0) {
+          const ok = await dbPut(`${basePath}/_migrate_check_expenses`, true, token);
+          // 使用 PATCH 混合更新：分批
+          for (const [path, data] of Object.entries(expensesUpd)) {
+            await dbPut(path, data, token);
+          }
+          await dbDelete(`${basePath}/_migrate_check_expenses`, token);
+        }
+      }
+    } catch (err) {
+      console.warn('[admin-migrate] expenses 遷移失敗：', err);
+    }
+
+    /* ---------- 2. 遷移 insurance_payments 狀態 ---------- */
+    try {
+      const paymentsSnap = await dbGet(`${basePath}/insurance_payments`, token);
+      if (paymentsSnap && typeof paymentsSnap === 'object') {
+        for (const [pid, years] of Object.entries(paymentsSnap)) {
+          for (const [y, months] of Object.entries(years || {})) {
+            for (const [m, p] of Object.entries(months || {})) {
+              if (!p || typeof p !== 'object') continue;
+              summary.payments.scanned++;
+              const newStatus = _normalizeStatus(p.status);
+              if (p.status !== newStatus) {
+                await dbPut(`${basePath}/insurance_payments/${pid}/${y}/${m}`, { ...p, status: newStatus }, token);
+                summary.payments.normalized++;
+              }
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[admin-migrate] payments 遷移失敗：', err);
+    }
+
+    /* ---------- 3. 遷移 insurance_policies ---------- */
+    try {
+      const policiesSnap = await dbGet(`${basePath}/insurance_policies`, token);
+      if (policiesSnap && typeof policiesSnap === 'object') {
+        for (const [pid, p] of Object.entries(policiesSnap)) {
+          if (!p || typeof p !== 'object') continue;
+          summary.policies.scanned++;
+          const patch = {};
+          if (!Array.isArray(p.fundsAllocation)) patch.fundsAllocation = [];
+          if (p.type === undefined) patch.type = 'normal';
+          if (Object.keys(patch).length > 0) {
+            await dbPut(`${basePath}/insurance_policies/${pid}`, { ...p, ...patch }, token);
+            summary.policies.patched++;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[admin-migrate] policies 遷移失敗：', err);
+    }
+
+    /* ---------- 4. 遷移 funds ---------- */
+    try {
+      const fundsSnap = await dbGet(`${basePath}/funds`, token);
+      if (fundsSnap && typeof fundsSnap === 'object') {
+        for (const [fid, f] of Object.entries(fundsSnap)) {
+          if (!f || typeof f !== 'object') continue;
+          summary.funds.scanned++;
+          const patch = {};
+          if (f.type === undefined) patch.type = 'standalone';
+          if (f.policyId === undefined) patch.policyId = '';
+          if (f.initialYear === undefined) patch.initialYear = '';
+          if (f.initialMonth === undefined) patch.initialMonth = '';
+          if (Object.keys(patch).length > 0) {
+            await dbPut(`${basePath}/funds/${fid}`, { ...f, ...patch }, token);
+            summary.funds.patched++;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[admin-migrate] funds 遷移失敗：', err);
+    }
+
+    return successResponse({ migrated: true, familyId, summary });
+  } catch (err) {
+    return handleError(err);
+  }
+}
+
+/* ============================================
    內部工具
    ============================================ */
 async function _loadPlatformDefaults(token) {
@@ -293,3 +452,10 @@ function _buildItemsWithCategoryId(items, baseTs) {
   });
   return out;
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: functions/api/_admin.js
+   Version: v103.0.22
+   Batch: B25-6
+   ═══════════════════════════════════════════ */

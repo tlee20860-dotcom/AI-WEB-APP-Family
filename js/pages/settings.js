@@ -1,11 +1,12 @@
 // ============================================
-// settings.js — 系統設定（v103.0.14 Page Schema）
+// settings.js — 系統設定（v103.0.22 Page Schema）
 // 位置：js/pages/settings.js
 // ============================================
+// v103.0.22（B25-6）：
+//   ✅ 危險區域加「一次性遷移舊資料」按鈕
 // v103.0.14 修正：
 //   ✅ [問題2] 實作個人化 Tab（帳號資訊 / 登出 / 統計卡模式 / 成員列表）
 //   ✅ [問題8] vConsole 持久化（跨頁保持）
-//   ✅ 保留除錯工具卡（v103.0.13）
 // ============================================
 
 import { initTabPanel } from '../ui/tab-panel.js';
@@ -13,6 +14,7 @@ import { initBankAccountManager } from '../shared/bank-account-manager.js';
 import { initEntityListPage } from '../shared/entity-list-page.js';
 import { AppState } from '../core/state.js';
 import { logout } from '../core/auth.js';
+import { api } from '../core/api.js';
 import { STORAGE_KEYS, ENTITY_KEYS } from '../config/constants.js';
 import { showToast } from '../ui/toast.js';
 import { openConfirm } from '../ui/modal.js';
@@ -38,6 +40,7 @@ export default {
     ctx._memberList = null;
     ctx._debugCleanup = null;
     ctx._personalCleanup = null;
+    ctx._migrateCleanup = null;
 
     const tabPanel = initTabPanel({
       containerId: 'settings-tabs',
@@ -72,6 +75,7 @@ export default {
         if (ctx._memberList) { try { ctx._memberList.destroy?.(); } catch (e) {} ctx._memberList = null; }
         if (ctx._personalCleanup) { try { ctx._personalCleanup(); } catch (e) {} ctx._personalCleanup = null; }
         if (ctx._debugCleanup) { try { ctx._debugCleanup(); } catch (e) {} ctx._debugCleanup = null; }
+        if (ctx._migrateCleanup) { try { ctx._migrateCleanup(); } catch (e) {} ctx._migrateCleanup = null; }
       },
     };
   },
@@ -82,12 +86,10 @@ export default {
    ============================================ */
 function _initPersonalTab(ctx) {
   if (ctx._personalCleanup) {
-    /* 已初始化過 */
     _renderDebugStatus();
     return;
   }
 
-  /* 1. 帳號資訊 */
   const accEl = document.getElementById('settings-account');
   const roleEl = document.getElementById('settings-role');
   const famEl = document.getElementById('settings-family');
@@ -97,7 +99,6 @@ function _initPersonalTab(ctx) {
   if (roleEl) roleEl.value = AppState.getRoleLabel();
   if (famEl) famEl.value = AppState.getFamilyName() || '—';
 
-  /* 2. 登出按鈕 */
   const logoutBtn = document.getElementById('settings-logout-btn');
   const onLogout = async () => {
     const ok = await openConfirm('確定要登出嗎？', { title: '登出', okText: '登出', okClass: 'btn-danger' });
@@ -105,7 +106,6 @@ function _initPersonalTab(ctx) {
   };
   if (logoutBtn) logoutBtn.addEventListener('click', onLogout);
 
-  /* 3. 統計卡顯示模式 */
   _renderStatsModeOptions();
 
   const saveBtn = document.getElementById('save-stats-mode-btn');
@@ -121,7 +121,6 @@ function _initPersonalTab(ctx) {
   };
   if (saveBtn) saveBtn.addEventListener('click', onSaveMode);
 
-  /* 4. 家庭成員列表 */
   const memberRoot = document.getElementById('family-members-root');
   if (memberRoot && !ctx._memberList) {
     ctx._memberList = initEntityListPage({
@@ -136,8 +135,9 @@ function _initPersonalTab(ctx) {
     });
   }
 
-  /* 5. 除錯工具卡 */
   _injectDebugCard(ctx);
+  /* 🆕 v103.0.22：遷移卡片 */
+  _injectMigrateCard(ctx);
 
   ctx._personalCleanup = () => {
     if (logoutBtn) logoutBtn.removeEventListener('click', onLogout);
@@ -275,3 +275,94 @@ function _bindDebugButtons(ctx) {
     if (disableBtn) disableBtn.removeEventListener('click', onDisable);
   };
 }
+
+/* ============================================
+   🆕 v103.0.22：遷移卡片（superadmin only）
+   ============================================ */
+function _injectMigrateCard(ctx) {
+  if (!AppState.isSuperAdmin) return;
+
+  const grid = document.querySelector('#settings-panel-personal .settings-personal-grid');
+  if (!grid) return;
+  if (document.getElementById('settings-migrate-card')) return;
+
+  const card = document.createElement('div');
+  card.className = 'glass-card';
+  card.id = 'settings-migrate-card';
+  card.style.gridColumn = '1 / -1';
+  card.style.borderColor = 'rgba(251,146,60,0.3)';
+  card.style.background = 'rgba(251,146,60,0.03)';
+  card.innerHTML = `
+    <div class="glass-card-title" style="display:flex; align-items:center; gap:8px; margin-bottom:12px; color:var(--neon-orange);">
+      <i data-lucide="alert-triangle" style="width:16px;height:16px;"></i>
+      <span>一次性資料遷移（超級管理員專用）</span>
+    </div>
+    <p class="glass-card-hint mb-12">
+      將舊資料（狀態名稱、缺失欄位）正規化為新格式。
+      <b>可重複執行</b>（已遷移的資料不會再次修改）。
+    </p>
+    <button type="button" class="btn btn-magenta" id="settings-migrate-btn">
+      <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> 執行遷移
+    </button>
+    <div id="settings-migrate-status" style="margin-top:12px; font-size:12px; color:var(--text-muted);"></div>
+  `;
+  grid.appendChild(card);
+
+  if (window.lucide) window.lucide.createIcons();
+
+  const btn = document.getElementById('settings-migrate-btn');
+  const statusEl = document.getElementById('settings-migrate-status');
+
+  const onMigrate = async () => {
+    const familyId = AppState.getFamilyId();
+    if (!familyId) {
+      showToast('尚未選擇家庭', 'error');
+      return;
+    }
+
+    const ok = await openConfirm(
+      `⚠️ 確定要執行一次性資料遷移嗎？\n\n` +
+      `• 將舊狀態名稱改為新代碼\n` +
+      `• 補齊缺失欄位（isAutoLinked / fundsAllocation / type 等）\n` +
+      `• 可重複執行（已遷移的資料不會再改）\n\n` +
+      `家庭：${AppState.getFamilyName() || familyId}`,
+      { title: '一次性資料遷移', okText: '執行遷移', okClass: 'btn-danger' }
+    );
+    if (!ok) return;
+
+    if (btn) btn.disabled = true;
+    if (statusEl) statusEl.textContent = '遷移中…';
+
+    try {
+      const result = await api.adminMigrate(familyId);
+      const s = result.summary || {};
+      const lines = [
+        `✅ 完成`,
+        `• 支出：掃描 ${s.expenses?.scanned || 0}，正規化 ${s.expenses?.normalized || 0}`,
+        `• 保險付款：掃描 ${s.payments?.scanned || 0}，正規化 ${s.payments?.normalized || 0}`,
+        `• 保單：掃描 ${s.policies?.scanned || 0}，補齊 ${s.policies?.patched || 0}`,
+        `• 基金：掃描 ${s.funds?.scanned || 0}，補齊 ${s.funds?.patched || 0}`,
+      ];
+      if (statusEl) statusEl.innerHTML = lines.join('<br>');
+      showToast('✅ 遷移完成', 'success');
+    } catch (err) {
+      if (statusEl) statusEl.textContent = '❌ 遷移失敗：' + err.message;
+      showToast('遷移失敗：' + err.message, 'error');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  };
+
+  if (btn) btn.addEventListener('click', onMigrate);
+
+  ctx._migrateCleanup = () => {
+    if (btn) btn.removeEventListener('click', onMigrate);
+  };
+}
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: js/pages/settings.js
+   Version: v103.0.22
+   Batch: B25-6
+   ═══════════════════════════════════════════ */

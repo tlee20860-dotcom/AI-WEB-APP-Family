@@ -1,21 +1,15 @@
 // ============================================
-// api.js — Cloudflare Functions 呼叫封裝（v103.0.0）
+// api.js — Cloudflare Functions 呼叫封裝（v103.0.22）
 // 位置：js/core/api.js
 // ============================================
-// v103.0.0 重構：
-//   ✅ fetchAnnualSummary 內部改走 annual-summary 聚合 API（效能提升）
-//   ✅ 保留 v102.0.0 全部對外 API（呼叫方式不變）
-//   ✅ callApi 錯誤處理強化
-//   ✅ 版本號更新
+// v103.0.22（B25-6）：
+//   ✅ 加 adminMigrate 封裝
 // ============================================
 
 import { AppState } from './state.js';
 import { auth } from '../config/firebase-config.js';
 import { STORAGE_KEYS, ROUTES } from '../config/constants.js';
 
-/* ============================================
-   基礎呼叫
-   ============================================ */
 export async function callApi(path, options = {}) {
   const user = auth.currentUser;
   const token = user ? await user.getIdToken() : '';
@@ -67,12 +61,7 @@ function getFamilyId() {
   return id;
 }
 
-/* ============================================
-   業務 API
-   ============================================ */
-
 export const api = {
-  /* ---------- 家庭查詢 ---------- */
   lookupFamily: () =>
     callApi('/api/lookup-family', {
       method: 'POST',
@@ -80,14 +69,9 @@ export const api = {
       body: JSON.stringify({}),
     }),
 
-  /* ---------- 摘要 ---------- */
   summary: (year, month) =>
     callApi(`/api/summary?familyId=${getFamilyId()}&year=${year}&month=${month}`),
 
-  /**
-   * 🆕 v103.0.0：改走 annual-summary 聚合 API（單次請求）
-   * 回傳格式保持向後相容（含 monthly 陣列）
-   */
   fetchAnnualSummary: async (year) => {
     const familyId = getFamilyId();
     const result = await callApi(
@@ -128,7 +112,6 @@ export const api = {
     return callApi(`/api/settlements-year?familyId=${familyId}&year=${year}`);
   },
 
-  /* ---------- 保險同步 ---------- */
   insuranceSync: (payload) =>
     callApi('/api/insurance-sync', {
       method: 'POST',
@@ -143,7 +126,6 @@ export const api = {
       body: JSON.stringify({ ...payload, familyId: getFamilyId(), action: 'delete' }),
     }),
 
-  /* ---------- 平台家庭管理 ---------- */
   adminListFamilies: () =>
     callApi('/api/admin-families?action=list'),
 
@@ -168,7 +150,14 @@ export const api = {
       body: JSON.stringify({ uid }),
     }),
 
-  /* ---------- 家庭成員帳號管理 ---------- */
+  /* 🆕 v103.0.22：一次性遷移 */
+  adminMigrate: (familyId) =>
+    callApi('/api/admin-migrate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ familyId, confirm: 'MIGRATE_ALL' }),
+    }),
+
   familyAccounts: {
     list: (familyId) =>
       callApi(`/api/family-accounts?familyId=${familyId}&action=list`),
@@ -202,7 +191,6 @@ export const api = {
       }),
   },
 
-  /* ---------- 平台設定 ---------- */
   platformSettings: {
     get: () => callApi('/api/platform-settings'),
 
@@ -214,7 +202,6 @@ export const api = {
       }),
   },
 
-  /* ---------- 平台預設資料庫 ---------- */
   platformDefaults: {
     list: (resource) =>
       callApi(`/api/platform-defaults?action=list&resource=${resource}`),
@@ -241,7 +228,6 @@ export const api = {
       }),
   },
 
-  /* ---------- 家庭設定 ---------- */
   familySettings: {
     get: () =>
       callApi(`/api/family-settings?familyId=${getFamilyId()}`),
@@ -268,7 +254,6 @@ export const api = {
       }),
   },
 
-  /* ---------- 銀行帳號 ---------- */
   bankAccounts: {
     list: () =>
       callApi(`/api/bank-accounts?familyId=${getFamilyId()}&action=list`),
@@ -295,7 +280,6 @@ export const api = {
       }),
   },
 
-  /* ---------- 銀行交易 ---------- */
   bankTransactions: {
     list: (bankId) =>
       callApi(`/api/bank-transactions?familyId=${getFamilyId()}&bankId=${bankId}&action=list`),
@@ -325,7 +309,6 @@ export const api = {
       }),
   },
 
-  /* ---------- 個人收入 ---------- */
   personalIncome: {
     list: (memberId) =>
       callApi(`/api/personal-income?familyId=${getFamilyId()}&memberId=${memberId}&action=list`),
@@ -345,7 +328,6 @@ export const api = {
       }),
   },
 
-  /* ---------- 成員代墊 ---------- */
   memberAdvances: {
     list: (memberId) =>
       callApi(`/api/member-advances?familyId=${getFamilyId()}&memberId=${memberId}&action=list`),
@@ -375,7 +357,6 @@ export const api = {
       }),
   },
 
-  /* ---------- 清除舊銀行資料（危險操作） ---------- */
   clearBankBalances: () =>
     callApi('/api/clear-bank-balances', {
       method: 'POST',
@@ -386,3 +367,10 @@ export const api = {
       }),
     }),
 };
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: js/core/api.js
+   Version: v103.0.22
+   Batch: B25-6
+   ═══════════════════════════════════════════ */
