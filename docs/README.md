@@ -1,12 +1,12 @@
 # 家庭財務 Web App — 文檔索引
 
-最後更新：B25-7
-當前批次：B25
+最後更新：B26-3.2
+當前批次：B26-3.2
 用途：新對話時，將整個 docs/ 上傳給 AI
 
 ---
 
-## 檔案清單（14 份）
+## 檔案清單（15 份）
 
 | # | 檔案 | 用途 |
 |---|---|---|
@@ -18,12 +18,13 @@
 | 6 | sop.md | 常見任務 SOP |
 | 7 | adr.md | 關鍵決策記錄（ADR-001~019） |
 | 8 | page-map.md | 頁面 → 檔案對照 + 各頁可編輯欄位 + 頁面區塊規格 |
-| 9 | delivery-rules.md | 交付規則（詳細版） |
-| 10 | refactor-plan.md | 重構計畫 |
-| 11 | api-contracts.md | API 契約 |
-| 12 | data-structure.md | Firebase 資料結構 |
-| 13 | compatibility.md | 舊資料相容策略 |
-| 14 | incident-log.md | 事故日誌（P01~P24） |
+| 9 | ui-spec.md | 🆕 UI 術語 + 頁面結構 + 元件對照 |
+| 10 | delivery-rules.md | 交付規則（詳細版） |
+| 11 | refactor-plan.md | 重構計畫 |
+| 12 | api-contracts.md | API 契約 |
+| 13 | data-structure.md | Firebase 資料結構 |
+| 14 | compatibility.md | 舊資料相容策略 |
+| 15 | incident-log.md | 事故日誌（P01~P24） |
 
 ---
 
@@ -47,11 +48,14 @@
 | 新增功能 | sop.md |
 | 理解決策 | adr.md |
 | 改頁面 | page-map.md |
+| 改 UI 元件 / 版面 | ui-spec.md + page-map.md |
 | 改 API | api-contracts.md |
 | 改資料 | data-structure.md + compatibility.md |
 | 理解重構 | refactor-plan.md |
-| 版面規格 | page-map.md「頁面區塊規格」+ anchor 0.22 |
-| 編輯入口職責 | page-map.md「各頁可編輯欄位對照」+ anchor 0.19 |
+| 版面規格 | page-map.md + anchor 0.22 |
+| 編輯入口職責 | page-map.md + anchor 0.19 |
+| UI 術語 | ui-spec.md |
+| 重大修改對比 | anchor 0.23 |
 
 ---
 
@@ -61,7 +65,7 @@
 
 | 步驟 | 動作 |
 |---|---|
-| 1 | 上傳 docs/ 全部 14 檔 |
+| 1 | 上傳 docs/ 全部 15 檔 |
 | 2 | 說：「我已上傳 docs/，請讀取全部內容」 |
 | 3 | AI 回報：「已讀取，當前批次 B{nn}」 |
 | 4 | 說：「我要修改 XXX」或「請修復 XXX」 |
@@ -70,7 +74,7 @@
 
 | 步驟 | 動作 |
 |---|---|
-| 1 | 上傳 docs/ 全部 14 檔 |
+| 1 | 上傳 docs/ 全部 15 檔 |
 | 2 | 說：「請讀取 docs/，[問題描述]」 |
 | 3 | AI 診斷後提供方案 |
 | 4 | 確認後交付 |
@@ -79,10 +83,18 @@
 
 | 步驟 | 動作 |
 |---|---|
-| 1 | 上傳 docs/ 全部 14 檔 |
+| 1 | 上傳 docs/ 全部 15 檔 |
 | 2 | 說：「請讀取 docs/，我要新增 XXX 功能」 |
 | 3 | AI 提供方案（含是否新增檔案） |
 | 4 | 確認後交付 |
+
+### 情境 D：改 UI 元素位置
+
+| 步驟 | 動作 |
+|---|---|
+| 1 | 讀 ui-spec.md |
+| 2 | 用術語描述（如「add 移到 header」） |
+| 3 | AI 依 page-controls 的 `position` 屬性處理 |
 
 ### 若 AI 回應「檔案內容不完整」
 
@@ -94,11 +106,11 @@
 
 | 項目 | 值 |
 |---|---|
-| 當前批次 | B25（程式碼） |
-| docs 批次 | B25-7 |
-| SW 版本 | family-fin-v140 |
+| 當前批次 | B26-3.2 |
+| docs 批次 | B26-3.2 |
+| SW 版本 | family-fin-v141 |
 | 部署 URL | family-financial-management-system.pages.dev |
-| 測試狀態 | B25 已部署，待測 P22 / P24 |
+| 測試狀態 | B26-3.2 部署中 |
 
 ---
 
@@ -112,21 +124,14 @@
 | 13 Page Schema | ✅ |
 | Functions API（10 檔） | ✅ |
 | 全站頁面可訪問 | ✅ |
-| 所有 API 正常 | ✅ |
-| 統計卡顯示 | ✅ |
-| 手機 vConsole 除錯 | ✅ |
-| Service Worker network-first | ✅ |
-| 無補丁重構（B19） | ✅ |
-| 統一自動更新（onDataChange） | ✅ |
-| 共用 Modal | ✅ |
-| 共用 filter-sort | ✅ |
-| 基金保險分支（B23） | ✅ |
-| 基金快照（B23） | ✅ |
 | 編輯入口職責分離（B25） | ✅ |
 | Modal 統一（B25） | ✅ |
 | Action 契約（B25） | ✅ |
 | 版面規格保護（B25） | ✅ |
 | 一次性資料遷移（B25） | ✅ |
+| page-controls 統一控制列（B26-3） | ✅ |
+| page-header 統一（B26-3.2） | ✅ |
+| UI 術語表（B26-3.2） | ✅ |
 
 ---
 
@@ -151,6 +156,7 @@
 | 資料結構 | data-structure.md |
 | 關鍵決策 | adr.md |
 | 頁面區塊規格 | page-map.md |
+| UI 術語 | ui-spec.md |
 | 編輯入口職責 | page-map.md + anchor 0.19 |
 
 ### 交付規則
@@ -167,10 +173,10 @@
 
 | 編號 | 主題 | 優先 |
 |---|---|---|
-| P22 | 年月切換需重整 | 🟠 高 |
-| P24 | 全站佈局統一 + superadmin sidebar + 遷移按鈕方案 C | 🟠 高 |
-
-**B25 完成度**：程式碼 ✅，docs ✅
+| B26-4 | Superadmin sidebar | 🟠 高 |
+| B26-5 | 遷移按鈕方案 C | 🟠 高 |
+| B26-6 | 年度總覽恢復 | 🟠 高 |
+| B27 | page-engine 統一佈局（方案 A） | 🟡 中 |
 
 ---
 
@@ -178,16 +184,18 @@
 
 | 批次 | 更新 |
 |---|---|
-| B25-7 | 全盤更新（file-manifest / progress / incident-log / page-map / adr / README） |
-| B25-1 | anchor 0.19~0.22 + page-map「各頁可編輯欄位」+「頁面區塊規格」 |
+| B26-3.2 | 新增 ui-spec.md（15 檔）；README + file-manifest + anchor 更新 |
+| B26-1b | docs 補齊（ai-guide / delivery-rules / sop） |
+| B26-1a | docs 補齊（api-contracts / compatibility） |
+| B25-7 | 全盤更新（6 檔） |
+| B25-1 | anchor 0.19~0.22 + page-map 擴充 |
 | B24 | 全盤更新（14 檔） |
-| B21 | 全盤重構（9 檔 → 14 檔） |
 
 ---
 
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/README.md
-   Version: v103.0.22
-   Batch: B25-7
+   Version: v103.0.29
+   Batch: B26-3.2
    ═══════════════════════════════════════════ */

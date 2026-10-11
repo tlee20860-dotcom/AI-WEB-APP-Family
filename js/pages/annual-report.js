@@ -1,9 +1,9 @@
-// annual-report.js — 年度報表（v103.0.27）
+// annual-report.js — 年度報表（v103.0.29）
+// v103.0.29（B26-3.2）：
+//   ✅ export 移到 page-header 右側
+//   ✅ year + month + viewSwitcher 保留在 body
 // v103.0.27（B26-3）：
-//   ✅ 改用 page-controls 渲染（export + viewSwitcher + year + month）
-//   ✅ 年月改用 AppState（全站統一）
-//   ✅ 移除自繪 year/month switcher
-//   ✅ view 為頁面內 local 概念（summary/monthly）
+//   ✅ 改用 page-controls
 // ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
@@ -71,13 +71,14 @@ export default {
 
     const paint = () => { if (ctx.state.view === 'monthly') paintMonthly(); else paintSummary(); };
 
-    /* 🆕 v103.0.27：page-controls */
+    /* 🆕 v103.0.29：export → header；year + month + viewSwitcher → body */
     _controls = renderPageControls({
       containerId: 'page-controls-root',
+      headerContainerId: 'page-header-actions',
       items: [
         {
           type: 'export',
-          align: 'right',
+          position: 'header',
           label: '匯出 Excel',
           onClick: () => _exportCsv(ctx),
         },
@@ -86,7 +87,6 @@ export default {
           year: ctx.state.year,
           onChange: (y) => {
             ctx.state.year = String(y);
-            /* 同步全域（若月份為 all 則保持） */
             AppState.setYearMonth(String(y), AppState.month === 'all' ? ctx.state.displayMonth : AppState.month);
             paint();
           },
@@ -302,6 +302,6 @@ function _exportCsv(ctx) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/annual-report.js
-   Version: v103.0.27
-   Batch: B26-3
+   Version: v103.0.29
+   Batch: B26-3.2
    ═══════════════════════════════════════════ */

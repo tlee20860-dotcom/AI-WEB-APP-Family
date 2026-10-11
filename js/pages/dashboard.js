@@ -1,10 +1,11 @@
 // ============================================
-// dashboard.js — 總覽儀表板（v103.0.27 Page Schema）
+// dashboard.js — 總覽儀表板（v103.0.29 Page Schema）
 // 位置：js/pages/dashboard.js
 // ============================================
+// v103.0.29（B26-3.2）：
+//   ✅ 「查看年度報表」移到 page-header 右側
 // v103.0.27（B26-3）：
-//   ✅ 改用 page-controls 渲染「查看年度報表」按鈕
-//   ✅ 副標題位置統一（在 page-header 內）
+//   ✅ 改用 page-controls
 // ============================================
 
 import { calcTotalBankBalance } from '../lib/bank.js';
@@ -64,13 +65,14 @@ export default {
 
     update();
 
-    /* 🆕 v103.0.27：page-controls */
+    /* 🆕 v103.0.29：page-controls（查看年報 → header） */
     _controls = renderPageControls({
       containerId: 'page-controls-root',
+      headerContainerId: 'page-header-actions',
       items: [
         {
           type: 'custom',
-          align: 'right',
+          position: 'header',
           render: () => `<a class="btn btn-primary" href="annual-report.html"><i data-lucide="bar-chart-3"></i> 查看年度報表</a>`,
         },
       ],
@@ -145,6 +147,6 @@ function _buildSubtitle(members, accounts, txns, year) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/dashboard.js
-   Version: v103.0.27
-   Batch: B26-3
+   Version: v103.0.29
+   Batch: B26-3.2
    ═══════════════════════════════════════════ */

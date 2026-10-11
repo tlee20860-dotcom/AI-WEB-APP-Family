@@ -1,13 +1,11 @@
-// settlements.js — 結算清單（v103.0.27）
+// settlements.js — 結算清單（v103.0.29）
+// v103.0.29（B26-3.2）：
+//   ✅ viewToggle + sort 移到 page-header 右側
+//   ✅ year + month + filter 保留在 body
 // v103.0.27（B26-3）：
-//   ✅ 改用 page-controls 渲染（viewToggle + sort + year + month + filter）
-//   ✅ filter 整合 source + hideCompleted
-//   ✅ 移除 renderPageFilter 依賴
-//   ✅ 移除 header 內切換 / 排序
+//   ✅ 改用 page-controls
 // v103.0.25（B26-2）：
 //   ✅ P22 修正：reload 開頭同步 filters.year/month
-// v103.0.24（B25-3d）：
-//   ✅ P21 修正：hideCompleted 移出 filters
 // ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
@@ -292,20 +290,21 @@ export default {
     ctx.state.filters.year = String(year);
     ctx.state.filters.month = month === 'all' ? '' : String(month);
 
-    /* 🆕 v103.0.27：page-controls（含 filter 整合 hideCompleted + source） */
+    /* 🆕 v103.0.29：viewToggle + sort → header；year + month + filter → body */
     _controls = renderPageControls({
       containerId: 'page-controls-root',
+      headerContainerId: 'page-header-actions',
       items: [
         {
           type: 'viewToggle',
-          align: 'right',
+          position: 'header',
           storageKey: 'settlement-view',
           defaultView: 'table',
           onChange: (v) => { _view = v; _paintList(); },
         },
         {
           type: 'sort',
-          align: 'right',
+          position: 'header',
           value: ctx.state.sortMode,
           options: [
             { value: 'pending-first', label: '未處理置頂' },
@@ -502,6 +501,6 @@ async function _openBankPickerModal(row) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/settlements.js
-   Version: v103.0.27
-   Batch: B26-3
+   Version: v103.0.29
+   Batch: B26-3.2
    ═══════════════════════════════════════════ */

@@ -1,11 +1,12 @@
 /* ============================================
    components.css — 卡片、按鈕、表格、Modal、表單
    -------------------------------------------------
+   v103.0.29（B26-3.2）：
+     ✅ 加 .page-header flex 定義（標題 + header actions）
+     ✅ 加 .page-header-actions-group
    v103.0.28（B26-3.1）：
-     ✅ 移除 .page-controls .year-switcher / .month-switcher 舊樣式
+     ✅ 移除 .page-controls .year-switcher 舊樣式
      ✅ 加 .page-controls-period-group（改用 .btn btn-sm）
-   v103.0.27（B26-3）：
-     ✅ 加 .page-controls-* 標準樣式
    ============================================ */
 
 /* ================= GlassCard ================= */
@@ -52,6 +53,43 @@
   font-size: 12px;
   color: var(--text-muted);
   margin-top: 6px;
+}
+
+/* ============================================
+   🆕 Page Header（B26-3.2）
+   ============================================ */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.page-header > div:first-child,
+.page-header > h1:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.page-header-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .page-header-actions-group {
+    width: 100%;
+    justify-content: flex-end;
+  }
 }
 
 /* ================= 按鈕 ================= */
@@ -452,7 +490,7 @@
 }
 
 /* ============================================
-   🆕 Page Controls（統一控制列，B26-3 / B26-3.1）
+   Page Controls（統一控制列）
    ============================================ */
 .page-controls {
   display: flex;
@@ -496,7 +534,7 @@
   width: 100%;
 }
 
-/* 🆕 v103.0.28：年 / 月容器（3 顆 .btn btn-sm） */
+/* 年 / 月容器（3 顆 .btn btn-sm） */
 .page-controls-period-group {
   display: inline-flex;
   align-items: center;
@@ -514,7 +552,6 @@
   cursor: not-allowed;
 }
 
-/* 「當前」按鈕雖 disabled，但保留 primary 視覺 */
 .page-controls-period-group .btn:disabled.btn-primary {
   opacity: 1;
   cursor: default;
@@ -1483,6 +1520,6 @@
 /* ═══════════════════════════════════════════
    END OF FILE
    File: css/components.css
-   Version: v103.0.28
-   Batch: B26-3.1
+   Version: v103.0.29
+   Batch: B26-3.2
    ═══════════════════════════════════════════ */

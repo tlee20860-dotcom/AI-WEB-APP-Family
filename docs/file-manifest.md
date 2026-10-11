@@ -1,13 +1,12 @@
 # 檔案清單
 
-最後更新：B25-7
-當前批次：B25
+最後更新：B26-3.2
+當前批次：B26
 
 **說明**：
 - 每次交付後必須更新此表
 - 同檔以最新批次為準
 - 用於「更新清單」流程（見 anchor 0.7）
-- **B25 全批次已併入**（B25-1 ~ B25-6）
 
 ---
 
@@ -15,7 +14,7 @@
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
-| constants.js | v103.0.22 | B25 |
+| constants.js | v103.0.27 | B26-3 |
 | firebase-config.js | v103.0.22 | B25 |
 | app-config.js | v103.0.22 | B25 |
 | status-registry.js | v103.0.0 | B01 |
@@ -40,7 +39,7 @@
 
 ---
 
-## js/lib/（11 檔）
+## js/lib/（12 檔）
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
@@ -55,6 +54,7 @@
 | expense-modal.js | v103.0.22 | B25 |
 | income-modal.js | v103.0.18 | B19 |
 | filter-sort.js | v103.0.18 | B19 |
+| page-controls.js | v103.0.29 | B26-3.2 |
 
 ---
 
@@ -97,7 +97,7 @@
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
-| navbar.js | v103.0.12 | B15 |
+| navbar.js | v103.0.27 | B26-3 |
 | sidebar.js | v103.0.12 | B15 |
 | app-shell.js | v103.0.9 | B11 |
 
@@ -147,19 +147,19 @@
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
-| dashboard.js | v103.0.17 | B18.1 |
-| portfolio.js | v103.0.22 | B25 |
-| annual-report.js | v103.0.22 | B25 |
+| dashboard.js | v103.0.29 | B26-3.2 |
+| portfolio.js | v103.0.27 | B26-3 |
+| annual-report.js | v103.0.29 | B26-3.2 |
 | settings.js | v103.0.22 | B25 |
-| finance-overview.js | v103.0.20 | B22 |
-| member-report.js | v103.0.20 | B22 |
+| finance-overview.js | v103.0.27 | B26-3 |
+| member-report.js | v103.0.27 | B26-3 |
 | input-center.js | v103.0.20 | B22 |
 | database.js | v103.0.3 | B11 |
 | database-options.js | v103.0.0 | B11 |
 | database-dropdowns.js | v103.0.0 | B11 |
 | database-yearrange.js | v103.0.0 | B11 |
-| settlements.js | v103.0.24 | B25 |
-| insurance.js | v103.0.20 | B22 |
+| settlements.js | v103.0.29 | B26-3.2 |
+| insurance.js | v103.0.27 | B26-3 |
 
 ---
 
@@ -186,7 +186,7 @@
 |---|---|---|
 | theme.css | v101 | 未變 |
 | layout.css | v103.0.19 | B20 |
-| components.css | v102.1.0 | 未變 |
+| components.css | v103.0.29 | B26-3.2 |
 | utilities.css | v101.6.6 | 未變 |
 | pages/annual-report.css | v103.0.22 | B25 |
 | pages/insurance.css | v101.10.0 | 未變 |
@@ -198,18 +198,18 @@
 | 檔案 | 版本 | 批次 |
 |---|---|---|
 | admin.html | — | B11 |
-| annual-report.html | — | B11 |
+| annual-report.html | v103.0.29 | B26-3.2 |
 | database.html | — | B11 |
-| finance-overview.html | v103.0.20 | B22 |
-| index.html | — | B11 |
+| finance-overview.html | v103.0.29 | B26-3.2 |
+| index.html | v103.0.29 | B26-3.2 |
 | input-center.html | — | B12 |
-| insurance.html | v103.0.22 | B25 |
+| insurance.html | v103.0.29 | B26-3.2 |
 | login.html | — | B14C |
-| member-report.html | v103.0.19 | B20 |
-| portfolio.html | v103.0.21 | B23 |
+| member-report.html | v103.0.29 | B26-3.2 |
+| portfolio.html | v103.0.29 | B26-3.2 |
 | register.html | — | B11 |
 | settings.html | — | B11 |
-| settlements.html | v103.0.19 | B20 |
+| settlements.html | v103.0.29 | B26-3.2 |
 
 ---
 
@@ -217,9 +217,9 @@
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
-| sw.js | v103.0.22 | B25 |
+| sw.js | v103.0.27 | B26-3 |
 | manifest.json | — | 未變 |
-| docs/（14 檔） | v103.0.22 | B25-7 |
+| docs/（15 檔） | v103.0.29 | B26-3.2 |
 
 ---
 
@@ -229,7 +229,7 @@
 |---|---|
 | js/config/ | 7 |
 | js/core/ | 8 |
-| js/lib/ | 11 |
+| js/lib/ | 12 |
 | js/engines/ | 3 |
 | js/blocks/ | 5 |
 | js/ui/ | 6 |
@@ -242,8 +242,8 @@
 | CSS | 6 |
 | HTML | 13 |
 | 根目錄 | 2 |
-| docs/ | 14 |
-| **總計** | **120** |
+| docs/ | 15 |
+| **總計** | **122** |
 
 ---
 
@@ -251,8 +251,10 @@
 
 | 編號 | 主題 | 狀態 |
 |---|---|---|
-| P22 | 年月切換需重整 | 📋 待處理（B25 後） |
-| P24 | 全站佈局統一 + superadmin sidebar + 遷移按鈕方案 C | 📋 待處理（B25 後） |
+| B26-4 | Superadmin sidebar | 📋 待處理 |
+| B26-5 | 遷移按鈕方案 C | 📋 待處理 |
+| B26-6 | 年度總覽恢復 | 📋 待處理 |
+| B27 | page-engine 統一佈局 | 📋 記錄 |
 
 ---
 
@@ -260,16 +262,17 @@
 
 | 批次 | 更新 |
 |---|---|
-| B25 | 27 檔（B25-1 ~ B25-6）+ docs 6 檔（B25-7） |
+| B26-3.2 | page-controls / components.css / navbar / constants / 7 HTML / 3 JS / sw.js + ui-spec 新 + docs |
+| B26-3.1 | page-controls / components.css / 7 HTML |
+| B26-3 | page-controls（新）/ navbar / constants / sw / dashboard / insurance / portfolio / settlements / finance-overview / annual-report / member-report + 7 HTML |
+| B25 | 27 檔 + docs |
 | B23 | entity-definitions / entity-modal / entity-funds-allocation（新）/ _insurance / db / column-registry / portfolio / portfolio.html |
-| B22 | data-card / settlements / member-report / input-center / insurance / finance-overview / annual-report / 2 HTML |
-| B20 | view-toggle / layout.css / 2 HTML |
 
 ---
 
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/file-manifest.md
-   Version: v103.0.22
-   Batch: B25-7
+   Version: v103.0.29
+   Batch: B26-3.2
    ═══════════════════════════════════════════ */

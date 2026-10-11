@@ -1,49 +1,65 @@
 // ============================================
-// page-controls.js — 統一控制列渲染（v103.0.28）
+// page-controls.js — 統一控制列渲染（v103.0.29）
 // 位置：js/lib/page-controls.js
 // ============================================
+// v103.0.29（B26-3.2）：
+//   ✅ 加 headerContainerId 參數
+//   ✅ item 加 position: 'header' 支援（渲染到頁首）
+//   ✅ 事件綁定改用參數傳 items（不再用 __pcItems）
 // v103.0.28（B26-3.1）：
 //   ✅ 月份邊界：< 1 / > 12 顯示「—」+ disabled
-//   ✅ toolbar 過濾排除 filter / viewSwitcher（修正雙重渲染）
-//   ✅ 年月按鈕改用 .btn btn-sm（深色主題）
-//   ✅ 點擊當前年/月無效
-// v103.0.27：
-//   ✅ 修正 _findByItem：改用 root.__pcItems
+//   ✅ toolbar 過濾排除 filter / viewSwitcher
+//   ✅ 年月按鈕改用 .btn btn-sm
 // ============================================
 
 import { esc } from './dom.js';
 import { STORAGE_PREFIXES } from '../config/constants.js';
 
 export function renderPageControls(config) {
-  const { containerId, items = [] } = config || {};
+  const { containerId, headerContainerId, items = [] } = config || {};
   const root = document.getElementById(containerId);
   if (!root) {
     console.warn(`[page-controls] 找不到容器 #${containerId}`);
     return null;
   }
+  const headerRoot = headerContainerId ? document.getElementById(headerContainerId) : null;
 
   items.forEach((it) => {
     if (!it.__pcId) {
       it.__pcId = it.id || `pc-${it.type}-${Math.random().toString(36).slice(2, 8)}`;
     }
   });
-  root.__pcItems = items;
 
   let _destroyed = false;
 
   const paint = () => {
     if (_destroyed) return;
 
-    /* 🆕 v103.0.28：toolbar 過濾排除 filter / viewSwitcher */
+    /* 分派：header vs body */
+    const headerItems = items.filter((it) => it.position === 'header');
+    const bodyItems = items.filter((it) => it.position !== 'header');
+
+    /* 渲染 header */
+    if (headerRoot) {
+      const headerHtml = headerItems.length > 0
+        ? `<div class="page-header-actions-group">${headerItems.map(_renderItem).join('')}</div>`
+        : '';
+      if (headerRoot.__lastHtml !== headerHtml) {
+        headerRoot.__lastHtml = headerHtml;
+        headerRoot.innerHTML = headerHtml;
+      }
+    }
+
+    /* 渲染 body */
     const _isToolbarItem = (it) =>
       it.type !== 'year' && it.type !== 'month' &&
       it.type !== 'filter' && it.type !== 'viewSwitcher';
 
-    const toolbarLeft = items.filter((it) => _isToolbarItem(it) && it.align !== 'right');
-    const toolbarRight = items.filter((it) => _isToolbarItem(it) && it.align === 'right');
-    const yearItem = items.find((it) => it.type === 'year');
-    const monthItem = items.find((it) => it.type === 'month');
-    const fullRowItems = items.filter((it) => it.type === 'filter' || it.type === 'viewSwitcher');
+    const toolbarLeft = bodyItems.filter((it) => _isToolbarItem(it) && it.align !== 'right');
+    const toolbarRight = bodyItems.filter((it) => _isToolbarItem(it) && it.align === 'right');
+    const yearItem = bodyItems.find((it) => it.type === 'year');
+    const monthItem = bodyItems.find((it) => it.type === 'month');
+    const fullRowItems = bodyItems.filter((it) => it.type === 'filter' || it.type === 'viewSwitcher');
 
     const parts = [];
 
@@ -69,13 +85,16 @@ export function renderPageControls(config) {
       parts.push(`<div class="page-controls-row page-controls-full">${_renderItem(it)}</div>`);
     });
 
-    const html = `<div class="page-controls">${parts.join('')}</div>`;
+    const html = parts.length > 0 ? `<div class="page-controls">${parts.join('')}</div>` : '';
     if (root.__lastHtml !== html) {
       root.__lastHtml = html;
       root.innerHTML = html;
     }
 
-    _bindAll(root);
+    /* 綁定事件（root + headerRoot 各自綁定，用同一份 items 查找） */
+    _bindAll(root, items);
+    if (headerRoot) _bindAll(headerRoot, items);
+
     if (window.lucide) window.lucide.createIcons();
   };
 
@@ -85,15 +104,17 @@ export function renderPageControls(config) {
     refresh: paint,
     destroy: () => {
       _destroyed = true;
-      const oldClick = root.__pcListener;
-      if (oldClick) root.removeEventListener('click', oldClick);
-      const oldChange = root.__pcChangeListener;
-      if (oldChange) root.removeEventListener('change', oldChange);
-      root.__pcListener = null;
-      root.__pcChangeListener = null;
-      root.__pcItems = null;
-      root.innerHTML = '';
-      root.__lastHtml = '';
+      [root, headerRoot].forEach((c) => {
+        if (!c) return;
+        const oldClick = c.__pcListener;
+        if (oldClick) c.removeEventListener('click', oldClick);
+        const oldChange = c.__pcChangeListener;
+        if (oldChange) c.removeEventListener('change', oldChange);
+        c.__pcListener = null;
+        c.__pcChangeListener = null;
+        c.innerHTML = '';
+        c.__lastHtml = '';
+      });
     },
   };
 }
@@ -223,7 +244,6 @@ function _renderMonthSwitcher(item) {
   const canPrev = prevM >= 1;
   const canNext = nextM <= 12;
 
-  /* 🆕 v103.0.28：邊界外顯示「—」 */
   const prevLabel = canPrev ? `${prevM} 月` : '—';
   const nextLabel = canNext ? `${nextM} 月` : '—';
 
@@ -245,28 +265,27 @@ function _renderMonthSwitcher(item) {
 /* ============================================
    事件綁定
    ============================================ */
-function _findByItem(root, type, id) {
-  const list = root.__pcItems || [];
-  return list.find((it) => it.type === type && it.__pcId === id);
+function _findByItem(items, type, id) {
+  return items.find((it) => it.type === type && it.__pcId === id);
 }
 
-function _bindAll(root) {
-  const oldClick = root.__pcListener;
-  if (oldClick) root.removeEventListener('click', oldClick);
-  const oldChange = root.__pcChangeListener;
-  if (oldChange) root.removeEventListener('change', oldChange);
+function _bindAll(container, items) {
+  const oldClick = container.__pcListener;
+  if (oldClick) container.removeEventListener('click', oldClick);
+  const oldChange = container.__pcChangeListener;
+  if (oldChange) container.removeEventListener('change', oldChange);
 
   const clickHandler = (e) => {
     const addBtn = e.target.closest('button[data-pc-action="add"]');
     if (addBtn) {
-      const item = _findByItem(root, 'add', addBtn.dataset.pcId);
+      const item = _findByItem(items, 'add', addBtn.dataset.pcId);
       if (item && typeof item.onClick === 'function') item.onClick();
       return;
     }
 
     const expBtn = e.target.closest('button[data-pc-action="export"]');
     if (expBtn) {
-      const item = _findByItem(root, 'export', expBtn.dataset.pcId);
+      const item = _findByItem(items, 'export', expBtn.dataset.pcId);
       if (item && typeof item.onClick === 'function') item.onClick();
       return;
     }
@@ -286,7 +305,7 @@ function _bindAll(root) {
       });
       try { localStorage.setItem(storageKey, view); } catch (err) { /* noop */ }
 
-      const item = _findByItem(root, 'viewToggle', group.dataset.pcId);
+      const item = _findByItem(items, 'viewToggle', group.dataset.pcId);
       if (item && typeof item.onChange === 'function') item.onChange(view);
       return;
     }
@@ -300,7 +319,7 @@ function _bindAll(root) {
         b.classList.toggle('btn-primary', isActive);
         b.classList.toggle('btn-ghost', !isActive);
       });
-      const item = _findByItem(root, 'viewSwitcher', group.dataset.pcId);
+      const item = _findByItem(items, 'viewSwitcher', group.dataset.pcId);
       if (item && typeof item.onChange === 'function') item.onChange(value);
       return;
     }
@@ -309,9 +328,8 @@ function _bindAll(root) {
     if (yearBtn && !yearBtn.disabled) {
       const group = yearBtn.closest('[data-pc-year]');
       const y = Number(yearBtn.dataset.pcYearVal);
-      const item = _findByItem(root, 'year', group.dataset.pcId);
+      const item = _findByItem(items, 'year', group.dataset.pcId);
       if (!item) return;
-      /* 🆕 v103.0.28：點擊當前年無效 */
       if (Number(item.year) === y) return;
       if (typeof item.onChange === 'function') item.onChange(y);
       return;
@@ -322,9 +340,8 @@ function _bindAll(root) {
       const group = monthBtn.closest('[data-pc-month]');
       const m = monthBtn.dataset.pcMonthVal;
       if (!m) return;
-      const item = _findByItem(root, 'month', group.dataset.pcId);
+      const item = _findByItem(items, 'month', group.dataset.pcId);
       if (!item) return;
-      /* 🆕 v103.0.28：點擊當前月無效 */
       if (String(Number(item.month)).padStart(2, '0') === m) return;
       if (typeof item.onChange === 'function') item.onChange(m);
       return;
@@ -334,20 +351,20 @@ function _bindAll(root) {
   const changeHandler = (e) => {
     const sortSel = e.target.closest('[data-pc-sort]');
     if (sortSel) {
-      const item = _findByItem(root, 'sort', sortSel.dataset.pcId);
+      const item = _findByItem(items, 'sort', sortSel.dataset.pcId);
       if (item && typeof item.onChange === 'function') item.onChange(sortSel.value);
     }
   };
 
-  root.addEventListener('click', clickHandler);
-  root.addEventListener('change', changeHandler);
-  root.__pcListener = clickHandler;
-  root.__pcChangeListener = changeHandler;
+  container.addEventListener('click', clickHandler);
+  container.addEventListener('change', changeHandler);
+  container.__pcListener = clickHandler;
+  container.__pcChangeListener = changeHandler;
 }
 
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/lib/page-controls.js
-   Version: v103.0.28
-   Batch: B26-3.1
+   Version: v103.0.29
+   Batch: B26-3.2
    ═══════════════════════════════════════════ */

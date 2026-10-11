@@ -1,7 +1,7 @@
 # 主錨點 — 家庭財務 Web App
 
-最後更新：B26-3
-當前批次：B25（程式碼）
+最後更新：B26-3.2
+當前批次：B26-3.2
 專案狀態：測試中
 
 ---
@@ -30,12 +30,12 @@ Firebase RTDB → data-engine → page-engine → derived → block → DOM
 5. AI 優先（不需為人類可讀性妥協）
 
 **交付流程**：
-1. 讀 docs/ 全部 14 檔
+1. 讀 docs/ 全部 15 檔
 2. 使用者說「請交付第 N 波」或「需要更新清單」
 3. AI 依 progress.md + file-manifest.md 交付
 
 **讀取順序**：
-anchor → ai-guide → file-manifest → progress → 依情境讀其餘
+anchor → ai-guide → file-manifest → progress → ui-spec（如需）→ 依情境讀其餘
 
 ---
 
@@ -331,7 +331,6 @@ anchor → ai-guide → file-manifest → progress → 依情境讀其餘
 1. 示範 code block 用「規則 + 表格」
    - 不用真 code block 示範「含 code block 的格式」
    - 用「情況 → 做法」表格
-   - 例：外層 backtick = 內層 + 1
 
 2. 唯一真相 + 引用
    - 規則集中在 anchor.md
@@ -386,11 +385,7 @@ anchor → ai-guide → file-manifest → progress → 依情境讀其餘
 | 保險狀態 | 只走 `settlements` 頁的 `api.insuranceSync` / `insuranceUnsync` |
 | 保險頁 | 只提供「檢視 + 保單資料編輯」 |
 
-**違反判定**：🟥 A 級（機會型重構必改）
-
-**理由**：
-- 避免同一欄位多入口修改
-- 資料輸入與狀態操作語意分離
+**違反判定**：🟥 A 級
 
 ### 0.20 Modal 統一（強制）
 
@@ -409,11 +404,6 @@ anchor → ai-guide → file-manifest → progress → 依情境讀其餘
 |---|---|
 | 自建 overlay 且功能故障 | 🔴 阻斷 |
 | 自建 overlay 但功能正常 | 🟠 高（下次順便改） |
-
-**理由**：
-- 統一 ESC 關閉 / backdrop 點擊 / 堆疊管理
-- 避免「缺 .active」類 bug
-- 避免監聽器累積
 
 ### 0.21 Action 契約（強制）
 
@@ -435,26 +425,7 @@ anchor → ai-guide → file-manifest → progress → 依情境讀其餘
 | `js/shared/data-table.js` | `hasActions` 判斷 |
 | `js/shared/data-card.js` | `hasActions` 判斷 |
 
-**統一代碼模式**：
-
-| 變數 | 計算 |
-|---|---|
-| `hasBuiltin` | `effectiveUi.canEdit !== false \|\| effectiveUi.canDelete !== false` |
-| `hasCustom` | `typeof hooks.customActions === 'function'` |
-| `shouldActions` | `hasCustom \|\| (hasBuiltin && extra.disableBuiltinActions !== true)` |
-| 當 `hasCustom` 為真時 | 預設按鈕**不生成** |
-
-**虛構 entity 的 fallback**：
-
-| 情況 | `effectiveUi` 值 |
-|---|---|
-| `getEntityDef(key)` 為 null | `{}`（不是 `{ canEdit: false, canDelete: false }`） |
-
 **違反判定**：🟥 A 級
-
-**理由**：
-- 雙重按鈕根因
-- 卡片無按鈕根因
 
 ### 0.22 版面規格保護（強制）
 
@@ -482,23 +453,11 @@ anchor → ai-guide → file-manifest → progress → 依情境讀其餘
 | 未經確認改變容器 ID | 🔴 阻斷 |
 | 未經確認改變順序 | 🟠 高 |
 
-**交付前自我檢查新增項**：
-
-| 檢查項 | 狀態 |
-|---|---|
-| 已核對 page-map.md 頁面區塊規格 | |
-
-**違反處理**：
-- 發現違反 → 立即恢復原狀
-- 若恢復不可行 → 提出方案請使用者決策
-
-**理由**：
-- 避免 AI 優化時無意砍掉區塊
-- 版面是使用者可見的契約
+**理由**：避免 AI 優化時無意砍掉區塊。
 
 ### 0.23 重大修改對比（強制）
 
-**原則**：涉及重大結構改動時，交付前必須附「更新前後對比」，讓使用者清晰判斷改動必要性。
+**原則**：涉及重大結構改動時，交付前必須附「更新前後對比」。
 
 **觸發條件**（符合任一）：
 
@@ -536,10 +495,42 @@ anchor → ai-guide → file-manifest → progress → 依情境讀其餘
 | 對比只寫「優化」不列數字 | 違反 |
 | 只寫好處不寫代價 | 違反 |
 
-**理由**：
-- 使用者需判斷改動必要性
-- 避免 AI 過度重構
-- 建立決策透明化
+### 0.24 UI 術語權威來源（強制）
+
+**原則**：全站 UI 術語以 `docs/ui-spec.md` 為唯一真相。
+
+**規則**：
+
+| 項目 | 內容 |
+|---|---|
+| 權威來源 | `docs/ui-spec.md` |
+| 使用 | 所有 UI 描述一律用術語（Page / Section / Row / Item / type） |
+| 禁止 | 使用未定義術語 |
+| 新增術語 | 先加至 ui-spec.md |
+| 衝突處理 | 與其他 docs 衝突時，以 ui-spec.md 為準 |
+| 重複定義 | 禁止在其他 docs 重複定義 UI 術語 |
+
+**各 docs 角色**：
+
+| 檔案 | 角色 |
+|---|---|
+| ui-spec.md | UI 術語（唯一真相） |
+| page-map.md | 頁面區塊規格（應用層） |
+| anchor.md | 規則（本檔） |
+| page-controls.js | 實作 |
+
+**使用範例**：
+
+| 使用者說 | AI 動作 |
+|---|---|
+| 「add 移到 header」 | page-controls `add` 加 `position: 'header'` |
+| 「viewToggle 換位置」 | 改 page-controls item 的 position / align |
+| 「調整統計卡」 | stats section（block） |
+| 「調整那個按鈕」 | 反問：「哪個 section / item？」 |
+
+**違反判定**：🟧 高
+
+**理由**：建立共同詞彙，避免模糊溝通導致 AI 誤解。
 
 ---
 
@@ -665,17 +656,17 @@ ctx 提供：
 
 | 欄位 | 說明 |
 |---|---|
-| containerId | 容器 ID（通常 `page-controls-root`） |
+| containerId | body 容器 ID（通常 `page-controls-root`） |
+| headerContainerId | header 容器 ID（如 `page-header-actions`） |
 | items | 元素陣列 |
-| onChange | 通用變更回呼（可選） |
 
 **items 元素結構**：
 
 | 欄位 | 說明 |
 |---|---|
 | type | 內建 type 或 'custom' |
-| align | 'left' / 'right'（預設 left） |
-| ... | type 專屬參數 |
+| align | 'left' / 'right'（body 內用） |
+| position | 'header'（放 page-header 右側） |
 
 **內建 type 清單**：
 
@@ -691,19 +682,7 @@ ctx 提供：
 | filter | render | 自訂篩選 HTML |
 | custom | render | 逃生艙 |
 
-**排版規則**：
-
-| 規則 | 說明 |
-|---|---|
-| toolbar 行 | 自動分左右 |
-| period 行 | 年 + 月（自動分左右） |
-| 通用 | 各項依 items 順序渲染 |
-
-**各頁 HTML 統一容器**：
-
-| 容器 ID | 用途 |
-|---|---|
-| page-controls-root | 所有頁面統一 |
+**UI 術語權威來源**：`docs/ui-spec.md`（見 0.24）
 
 ---
 
@@ -713,7 +692,7 @@ js/config（7 檔）：constants / firebase-config / app-config / 4 Registry
 
 js/core（8 檔）：state / api / db / auth / auth-guard / utils / pwa / debug
 
-js/lib（12 檔）：dom / async / lifecycle / registry / merge / insurance / bank / format / expense-modal / income-modal / filter-sort / **page-controls**
+js/lib（12 檔）：dom / async / lifecycle / registry / merge / insurance / bank / format / expense-modal / income-modal / filter-sort / page-controls
 
 js/engines（3 檔）：page / data / render
 
@@ -731,7 +710,7 @@ js/pages（13 檔）：純 Schema
 
 functions/api（10 檔）：_config / _helpers / _admin / _bank / _family / _insurance / _personal / _platform / _summary / [[path]]
 
-docs（14 檔）：README / anchor / ai-guide / file-manifest / progress / sop / adr / page-map / delivery-rules / refactor-plan / api-contracts / data-structure / compatibility / incident-log
+docs（15 檔）：README / anchor / ai-guide / file-manifest / progress / sop / adr / page-map / ui-spec / delivery-rules / refactor-plan / api-contracts / data-structure / compatibility / incident-log
 
 ---
 
@@ -752,6 +731,7 @@ docs（14 檔）：README / anchor / ai-guide / file-manifest / progress / sop /
 | 常見任務 | sop.md |
 | 關鍵決策 | adr.md |
 | 頁面 → 檔案 | page-map.md |
+| UI 術語 / Page / Section / Item | ui-spec.md |
 | 事故 / 教訓 | incident-log.md |
 | 重構歷程 | refactor-plan.md |
 | 進度 | progress.md |
@@ -761,6 +741,7 @@ docs（14 檔）：README / anchor / ai-guide / file-manifest / progress / sop /
 | Action 契約 | anchor.md 0.21 |
 | 版面規格保護 | anchor.md 0.22 |
 | 重大修改對比 | anchor.md 0.23 |
+| UI 術語權威 | anchor.md 0.24 + ui-spec.md |
 | 控制列 | anchor.md 七 + lib/page-controls.js |
 
 ---
@@ -780,10 +761,10 @@ docs（14 檔）：README / anchor / ai-guide / file-manifest / progress / sop /
 
 | 項目 | 值 |
 |---|---|
-| 當前批次 | B25（程式碼） |
-| SW 版本 | family-fin-v140 |
+| 當前批次 | B26-3.2 |
+| SW 版本 | family-fin-v141 |
 | 部署 URL | family-financial-management-system.pages.dev |
-| 測試狀態 | B25 已部署，B26 進行中 |
+| 測試狀態 | B26-3.2 部署中 |
 | B26 修復規劃 | 6 批次（docs / P22 / P24 / sidebar / 遷移 / 年度總覽） |
 
 ---
@@ -793,10 +774,11 @@ docs（14 檔）：README / anchor / ai-guide / file-manifest / progress / sop /
 | 項目 | 狀態 |
 |---|---|
 | P22 年月切換需重整 | ✅ B26-2 已修 |
-| P24 全站佈局統一 | 🔄 B26-3 進行中 |
+| P24 全站佈局統一 | ✅ B26-3 + B26-3.2 |
 | Superadmin sidebar | 📋 B26-4 |
 | 遷移按鈕方案 C | 📋 B26-5 |
 | 年度總覽恢復 | 📋 B26-6 |
+| page-engine 統一佈局 | 📋 B27（記錄） |
 | 效能優化：SW 改回 stale-while-revalidate | 未做 |
 | 補 _headers | 未做 |
 
@@ -805,6 +787,6 @@ docs（14 檔）：README / anchor / ai-guide / file-manifest / progress / sop /
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/anchor.md
-   Version: v103.0.23
-   Batch: B26-3
+   Version: v103.0.29
+   Batch: B26-3.2
    ═══════════════════════════════════════════ */
