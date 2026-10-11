@@ -1,19 +1,19 @@
 // ============================================
-// page-controls.js — 統一控制列渲染（v103.0.29）
+// page-controls.js — 統一控制列渲染（v103.0.33）
 // 位置：js/lib/page-controls.js
 // ============================================
+// v103.0.33（B26-8）：
+//   ✅ year / month 改 select（下拉清單）
+//   ✅ 內部直接讀寫 AppState（各頁不需傳值）
+//   ✅ month 支援 includeAll 參數（預設 false）
 // v103.0.29（B26-3.2）：
-//   ✅ 加 headerContainerId 參數
-//   ✅ item 加 position: 'header' 支援（渲染到頁首）
-//   ✅ 事件綁定改用參數傳 items（不再用 __pcItems）
-// v103.0.28（B26-3.1）：
-//   ✅ 月份邊界：< 1 / > 12 顯示「—」+ disabled
-//   ✅ toolbar 過濾排除 filter / viewSwitcher
-//   ✅ 年月按鈕改用 .btn btn-sm
+//   ✅ 加 headerContainerId + position: 'header'
 // ============================================
 
 import { esc } from './dom.js';
 import { STORAGE_PREFIXES } from '../config/constants.js';
+import { AppState } from '../core/state.js';
+import { getYearList } from '../config/app-config.js';
 
 export function renderPageControls(config) {
   const { containerId, headerContainerId, items = [] } = config || {};
@@ -35,7 +35,6 @@ export function renderPageControls(config) {
   const paint = () => {
     if (_destroyed) return;
 
-    /* 分派：header vs body */
     const headerItems = items.filter((it) => it.position === 'header');
     const bodyItems = items.filter((it) => it.position !== 'header');
 
@@ -75,8 +74,8 @@ export function renderPageControls(config) {
     if (yearItem || monthItem) {
       parts.push(`
         <div class="page-controls-row page-controls-period">
-          <div class="page-controls-left">${yearItem ? _renderYearSwitcher(yearItem) : ''}</div>
-          <div class="page-controls-right">${monthItem ? _renderMonthSwitcher(monthItem) : ''}</div>
+          <div class="page-controls-left">${yearItem ? _renderYearSelect(yearItem) : ''}</div>
+          <div class="page-controls-right">${monthItem ? _renderMonthSelect(monthItem) : ''}</div>
         </div>
       `);
     }
@@ -91,7 +90,6 @@ export function renderPageControls(config) {
       root.innerHTML = html;
     }
 
-    /* 綁定事件（root + headerRoot 各自綁定，用同一份 items 查找） */
     _bindAll(root, items);
     if (headerRoot) _bindAll(headerRoot, items);
 
@@ -214,52 +212,40 @@ function _renderCustom(item) {
 }
 
 /* ============================================
-   年 / 月 切換（3 顆按鈕設計，改用 .btn btn-sm）
+   🆕 v103.0.33：年 / 月 下拉清單
+   -------------------------------------------------
+   - 內部讀 AppState（各頁不需傳值）
+   - 變更時寫 AppState
    ============================================ */
-function _renderYearSwitcher(item) {
-  const { year, __pcId } = item;
-  const cur = Number(year);
-  const prevY = cur - 1;
-  const nextY = cur + 1;
-  return `<div class="page-controls-period-group" data-pc-year data-pc-id="${esc(__pcId)}">
-    <button type="button" class="btn btn-sm btn-ghost" data-pc-year-val="${prevY}">
-      <i data-lucide="chevron-left" style="width:14px;height:14px;"></i>
-      <span class="mono">${prevY}</span>
-    </button>
-    <button type="button" class="btn btn-sm btn-primary" data-pc-year-val="${cur}" disabled>
-      <span class="mono">${cur}</span>
-    </button>
-    <button type="button" class="btn btn-sm btn-ghost" data-pc-year-val="${nextY}">
-      <span class="mono">${nextY}</span>
-      <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
-    </button>
-  </div>`;
+function _renderYearSelect(item) {
+  const { __pcId } = item;
+  const years = getYearList();
+  const cur = String(AppState.year || new Date().getFullYear());
+
+  return `<select class="select" data-pc-year data-pc-id="${esc(__pcId)}" style="width:auto; padding:8px 12px;">
+    ${years.map((y) => {
+      const ys = String(y);
+      return `<option value="${ys}" ${ys === cur ? 'selected' : ''}>${ys} 年</option>`;
+    }).join('')}
+  </select>`;
 }
 
-function _renderMonthSwitcher(item) {
-  const { month, __pcId } = item;
-  const cur = Number(month);
-  const prevM = cur - 1;
-  const nextM = cur + 1;
-  const canPrev = prevM >= 1;
-  const canNext = nextM <= 12;
+function _renderMonthSelect(item) {
+  const { includeAll = false, __pcId } = item;
+  const curRaw = AppState.month === 'all' ? 'all' : String(AppState.month || '01').padStart(2, '0');
 
-  const prevLabel = canPrev ? `${prevM} 月` : '—';
-  const nextLabel = canNext ? `${nextM} 月` : '—';
+  const options = [];
+  if (includeAll) {
+    options.push({ value: 'all', label: '全部' });
+  }
+  for (let m = 1; m <= 12; m++) {
+    const mm = String(m).padStart(2, '0');
+    options.push({ value: mm, label: `${m} 月` });
+  }
 
-  return `<div class="page-controls-period-group" data-pc-month data-pc-id="${esc(__pcId)}">
-    <button type="button" class="btn btn-sm btn-ghost" data-pc-month-val="${canPrev ? String(prevM).padStart(2, '0') : ''}" ${canPrev ? '' : 'disabled'}>
-      <i data-lucide="chevron-left" style="width:14px;height:14px;"></i>
-      <span class="mono">${prevLabel}</span>
-    </button>
-    <button type="button" class="btn btn-sm btn-primary" data-pc-month-val="${String(cur).padStart(2, '0')}" disabled>
-      <span class="mono">${cur} 月</span>
-    </button>
-    <button type="button" class="btn btn-sm btn-ghost" data-pc-month-val="${canNext ? String(nextM).padStart(2, '0') : ''}" ${canNext ? '' : 'disabled'}>
-      <span class="mono">${nextLabel}</span>
-      <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
-    </button>
-  </div>`;
+  return `<select class="select" data-pc-month data-pc-id="${esc(__pcId)}" style="width:auto; padding:8px 12px;">
+    ${options.map((o) => `<option value="${esc(o.value)}" ${o.value === curRaw ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}
+  </select>`;
 }
 
 /* ============================================
@@ -323,29 +309,6 @@ function _bindAll(container, items) {
       if (item && typeof item.onChange === 'function') item.onChange(value);
       return;
     }
-
-    const yearBtn = e.target.closest('[data-pc-year] button[data-pc-year-val]');
-    if (yearBtn && !yearBtn.disabled) {
-      const group = yearBtn.closest('[data-pc-year]');
-      const y = Number(yearBtn.dataset.pcYearVal);
-      const item = _findByItem(items, 'year', group.dataset.pcId);
-      if (!item) return;
-      if (Number(item.year) === y) return;
-      if (typeof item.onChange === 'function') item.onChange(y);
-      return;
-    }
-
-    const monthBtn = e.target.closest('[data-pc-month] button[data-pc-month-val]');
-    if (monthBtn && !monthBtn.disabled) {
-      const group = monthBtn.closest('[data-pc-month]');
-      const m = monthBtn.dataset.pcMonthVal;
-      if (!m) return;
-      const item = _findByItem(items, 'month', group.dataset.pcId);
-      if (!item) return;
-      if (String(Number(item.month)).padStart(2, '0') === m) return;
-      if (typeof item.onChange === 'function') item.onChange(m);
-      return;
-    }
   };
 
   const changeHandler = (e) => {
@@ -353,6 +316,28 @@ function _bindAll(container, items) {
     if (sortSel) {
       const item = _findByItem(items, 'sort', sortSel.dataset.pcId);
       if (item && typeof item.onChange === 'function') item.onChange(sortSel.value);
+      return;
+    }
+
+    /* 🆕 v103.0.33：年 select 變更 → 寫 AppState */
+    const yearSel = e.target.closest('[data-pc-year]');
+    if (yearSel) {
+      const y = yearSel.value;
+      if (!y) return;
+      if (String(AppState.year) === y) return;
+      const curMonth = AppState.month === 'all' ? 'all' : AppState.month;
+      AppState.setYearMonth(y, curMonth);
+      return;
+    }
+
+    /* 🆕 v103.0.33：月 select 變更 → 寫 AppState */
+    const monthSel = e.target.closest('[data-pc-month]');
+    if (monthSel) {
+      const m = monthSel.value;
+      if (!m) return;
+      if (String(AppState.month) === m) return;
+      AppState.setYearMonth(AppState.year, m);
+      return;
     }
   };
 
@@ -365,6 +350,6 @@ function _bindAll(container, items) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/lib/page-controls.js
-   Version: v103.0.29
-   Batch: B26-3.2
+   Version: v103.0.33
+   Batch: B26-8
    ═══════════════════════════════════════════ */

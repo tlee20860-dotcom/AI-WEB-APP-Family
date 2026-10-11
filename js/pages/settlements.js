@@ -1,7 +1,8 @@
-// settlements.js — 結算清單（v103.0.29）
+// settlements.js — 結算清單（v103.0.33）
+// v103.0.33（B26-8）：
+//   ✅ month item 加 includeAll: true（月份含「全部」）
 // v103.0.29（B26-3.2）：
 //   ✅ viewToggle + sort 移到 page-header 右側
-//   ✅ year + month + filter 保留在 body
 // v103.0.27（B26-3）：
 //   ✅ 改用 page-controls
 // v103.0.25（B26-2）：
@@ -290,7 +291,7 @@ export default {
     ctx.state.filters.year = String(year);
     ctx.state.filters.month = month === 'all' ? '' : String(month);
 
-    /* 🆕 v103.0.29：viewToggle + sort → header；year + month + filter → body */
+    /* 🆕 v103.0.33：month 加 includeAll: true */
     _controls = renderPageControls({
       containerId: 'page-controls-root',
       headerContainerId: 'page-header-actions',
@@ -314,15 +315,11 @@ export default {
           ],
           onChange: (v) => { ctx.state.sortMode = v; render(); },
         },
-        {
-          type: 'year',
-          year: AppState.year,
-          onChange: (y) => AppState.setYearMonth(y, AppState.month === 'all' ? '01' : AppState.month),
-        },
+        { type: 'year' },
         {
           type: 'month',
-          month: AppState.month === 'all' ? '01' : AppState.month,
-          onChange: (m) => AppState.setYearMonth(AppState.year, m),
+          /* 🆕 v103.0.33：加「全部」選項 */
+          includeAll: true,
         },
         {
           type: 'filter',
@@ -346,7 +343,6 @@ export default {
       ],
     });
 
-    /* filter 事件綁定（page-controls 不管 filter 內部事件） */
     const onFilterChange = (e) => {
       const sel = e.target.closest('[data-settle-filter="source"]');
       if (sel) {
@@ -501,6 +497,6 @@ async function _openBankPickerModal(row) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/settlements.js
-   Version: v103.0.29
-   Batch: B26-3.2
+   Version: v103.0.33
+   Batch: B26-8
    ═══════════════════════════════════════════ */

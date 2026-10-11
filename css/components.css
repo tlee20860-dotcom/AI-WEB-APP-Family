@@ -1,11 +1,13 @@
 /* ============================================
    components.css — 卡片、按鈕、表格、Modal、表單
    -------------------------------------------------
+   v103.0.33（B26-8）：
+     ✅ 移除 .page-controls-period-group（年月改下拉）
+     ✅ 加 .page-controls-row.page-controls-period .select
    v103.0.30（B26-3.3）：
-     ✅ 修正手機版 page-header 換行問題
-        - 移除 flex-direction: column（改回 flex-wrap 自然換行）
+     ✅ 修正手機版 page-header 換行
    v103.0.29（B26-3.2）：
-     ✅ 加 .page-header flex 定義 + .page-header-actions-group
+     ✅ 加 .page-header flex + .page-header-actions-group
    ============================================ */
 
 /* ================= GlassCard ================= */
@@ -80,7 +82,6 @@
   flex-shrink: 0;
 }
 
-/* 🆕 v103.0.30：手機不強制 column；靠 flex-wrap 自然換行 */
 @media (max-width: 640px) {
   .page-header-actions-group {
     gap: 6px;
@@ -529,32 +530,11 @@
   width: 100%;
 }
 
-/* 年 / 月容器（3 顆 .btn btn-sm） */
-.page-controls-period-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.page-controls-period-group .btn {
+/* 🆕 v103.0.33：年月下拉（年左、月右） */
+.page-controls-row.page-controls-period .select {
   padding: 6px 10px;
   font-size: 13px;
-  min-width: auto;
-}
-
-.page-controls-period-group .btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.page-controls-period-group .btn:disabled.btn-primary {
-  opacity: 1;
-  cursor: default;
-  background: rgba(0, 240, 255, 0.15);
-  border-color: rgba(0, 240, 255, 0.5);
-  color: var(--neon-cyan);
-  font-weight: 700;
-  box-shadow: none;
+  width: auto;
 }
 
 @media (max-width: 640px) {
@@ -565,7 +545,7 @@
   .page-controls-right {
     gap: 6px;
   }
-  .page-controls-period-group .btn {
+  .page-controls-row.page-controls-period .select {
     padding: 5px 8px;
     font-size: 12px;
   }
@@ -1515,6 +1495,6 @@
 /* ═══════════════════════════════════════════
    END OF FILE
    File: css/components.css
-   Version: v103.0.30
-   Batch: B26-3.3
+   Version: v103.0.33
+   Batch: B26-8
    ═══════════════════════════════════════════ */
