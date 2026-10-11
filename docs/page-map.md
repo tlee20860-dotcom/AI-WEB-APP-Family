@@ -1,6 +1,6 @@
 # 頁面 → 檔案對照表
 
-最後更新：B25
+最後更新：B25-7
 用途：改某功能時，快速查哪些頁面受影響
 
 ---
@@ -68,13 +68,13 @@
 | js/ui/view-toggle.js | 卡片/表格切換 |
 | js/ui/modal.js | Modal 管理 |
 | js/ui/toast.js | Toast |
-| js/lib/expense-modal.js | 支出 Modal |
+| js/lib/expense-modal.js | 支出 Modal（mode: 'data'） |
 | js/lib/income-modal.js | 收入 Modal |
 | js/shared/entity-list-page.js | 保險/基金/銀行 Tab |
 | js/shared/data-table.js | 表格 |
 | js/shared/data-card.js | 卡片 |
 | js/entity/entity-modal.js | 保單/基金 Modal |
-| js/entity/entity-funds-allocation.js | 保單關聯基金（B23） |
+| js/entity/entity-funds-allocation.js | 保單關聯基金 |
 | js/core/db.js | Firebase 讀寫 |
 | js/core/state.js | 全域狀態 |
 | js/config/entity-registry.js | 名稱解析 |
@@ -111,13 +111,13 @@
 |---|---|
 | js/pages/insurance.js | Schema（customMount） |
 | js/shared/stats-cards.js | 統計卡 |
-| js/shared/data-table.js | 表格（B22 新增） |
-| js/ui/view-toggle.js | 卡片/表格切換（B22 新增） |
+| js/shared/data-table.js | 表格 |
+| js/ui/view-toggle.js | 卡片/表格切換 |
 | js/lib/insurance.js | 保單計算 |
 | js/lib/format.js | 格式化 |
 | js/lib/dom.js | esc |
 | js/entity/entity-modal.js | 保單編輯 |
-| js/entity/entity-funds-allocation.js | 保單關聯基金（B23） |
+| js/entity/entity-funds-allocation.js | 保單關聯基金 |
 | js/entity/entity-helpers.js | CRUD |
 | js/core/db.js | Firebase 讀寫 |
 | js/config/entity-registry.js | 名稱解析 |
@@ -130,16 +130,16 @@
 
 | 檔案 | 用途 |
 |---|---|
-| js/pages/portfolio.js | Schema（customMount，B23 重寫） |
+| js/pages/portfolio.js | Schema（customMount） |
 | js/blocks/stats-block.js | 統計卡 |
 | js/entity/entity-modal.js | 基金編輯 |
-| js/entity/entity-funds-allocation.js | 保單關聯基金（B23） |
+| js/entity/entity-funds-allocation.js | 保單關聯基金 |
 | js/entity/entity-helpers.js | CRUD |
-| js/ui/modal.js | 快照 Modal（B23） |
-| js/ui/form-builder.js | 快照表單（B23） |
+| js/ui/modal.js | 快照 Modal |
+| js/ui/form-builder.js | 快照表單 |
 | js/core/db.js | 基金 + snapshot CRUD |
 | js/lib/format.js | 格式化 |
-| js/config/column-registry.js | fundSnapshots 欄位（B23） |
+| js/config/column-registry.js | fundSnapshots 欄位 |
 
 ---
 
@@ -150,7 +150,8 @@
 | js/pages/settlements.js | Schema（customMount） |
 | js/lib/merge.js | 合併資料 |
 | js/lib/filter-sort.js | 篩選/排序 |
-| js/lib/expense-modal.js | 編輯 Modal |
+| js/lib/expense-modal.js | 結算 Modal（mode: 'settle'） |
+| js/core/api.js | 保險扣款 sync / unsync |
 | js/lib/format.js | 格式化 |
 | js/lib/dom.js | esc |
 | js/shared/page-filter.js | 篩選列 |
@@ -172,8 +173,8 @@
 | js/pages/finance-overview.js | Schema（customMount） |
 | js/shared/stats-cards.js | 統計卡 |
 | js/shared/data-table.js | 表格 |
-| js/shared/data-card.js | 卡片（B22 新增） |
-| js/ui/view-toggle.js | 切換（B22 新增） |
+| js/shared/data-card.js | 卡片 |
+| js/ui/view-toggle.js | 切換 |
 | js/lib/bank.js | 餘額計算 |
 | js/lib/format.js | 格式化 |
 | js/lib/dom.js | esc |
@@ -192,6 +193,7 @@
 | js/lib/format.js | 格式化 |
 | js/lib/dom.js | esc |
 | js/config/entity-registry.js | 名稱解析 |
+| js/config/app-config.js | getYearList |
 | js/shared/stats-cards.js | （透過 block 呼叫） |
 
 ---
@@ -220,13 +222,13 @@
 | js/ui/tab-panel.js | Tab 切換 |
 | js/shared/bank-account-manager.js | 銀行帳號管理 |
 | js/shared/entity-list-page.js | 家庭成員 |
-| js/shared/stats-cards.js | （家庭成員用） |
 | js/ui/toast.js | Toast |
 | js/ui/modal.js | Modal |
 | js/ui/form-builder.js | 表單 |
 | js/core/state.js | 全域狀態 |
 | js/core/auth.js | 登出 |
 | js/core/debug.js | vConsole 控制 |
+| js/core/api.js | adminMigrate |
 | js/config/constants.js | STORAGE_KEYS |
 | js/entity/entity-helpers.js | CRUD |
 
@@ -287,16 +289,6 @@
 | insurance | 保單資料（不含扣款狀態） | 扣款狀態 |
 | portfolio | 基金資料 / 快照 | — |
 
-**實作要求**：
-
-| 情境 | 要求 |
-|---|---|
-| 支出 Modal | `lib/expense-modal.js` 支援 `mode: 'data' \| 'settle'` |
-| data 模式 | 隱藏 status / paymentMethodId / bankId |
-| settle 模式 | 隱藏 name / amount / date / categoryId / itemId |
-| 保險狀態 | 只走 settlements 頁的 `api.insuranceSync` / `insuranceUnsync` |
-| 保險頁 | 只提供「檢視 + 保單資料編輯」 |
-
 ---
 
 ## 頁面區塊規格
@@ -307,18 +299,18 @@
 
 **圖例**：
 - ✅ 存在
-- ❌ 缺失（待恢復）
 - 🔒 禁止改動（AI 不得動）
+- 📋 P24 待優化
 
-### index.html（總覽儀表板）
+### index.html
 
 | 順序 | 容器 ID | 類型 | 用途 | 狀態 |
 |---|---|---|---|---|
 | 1 | page-header | header | 標題 + 副標題 + 年度報表按鈕 | ✅ |
 | 2 | stats-cards-root | stats | 統計卡（4 張） | ✅ |
-| 3 | annual-overview-root | list | 年度總覽（前後 2 年） | ❌ 待恢復（B25-3） |
+| 3 | annual-overview-root | list | 年度總覽（前後 2 年） | 📋 P24 恢復 |
 
-### input-center.html（綜合輸入中心）
+### input-center.html
 
 | 順序 | 容器 ID | 類型 | 用途 | 狀態 |
 |---|---|---|---|---|
@@ -330,7 +322,7 @@
 | 6 | ic-panel-fund | panel | 基金面板 | ✅ |
 | 7 | ic-panel-bank | panel | 銀行面板 | ✅ |
 
-### database.html（基礎資料庫）
+### database.html
 
 | 順序 | 容器 ID | 類型 | 用途 | 狀態 |
 |---|---|---|---|---|
@@ -343,21 +335,20 @@
 | 7 | db-panel-dropdowns | panel | 下拉選項 | ✅ |
 | 8 | db-panel-yearrange | panel | 年份範圍 | ✅ |
 
-### insurance.html（保險清單表）
+### insurance.html
 
 | 順序 | 容器 ID | 類型 | 用途 | 狀態 |
 |---|---|---|---|---|
-| 1 | page-header | header | 標題 + view toggle + 按鈕 | ✅ |
+| 1 | page-header | header | 標題 + view toggle + 新增按鈕 | ✅ |
 | 2 | insurance-stats-root | stats | 統計卡 | ✅ |
 | 3 | completed-section | section | 已供滿保單區塊 | ✅ |
 | 4 | insurance-card-view | list | 卡片檢視 | ✅ |
 | 5 | insurance-table-view | list | 表格檢視 | ✅ |
 | 6 | insurance-empty-state | empty | 空狀態 | ✅ |
 
-**待處理（B25-3）**：
-- 移除「同步所有支出」按鈕（`sync-all-btn`）→ 職責移至 settlements
+**B25-3b 已移除**：`sync-all-btn`（職責移至 settlements）
 
-### portfolio.html（基金投資表）
+### portfolio.html
 
 | 順序 | 容器 ID | 類型 | 用途 | 狀態 |
 |---|---|---|---|---|
@@ -367,20 +358,18 @@
 | 4 | standalone-funds-list | list | 獨立基金區 | ✅ |
 | 5 | fund-empty-state | empty | 空狀態 | ✅ |
 
-### settlements.html（結算清單）
+### settlements.html
 
 | 順序 | 容器 ID | 類型 | 用途 | 狀態 |
 |---|---|---|---|---|
 | 1 | page-header | header | 標題 + view toggle + 排序選單 | ✅ |
-| 2 | page-filter-root | filter | 篩選列 | ✅ |
+| 2 | page-filter-root | filter | 篩選列（含隱藏已供滿） | ✅ |
 | 3 | settlement-stats-root | stats | 統計卡 | ✅ |
 | 4 | settlement-table-root | list | 表格 / 卡片 | ✅ |
 
-**待新增（B25-3）**：
-- 保險扣款「確認扣款」按鈕（currently 缺）
-- 保險扣款「取消扣款」按鈕（currently 有按鈕無實作）
+**B25-3b/c 新增**：保險扣款「確認 / 取消」按鈕、「隱藏已供滿」checkbox
 
-### finance-overview.html（銀行交易）
+### finance-overview.html
 
 | 順序 | 容器 ID | 類型 | 用途 | 狀態 |
 |---|---|---|---|---|
@@ -390,19 +379,21 @@
 | 4 | finance-panel-banks | panel | 銀行清單 | ✅ |
 | 5 | finance-panel-transactions | panel | 交易記錄 | ✅ |
 
-### annual-report.html（年度報表）
+### annual-report.html
 
 | 順序 | 容器 ID | 類型 | 用途 | 狀態 |
 |---|---|---|---|---|
 | 1 | page-header | header | 標題 + 匯出按鈕 | ✅ |
-| 2 | annual-year-switcher | switcher | 年份切換 | ✅ |
+| 2 | annual-year-switcher | switcher | 年份切換（3 按鈕） | ✅ |
 | 3 | annual-view-toggle | toggle | 全年/月度切換 | ✅ |
-| 4 | annual-month-switcher | switcher | 月份切換 | ✅ |
+| 4 | annual-month-switcher | switcher | 月份切換（3 按鈕） | ✅ |
 | 5 | annual-stats-root | stats | 統計卡 | ✅ |
 | 6 | annual-summary-view | view | 全年總合 | ✅ |
 | 7 | annual-monthly-view | view | 月度明細 | ✅ |
 
-### member-report.html（成員報表）
+**B25-5.1 改版**：年份 / 月份 switcher 改為 3 按鈕設計
+
+### member-report.html
 
 | 順序 | 容器 ID | 類型 | 用途 | 狀態 |
 |---|---|---|---|---|
@@ -410,7 +401,7 @@
 | 2 | member-report-stats-root | stats | 統計卡 | ✅ |
 | 3 | member-list-root | list | 成員明細 | ✅ |
 
-### settings.html（系統設定）
+### settings.html
 
 | 順序 | 容器 ID | 類型 | 用途 | 狀態 |
 |---|---|---|---|---|
@@ -418,9 +409,12 @@
 | 2 | settings-tabs | tabs | Tab 切換 | ✅ |
 | 3 | settings-panel-platform | panel | 平台設定（superadmin） | ✅ |
 | 4 | settings-panel-banks | panel | 銀行帳號 | ✅ |
-| 5 | settings-panel-personal | panel | 個人化 | ✅ |
+| 5 | settings-panel-personal | panel | 個人化（含遷移卡） | ✅ |
 
-### admin.html（平台管理）
+**B25-6 新增**：`settings-migrate-card`（superadmin only）
+**P24 待改**：遷移卡加家庭選擇器；superadmin 需從 admin sidebar 進入
+
+### admin.html
 
 | 順序 | 容器 ID | 類型 | 用途 | 狀態 |
 |---|---|---|---|---|
@@ -430,6 +424,8 @@
 | 4 | admin-panel-families | panel | 家庭管理 | ✅ |
 | 5 | admin-panel-accounts | panel | 帳號總覽 | ✅ |
 | 6 | admin-panel-defaults | panel | 預設資料庫 | ✅ |
+
+**P24 待改**：加 sidebar（superadmin 專屬）
 
 ### login.html / register.html
 
@@ -465,7 +461,7 @@
 | db.js | 全部主頁 |
 | ui/modal.js | 全部有 Modal 的頁 |
 | ui/toast.js | 全部有 Toast 的頁 |
-| ui/view-toggle.js | settlements / portfolio / annual-report / member-report / insurance / finance-overview |
+| ui/view-toggle.js | settlements / annual-report / member-report / insurance / finance-overview |
 | ui/tab-panel.js | input-center / database / settings / admin |
 | lib/expense-modal.js | input-center / settlements |
 | lib/income-modal.js | input-center |
@@ -479,5 +475,5 @@
    END OF FILE
    File: docs/page-map.md
    Version: v103.0.22
-   Batch: B25-1
+   Batch: B25-7
    ═══════════════════════════════════════════ */

@@ -1,12 +1,13 @@
 # 檔案清單
 
-最後更新：B24
-當前批次：B23
+最後更新：B25-7
+當前批次：B25
 
 **說明**：
 - 每次交付後必須更新此表
 - 同檔以最新批次為準
 - 用於「更新清單」流程（見 anchor 0.7）
+- **B25 全批次已併入**（B25-1 ~ B25-6）
 
 ---
 
@@ -14,11 +15,11 @@
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
-| constants.js | v103.0.12 | B13 |
-| firebase-config.js | — | B04 |
-| app-config.js | v102.0.0 | B04 |
+| constants.js | v103.0.22 | B25 |
+| firebase-config.js | v103.0.22 | B25 |
+| app-config.js | v103.0.22 | B25 |
 | status-registry.js | v103.0.0 | B01 |
-| entity-registry.js | v103.0.0 | B04 |
+| entity-registry.js | v103.0.22 | B25 |
 | label-registry.js | v103.0.0 | B01 |
 | column-registry.js | v103.0.21 | B23 |
 
@@ -29,11 +30,11 @@
 | 檔案 | 版本 | 批次 |
 |---|---|---|
 | state.js | v103.0.11 | B14A |
-| db.js | v103.0.21 | B23 |
-| utils.js | v103.0.11 | B14A |
+| db.js | v103.0.22 | B25 |
+| utils.js | v103.0.22 | B25 |
 | auth.js | v103.0.0 | B05 |
 | auth-guard.js | v103.0.11 | B13A |
-| api.js | v103.0.0 | B05 |
+| api.js | v103.0.22 | B25 |
 | pwa.js | v103.0.0 | B05 |
 | debug.js | v103.0.14 | B14C |
 
@@ -48,10 +49,10 @@
 | async.js | v103.0.2 | B03 |
 | lifecycle.js | v103.0.0 | B03 |
 | registry.js | v103.0.0 | B03 |
-| merge.js | v103.0.0 | B03 |
-| insurance.js | v103.0.0 | B03 |
-| bank.js | v103.0.0 | B03 |
-| expense-modal.js | v103.0.18 | B19 |
+| merge.js | v103.0.22 | B25 |
+| insurance.js | v103.0.22 | B25 |
+| bank.js | v103.0.22 | B25 |
+| expense-modal.js | v103.0.22 | B25 |
 | income-modal.js | v103.0.18 | B19 |
 | filter-sort.js | v103.0.18 | B19 |
 
@@ -83,11 +84,11 @@
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
-| toast.js | v103.0.0 | B04 |
-| modal.js | v103.0.0 | B04 |
+| toast.js | v103.0.22 | B25 |
+| modal.js | v103.0.22 | B25 |
 | form-builder.js | v103.0.11 | B14B |
 | tab-panel.js | v103.0.12 | B14A |
-| view-toggle.js | v103.0.19 | B20 |
+| view-toggle.js | v103.0.22 | B25 |
 | collapsible.js | v103.0.0 | B04 |
 
 ---
@@ -107,10 +108,10 @@
 | 檔案 | 版本 | 批次 |
 |---|---|---|
 | entity-definitions.js | v103.0.21 | B23 |
-| entity-helpers.js | v103.0.0 | B06 |
-| entity-modal.js | v103.0.21 | B23 |
-| entity-resolvers.js | v103.0.16 | B18 |
-| entity-funds-allocation.js | v103.0.21 | B23 |
+| entity-helpers.js | v103.0.22 | B25 |
+| entity-modal.js | v103.0.22 | B25 |
+| entity-resolvers.js | v103.0.22 | B25 |
+| entity-funds-allocation.js | v103.0.22 | B25 |
 
 ---
 
@@ -127,10 +128,10 @@
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
-| data-table.js | v103.0.18 | B19 |
-| data-card.js | v103.0.20 | B22 |
+| data-table.js | v103.0.22 | B25 |
+| data-card.js | v103.0.22 | B25 |
 | entity-list-page.js | v103.0.16 | B18 |
-| column-settings.js | v103.0.11 | B13B1 |
+| column-settings.js | v103.0.22 | B25 |
 | bank-account-manager.js | v103.0.11 | B13B1 |
 | page-filter.js | v103.0.11 | B13B2 |
 | quick-summary.js | v103.0.12 | B15 |
@@ -147,9 +148,9 @@
 | 檔案 | 版本 | 批次 |
 |---|---|---|
 | dashboard.js | v103.0.17 | B18.1 |
-| portfolio.js | v103.0.21 | B23 |
-| annual-report.js | v103.0.20 | B22 |
-| settings.js | v103.0.13 | B14C |
+| portfolio.js | v103.0.22 | B25 |
+| annual-report.js | v103.0.22 | B25 |
+| settings.js | v103.0.22 | B25 |
 | finance-overview.js | v103.0.20 | B22 |
 | member-report.js | v103.0.20 | B22 |
 | input-center.js | v103.0.20 | B22 |
@@ -157,7 +158,7 @@
 | database-options.js | v103.0.0 | B11 |
 | database-dropdowns.js | v103.0.0 | B11 |
 | database-yearrange.js | v103.0.0 | B11 |
-| settlements.js | v103.0.20 | B22 |
+| settlements.js | v103.0.24 | B25 |
 | insurance.js | v103.0.20 | B22 |
 
 ---
@@ -166,10 +167,10 @@
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
-| [[path]].js | v103.0.2 | B11 |
+| [[path]].js | v103.0.22 | B25 |
 | _config.js | v103.0.0 | B10 |
-| _helpers.js | v103.0.0 | B10 |
-| _admin.js | v103.0.2 | B11 |
+| _helpers.js | v103.0.22 | B25 |
+| _admin.js | v103.0.22 | B25 |
 | _bank.js | v103.0.2 | B11 |
 | _family.js | v103.0.2 | B11 |
 | _insurance.js | v103.0.21 | B23 |
@@ -187,7 +188,7 @@
 | layout.css | v103.0.19 | B20 |
 | components.css | v102.1.0 | 未變 |
 | utilities.css | v101.6.6 | 未變 |
-| pages/annual-report.css | v101.10.0 | 未變 |
+| pages/annual-report.css | v103.0.22 | B25 |
 | pages/insurance.css | v101.10.0 | 未變 |
 
 ---
@@ -202,7 +203,7 @@
 | finance-overview.html | v103.0.20 | B22 |
 | index.html | — | B11 |
 | input-center.html | — | B12 |
-| insurance.html | v103.0.20 | B22 |
+| insurance.html | v103.0.22 | B25 |
 | login.html | — | B14C |
 | member-report.html | v103.0.19 | B20 |
 | portfolio.html | v103.0.21 | B23 |
@@ -216,9 +217,9 @@
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
-| sw.js | v103.0.11 | B13A |
+| sw.js | v103.0.22 | B25 |
 | manifest.json | — | 未變 |
-| docs/（14 檔） | v103.0.21 | B24 |
+| docs/（14 檔） | v103.0.22 | B25-7 |
 
 ---
 
@@ -246,14 +247,12 @@
 
 ---
 
-## 待處理
+## 待處理（P 系列）
 
-| 檔案 | 說明 |
-|---|---|
-| js/shared/date-helpers.js | v101，未重構 |
-| js/shared/form-handler.js | deprecated（v104 移除） |
-| js/shared/listener-group.js | deprecated（v104 移除） |
-| js/core/utils.js | 過渡期轉接層（v104 移除） |
+| 編號 | 主題 | 狀態 |
+|---|---|---|
+| P22 | 年月切換需重整 | 📋 待處理（B25 後） |
+| P24 | 全站佈局統一 + superadmin sidebar + 遷移按鈕方案 C | 📋 待處理（B25 後） |
 
 ---
 
@@ -261,6 +260,7 @@
 
 | 批次 | 更新 |
 |---|---|
+| B25 | 27 檔（B25-1 ~ B25-6）+ docs 6 檔（B25-7） |
 | B23 | entity-definitions / entity-modal / entity-funds-allocation（新）/ _insurance / db / column-registry / portfolio / portfolio.html |
 | B22 | data-card / settlements / member-report / input-center / insurance / finance-overview / annual-report / 2 HTML |
 | B20 | view-toggle / layout.css / 2 HTML |
@@ -270,6 +270,6 @@
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/file-manifest.md
-   Version: v103.0.21
-   Batch: B24
+   Version: v103.0.22
+   Batch: B25-7
    ═══════════════════════════════════════════ */

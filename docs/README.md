@@ -1,7 +1,7 @@
 # 家庭財務 Web App — 文檔索引
 
-最後更新：B24
-當前批次：B23
+最後更新：B25-7
+當前批次：B25
 用途：新對話時，將整個 docs/ 上傳給 AI
 
 ---
@@ -16,14 +16,14 @@
 | 4 | file-manifest.md | 檔案清單：版本 + 批次 |
 | 5 | progress.md | 交付進度 + 批次歷史 |
 | 6 | sop.md | 常見任務 SOP |
-| 7 | adr.md | 關鍵決策記錄（ADR） |
-| 8 | page-map.md | 頁面 → 檔案對照 |
+| 7 | adr.md | 關鍵決策記錄（ADR-001~019） |
+| 8 | page-map.md | 頁面 → 檔案對照 + 各頁可編輯欄位 + 頁面區塊規格 |
 | 9 | delivery-rules.md | 交付規則（詳細版） |
 | 10 | refactor-plan.md | 重構計畫 |
 | 11 | api-contracts.md | API 契約 |
 | 12 | data-structure.md | Firebase 資料結構 |
 | 13 | compatibility.md | 舊資料相容策略 |
-| 14 | incident-log.md | 事故日誌（P01~P19 + B23） |
+| 14 | incident-log.md | 事故日誌（P01~P24） |
 
 ---
 
@@ -50,6 +50,8 @@
 | 改 API | api-contracts.md |
 | 改資料 | data-structure.md + compatibility.md |
 | 理解重構 | refactor-plan.md |
+| 版面規格 | page-map.md「頁面區塊規格」+ anchor 0.22 |
+| 編輯入口職責 | page-map.md「各頁可編輯欄位對照」+ anchor 0.19 |
 
 ---
 
@@ -92,11 +94,11 @@
 
 | 項目 | 值 |
 |---|---|
-| 當前批次 | B23（程式碼） |
-| docs 批次 | B24（更新中） |
-| SW 版本 | family-fin-v139 |
+| 當前批次 | B25（程式碼） |
+| docs 批次 | B25-7 |
+| SW 版本 | family-fin-v140 |
 | 部署 URL | family-financial-management-system.pages.dev |
-| 測試狀態 | B23 已部署，待測試 |
+| 測試狀態 | B25 已部署，待測 P22 / P24 |
 
 ---
 
@@ -120,6 +122,11 @@
 | 共用 filter-sort | ✅ |
 | 基金保險分支（B23） | ✅ |
 | 基金快照（B23） | ✅ |
+| 編輯入口職責分離（B25） | ✅ |
+| Modal 統一（B25） | ✅ |
+| Action 契約（B25） | ✅ |
+| 版面規格保護（B25） | ✅ |
+| 一次性資料遷移（B25） | ✅ |
 
 ---
 
@@ -143,6 +150,8 @@
 | 重構計畫 | refactor-plan.md |
 | 資料結構 | data-structure.md |
 | 關鍵決策 | adr.md |
+| 頁面區塊規格 | page-map.md |
+| 編輯入口職責 | page-map.md + anchor 0.19 |
 
 ### 交付規則
 
@@ -154,15 +163,14 @@
 
 ---
 
-## 待辦事項
+## 待辦事項（P 系列）
 
-| 項目 | 狀態 |
-|---|---|
-| 效能優化：SW 改回 stale-while-revalidate | 未做 |
-| 補齊 js/shared/ 未使用檔案清理 | 未做 |
-| 補 _headers（若 MIME type 有問題） | 未做 |
-| B24 docs 更新 | 🔄 進行中 |
-| B23 測試 | ⏳ 待回報 |
+| 編號 | 主題 | 優先 |
+|---|---|---|
+| P22 | 年月切換需重整 | 🟠 高 |
+| P24 | 全站佈局統一 + superadmin sidebar + 遷移按鈕方案 C | 🟠 高 |
+
+**B25 完成度**：程式碼 ✅，docs ✅
 
 ---
 
@@ -170,6 +178,8 @@
 
 | 批次 | 更新 |
 |---|---|
+| B25-7 | 全盤更新（file-manifest / progress / incident-log / page-map / adr / README） |
+| B25-1 | anchor 0.19~0.22 + page-map「各頁可編輯欄位」+「頁面區塊規格」 |
 | B24 | 全盤更新（14 檔） |
 | B21 | 全盤重構（9 檔 → 14 檔） |
 
@@ -178,6 +188,6 @@
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/README.md
-   Version: v103.0.21
-   Batch: B24
+   Version: v103.0.22
+   Batch: B25-7
    ═══════════════════════════════════════════ */
