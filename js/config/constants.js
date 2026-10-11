@@ -1,17 +1,18 @@
 // ============================================
-// constants.js — 全站常數集中管理（v103.0.27）
+// constants.js — 全站常數集中管理（v103.0.31）
 // 位置：js/config/constants.js
 // ============================================
+// v103.0.31（B26-4）：
+//   ✅ SIDEBAR_GROUPS 加 roles 標記
+//   ✅ 加「平台管理」群組（僅 superadmin 可見）
 // v103.0.27（B26-3）：
-//   ✅ 移除 SHOW_YEAR_MONTH_PAGES（navbar 年月選擇器已移除）
-// v103.0.22（B25-5）：
-//   ✅ APP_VERSION / SW_VERSION 更新
+//   ✅ 移除 SHOW_YEAR_MONTH_PAGES
 // ============================================
 
 /* ============================================
    0. 版本號
    ============================================ */
-export const APP_VERSION = 'v103.0.27';
+export const APP_VERSION = 'v103.0.31';
 export const SW_VERSION = 'family-fin-v141';
 
 /* ============================================
@@ -357,14 +358,23 @@ export const DEFAULT_PAYMENTS = [
 ];
 
 /* ============================================
-   19. 側邊欄分類群組
+   19. 側邊欄分類群組（依角色過濾）
+   -------------------------------------------------
+   roles 決定該群組對哪些角色可見
+   - superadmin：只看到「平台管理」+「系統」
+   - owner / member：看到所有家庭頁面
    ============================================ */
+const _ROLES_FAMILY = ['owner', 'member'];
+const _ROLES_ALL    = ['owner', 'member', 'superadmin'];
+const _ROLES_ADMIN  = ['superadmin'];
+
 export const SIDEBAR_GROUPS = [
   {
     key: 'overview',
     label: '總覽',
     icon: 'home',
     defaultOpen: true,
+    roles: _ROLES_FAMILY,
     items: [
       { icon: 'home', label: '總覽儀表板', href: 'index.html' },
     ],
@@ -374,6 +384,7 @@ export const SIDEBAR_GROUPS = [
     label: '記錄中心',
     icon: 'pencil',
     defaultOpen: true,
+    roles: _ROLES_FAMILY,
     items: [
       { icon: 'pencil',   label: '綜合輸入中心', href: 'input-center.html' },
       { icon: 'database', label: '基礎資料庫',   href: 'database.html' },
@@ -384,6 +395,7 @@ export const SIDEBAR_GROUPS = [
     label: '保險與基金',
     icon: 'shield',
     defaultOpen: false,
+    roles: _ROLES_FAMILY,
     items: [
       { icon: 'shield',     label: '保險清單表', href: 'insurance.html' },
       { icon: 'line-chart', label: '基金投資表', href: 'portfolio.html' },
@@ -394,6 +406,7 @@ export const SIDEBAR_GROUPS = [
     label: '對帳',
     icon: 'clipboard-check',
     defaultOpen: false,
+    roles: _ROLES_FAMILY,
     items: [
       { icon: 'clipboard-check', label: '結算清單', href: 'settlements.html' },
     ],
@@ -403,6 +416,7 @@ export const SIDEBAR_GROUPS = [
     label: '資產',
     icon: 'landmark',
     defaultOpen: false,
+    roles: _ROLES_FAMILY,
     items: [
       { icon: 'landmark', label: '銀行交易', href: 'finance-overview.html' },
     ],
@@ -412,9 +426,20 @@ export const SIDEBAR_GROUPS = [
     label: '報表',
     icon: 'bar-chart-3',
     defaultOpen: false,
+    roles: _ROLES_FAMILY,
     items: [
       { icon: 'bar-chart-3', label: '年度報表', href: 'annual-report.html' },
       { icon: 'users',       label: '成員與家庭收入與支出明細', href: 'member-report.html' },
+    ],
+  },
+  {
+    key: 'platform',
+    label: '平台管理',
+    icon: 'server',
+    defaultOpen: true,
+    roles: _ROLES_ADMIN,
+    items: [
+      { icon: 'home', label: '家庭管理', href: 'admin.html' },
     ],
   },
   {
@@ -422,11 +447,22 @@ export const SIDEBAR_GROUPS = [
     label: '系統',
     icon: 'settings',
     defaultOpen: false,
+    roles: _ROLES_ALL,
     items: [
       { icon: 'settings', label: '系統設定', href: 'settings.html' },
     ],
   },
 ];
+
+/**
+ * 依角色過濾側邊欄群組
+ * @param {string} role - AppState.getRole()
+ * @returns {Array}
+ */
+export function getSidebarGroupsByRole(role) {
+  if (!role) return SIDEBAR_GROUPS.filter((g) => (g.roles || []).includes('owner'));
+  return SIDEBAR_GROUPS.filter((g) => (g.roles || []).includes(role));
+}
 
 /* ============================================
    20. 路由 / 頁面清單
@@ -446,8 +482,6 @@ export const ROUTES = {
   MEMBER_REPORT:    'member-report.html',
   SETTINGS:         'settings.html',
 };
-
-/* 註：SHOW_YEAR_MONTH_PAGES 已於 B26-3 移除（navbar 年月選擇器已移除） */
 
 /* ============================================
    21. 快速摘要卡類型
@@ -472,6 +506,6 @@ export const STATUS_CATEGORIES = {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/config/constants.js
-   Version: v103.0.27
-   Batch: B26-3
+   Version: v103.0.31
+   Batch: B26-4
    ═══════════════════════════════════════════ */

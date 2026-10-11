@@ -1,12 +1,11 @@
 // ============================================
-// settings.js — 系統設定（v103.0.22 Page Schema）
+// settings.js — 系統設定（v103.0.32 Page Schema）
 // 位置：js/pages/settings.js
 // ============================================
+// v103.0.32（B26-5）：
+//   ✅ 遷移卡加「家庭選擇器」（superadmin 可選任一家庭）
 // v103.0.22（B25-6）：
 //   ✅ 危險區域加「一次性遷移舊資料」按鈕
-// v103.0.14 修正：
-//   ✅ [問題2] 實作個人化 Tab（帳號資訊 / 登出 / 統計卡模式 / 成員列表）
-//   ✅ [問題8] vConsole 持久化（跨頁保持）
 // ============================================
 
 import { initTabPanel } from '../ui/tab-panel.js';
@@ -18,6 +17,7 @@ import { api } from '../core/api.js';
 import { STORAGE_KEYS, ENTITY_KEYS } from '../config/constants.js';
 import { showToast } from '../ui/toast.js';
 import { openConfirm } from '../ui/modal.js';
+import { esc } from '../lib/dom.js';
 
 export default {
   title: '系統設定',
@@ -136,7 +136,6 @@ function _initPersonalTab(ctx) {
   }
 
   _injectDebugCard(ctx);
-  /* 🆕 v103.0.22：遷移卡片 */
   _injectMigrateCard(ctx);
 
   ctx._personalCleanup = () => {
@@ -277,7 +276,7 @@ function _bindDebugButtons(ctx) {
 }
 
 /* ============================================
-   🆕 v103.0.22：遷移卡片（superadmin only）
+   🆕 v103.0.32：遷移卡片（superadmin only，含家庭選擇器）
    ============================================ */
 function _injectMigrateCard(ctx) {
   if (!AppState.isSuperAdmin) return;
@@ -301,6 +300,12 @@ function _injectMigrateCard(ctx) {
       將舊資料（狀態名稱、缺失欄位）正規化為新格式。
       <b>可重複執行</b>（已遷移的資料不會再次修改）。
     </p>
+    <div class="field" style="margin-bottom:12px;">
+      <label class="field-label">目標家庭</label>
+      <select class="select" id="settings-migrate-family" style="max-width:400px;">
+        <option value="">載入中…</option>
+      </select>
+    </div>
     <button type="button" class="btn btn-magenta" id="settings-migrate-btn">
       <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i> 執行遷移
     </button>
@@ -310,22 +315,44 @@ function _injectMigrateCard(ctx) {
 
   if (window.lucide) window.lucide.createIcons();
 
+  const sel = document.getElementById('settings-migrate-family');
   const btn = document.getElementById('settings-migrate-btn');
   const statusEl = document.getElementById('settings-migrate-status');
 
+  /* 🆕 v103.0.32：載入家庭清單 */
+  const _loadFamilies = async () => {
+    try {
+      const data = await api.adminListFamilies();
+      const families = data.families || [];
+      if (families.length === 0) {
+        sel.innerHTML = '<option value="">（尚無家庭）</option>';
+        return;
+      }
+      sel.innerHTML = families.map((f) =>
+        `<option value="${esc(f.uid)}">${esc(f.name || f.uid)}（${esc(f.uid.slice(0, 8))}…）</option>`
+      ).join('');
+    } catch (err) {
+      console.error('[settings] 載入家庭清單失敗：', err);
+      sel.innerHTML = '<option value="">載入失敗</option>';
+    }
+  };
+  _loadFamilies();
+
   const onMigrate = async () => {
-    const familyId = AppState.getFamilyId();
+    const familyId = sel.value;
     if (!familyId) {
-      showToast('尚未選擇家庭', 'error');
+      showToast('請先選擇家庭', 'error');
       return;
     }
 
+    const familyName = sel.options[sel.selectedIndex]?.textContent || familyId;
+
     const ok = await openConfirm(
-      `⚠️ 確定要執行一次性資料遷移嗎？\n\n` +
+      `⚠️ 確定要對以下家庭執行一次性資料遷移嗎？\n\n` +
+      `目標家庭：${familyName}\n\n` +
       `• 將舊狀態名稱改為新代碼\n` +
       `• 補齊缺失欄位（isAutoLinked / fundsAllocation / type 等）\n` +
-      `• 可重複執行（已遷移的資料不會再改）\n\n` +
-      `家庭：${AppState.getFamilyName() || familyId}`,
+      `• 可重複執行（已遷移的資料不會再改）`,
       { title: '一次性資料遷移', okText: '執行遷移', okClass: 'btn-danger' }
     );
     if (!ok) return;
@@ -337,7 +364,7 @@ function _injectMigrateCard(ctx) {
       const result = await api.adminMigrate(familyId);
       const s = result.summary || {};
       const lines = [
-        `✅ 完成`,
+        `✅ 完成（${esc(familyName)}）`,
         `• 支出：掃描 ${s.expenses?.scanned || 0}，正規化 ${s.expenses?.normalized || 0}`,
         `• 保險付款：掃描 ${s.payments?.scanned || 0}，正規化 ${s.payments?.normalized || 0}`,
         `• 保單：掃描 ${s.policies?.scanned || 0}，補齊 ${s.policies?.patched || 0}`,
@@ -363,6 +390,6 @@ function _injectMigrateCard(ctx) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/settings.js
-   Version: v103.0.22
-   Batch: B25-6
+   Version: v103.0.32
+   Batch: B26-5
    ═══════════════════════════════════════════ */

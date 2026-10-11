@@ -1,7 +1,9 @@
 // ============================================
-// dashboard.js — 總覽儀表板（v103.0.29 Page Schema）
+// dashboard.js — 總覽儀表板（v103.0.32 Page Schema）
 // 位置：js/pages/dashboard.js
 // ============================================
+// v103.0.32（B26-6）：
+//   ✅ 恢復「年度總覽（前後 2 年）」區塊
 // v103.0.29（B26-3.2）：
 //   ✅ 「查看年度報表」移到 page-header 右側
 // v103.0.27（B26-3）：
@@ -12,6 +14,8 @@ import { calcTotalBankBalance } from '../lib/bank.js';
 import { formatHKD } from '../lib/format.js';
 import { AppState } from '../core/state.js';
 import { renderPageControls } from '../lib/page-controls.js';
+import { getPolicyAnnualPremium } from '../lib/insurance.js';
+import { getColumns, getResolvers } from '../config/column-registry.js';
 
 export default {
   title: '總覽儀表板',
@@ -21,6 +25,7 @@ export default {
     members: { type: 'list', path: 'members' },
     allIncome: { type: 'raw', path: 'income' },
     allExpenses: { type: 'raw', path: 'expenses' },
+    allPolicies: { type: 'list', path: 'insurance_policies' },
   },
   state: {
     currentYear: String(AppState.year || new Date().getFullYear()),
@@ -43,6 +48,10 @@ export default {
       deps: ['data.members', 'data.bankAccounts', 'data.bankTransactions', 'state.currentYear'],
       compute: _buildSubtitle,
     },
+    annualOverview: {
+      deps: ['data.allIncome', 'data.allExpenses', 'data.allPolicies', 'state.currentYear'],
+      compute: _computeAnnualOverview,
+    },
   },
   blocks: [
     { type: 'stats', container: 'stats-cards-root', cards: '$.statsCards' },
@@ -63,9 +72,65 @@ export default {
       if (el) el.textContent = ctx.derived.subtitle || '載入中…';
     };
 
-    update();
+    const _paintAnnualOverview = () => {
+      const root = document.getElementById('annual-overview-root');
+      if (!root) return;
 
-    /* 🆕 v103.0.29：page-controls（查看年報 → header） */
+      const rows = ctx.derived.annualOverview || [];
+      if (rows.length === 0) {
+        if (root.__lastHtml !== '') {
+          root.__lastHtml = '';
+          root.innerHTML = '';
+        }
+        return;
+      }
+
+      const columns = getColumns('dashboardAnnual');
+      const resolvers = getResolvers('dashboardAnnual');
+
+      const html = `
+        <div class="glass-card" style="padding:0; margin-bottom:20px;">
+          <div class="collapsible-header" style="padding:14px 20px; cursor:default;">
+            <div class="collapsible-header-title">
+              <i data-lucide="calendar" style="width:16px;height:16px;"></i>
+              <span>年度總覽（前後 2 年）</span>
+            </div>
+          </div>
+          <div class="data-table-scroll-wrapper" style="border-top:1px solid rgba(255,255,255,0.05);">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  ${columns.map((c) => `<th class="${c.type === 'number' ? 'num' : ''}">${c.label}</th>`).join('')}
+                </tr>
+              </thead>
+              <tbody>
+                ${rows.map((r) => `
+                  <tr>
+                    ${columns.map((c) => {
+                      const val = r[c.id];
+                      const resolver = resolvers[c.id];
+                      const content = resolver ? resolver(val, r) : (val == null ? '—' : String(val));
+                      return `<td class="${c.type === 'number' ? 'num' : ''}">${content}</td>`;
+                    }).join('')}
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      if (root.__lastHtml !== html) {
+        root.__lastHtml = html;
+        root.innerHTML = html;
+        if (window.lucide) window.lucide.createIcons();
+      }
+    };
+
+    update();
+    _paintAnnualOverview();
+
+    /* v103.0.29：page-controls（查看年報 → header） */
     _controls = renderPageControls({
       containerId: 'page-controls-root',
       headerContainerId: 'page-header-actions',
@@ -81,12 +146,15 @@ export default {
     const unsub = ctx.onDataChange((key) => {
       if (key === '__APP__') syncYear();
       update();
+      _paintAnnualOverview();
     });
 
     return {
       destroy: () => {
         unsub();
         if (_controls) { try { _controls.destroy(); } catch (e) {} _controls = null; }
+        const root = document.getElementById('annual-overview-root');
+        if (root) { root.innerHTML = ''; root.__lastHtml = ''; }
       },
     };
   },
@@ -144,9 +212,66 @@ function _buildSubtitle(members, accounts, txns, year) {
   return `${year} 年 · ${(members || []).length} 位成員 · ${(accounts || []).length} 個銀行帳號 · ${(txns || []).length} 筆交易`;
 }
 
+/**
+ * 🆕 v103.0.32：計算年度總覽（前後 2 年）
+ * @returns {Array<{year, totalIncome, totalExpense, insurance, net, avg, isCurrent}>}
+ */
+function _computeAnnualOverview(allIncome, allExpenses, policies, currentYear) {
+  const curY = Number(currentYear) || new Date().getFullYear();
+  const startY = curY - 2;
+  const endY = curY + 2;
+  const rows = [];
+
+  for (let y = startY; y <= endY; y++) {
+    const yk = String(y);
+    const yi = (allIncome || {})[yk] || {};
+    const ye = (allExpenses || {})[yk] || {};
+
+    /* 家庭收入 */
+    let totalIncome = 0;
+    Object.values(yi).forEach((md) => {
+      Object.values(md || {}).forEach((v) => { totalIncome += Number(v) || 0; });
+    });
+
+    /* 總支出 + 有紀錄月數 */
+    let totalExpense = 0;
+    let monthsWithData = 0;
+    Object.values(ye).forEach((md) => {
+      const me = (md && md.member_expenses) || {};
+      let monthSum = 0;
+      Object.values(me).forEach((items) => {
+        Object.values(items || {}).forEach((e) => { monthSum += Number(e && e.amount) || 0; });
+      });
+      if (monthSum > 0) monthsWithData++;
+      totalExpense += monthSum;
+    });
+
+    /* 保險平攤（該年度總年繳） */
+    let insurance = 0;
+    (policies || []).forEach((p) => {
+      try { insurance += getPolicyAnnualPremium(p, y) || 0; } catch (e) { /* noop */ }
+    });
+
+    const net = totalIncome - totalExpense - insurance;
+    const avg = monthsWithData > 0 ? Math.round(totalExpense / monthsWithData) : 0;
+
+    rows.push({
+      year: y,
+      totalIncome: Math.round(totalIncome),
+      totalExpense: Math.round(totalExpense),
+      insurance: Math.round(insurance),
+      net: Math.round(net),
+      avg,
+      isCurrent: y === curY,
+    });
+  }
+
+  return rows;
+}
+
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/dashboard.js
-   Version: v103.0.29
-   Batch: B26-3.2
+   Version: v103.0.32
+   Batch: B26-6
    ═══════════════════════════════════════════ */

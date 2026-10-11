@@ -16,14 +16,16 @@
     <div class="main-area">
       <header id="navbar-root"></header>
       <main class="content content-min-height">
-        <div class="page-header flex flex-between items-end flex-wrap gap-12">
+        <div class="page-header">
           <div>
             <h1 class="page-title">平台管理</h1>
             <p class="page-subtitle">管理所有家庭與平台預設資料庫</p>
           </div>
-          <button type="button" class="btn btn-danger" id="admin-logout-btn">
-            <i data-lucide="log-out"></i> 登出
-          </button>
+          <div id="page-header-actions">
+            <button type="button" class="btn btn-danger" id="admin-logout-btn">
+              <i data-lucide="log-out"></i> 登出
+            </button>
+          </div>
         </div>
 
         <div id="admin-error" class="banner banner-magenta" style="display:none;"></div>
@@ -56,8 +58,15 @@
     });
 
     if (user) {
-      await initAdminPage();
+      initAdminPage();
     }
   </script>
 </body>
 </html>
+
+<!-- ═══════════════════════════════════════════
+     END OF FILE
+     File: admin.html
+     Version: v103.0.31
+     Batch: B26-4
+     ═══════════════════════════════════════════ -->

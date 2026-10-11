@@ -1,18 +1,21 @@
 // ============================================
-// sidebar.js — 左側導覽選單（v103.0.12）
+// sidebar.js — 左側導覽選單（v103.0.31）
 // 位置：js/layout/sidebar.js
 // ============================================
-// v103.0.12 修正：
-//   ✅ [L02] renderSidebar 移除多餘 async（內部無 await）
+// v103.0.31（B26-4）：
+//   ✅ 依角色過濾群組（superadmin 只看到平台管理 + 系統）
+//   ✅ 用 getSidebarGroupsByRole 取代直接引用 SIDEBAR_GROUPS
 // ============================================
 
-import { SIDEBAR_GROUPS, STORAGE_KEYS } from '../config/constants.js';
+import { SIDEBAR_GROUPS, STORAGE_KEYS, getSidebarGroupsByRole } from '../config/constants.js';
 import { esc } from '../lib/dom.js';
+import { AppState } from '../core/state.js';
 
 /* ============================================
    Module 狀態
    ============================================ */
 let _currentGroups = [];
+let _filteredGroups = [];      /* 🆕 依角色過濾後的群組 */
 let _activeHref = '';
 let _eventsBound = false;
 let _navEl = null;
@@ -37,7 +40,11 @@ export function renderSidebar(containerId = 'sidebar-root', activeHref = '') {
 
   _navEl = root.querySelector('#sidebar-nav-inner');
 
-  _currentGroups = SIDEBAR_GROUPS.map((g) => ({
+  /* 🆕 v103.0.31：依角色過濾 */
+  const role = AppState.getRole();
+  _filteredGroups = getSidebarGroupsByRole(role);
+
+  _currentGroups = _filteredGroups.map((g) => ({
     ...g,
     isOpen: false,
   }));
@@ -115,7 +122,6 @@ function _bindGlobalEvents() {
 }
 
 function _globalClickHandler(e) {
-  /* 群組展開 / 收合 */
   const groupToggle = e.target.closest('[data-group-toggle]');
   if (groupToggle) {
     e.preventDefault();
@@ -123,13 +129,11 @@ function _globalClickHandler(e) {
     return;
   }
 
-  /* Backdrop 點擊 → 關閉行動版 */
   if (e.target.classList.contains('sidebar-backdrop')) {
     closeMobileSidebar();
     return;
   }
 
-  /* Nav 項目點擊（手機）→ 自動關閉 */
   const navLink = e.target.closest('.sidebar .nav-item');
   if (navLink) {
     if (window.innerWidth < 640) {
@@ -234,11 +238,12 @@ export function destroySidebar() {
   closeMobileSidebar();
 
   _currentGroups = [];
+  _filteredGroups = [];
   _activeHref = '';
 }
 
 /* ============================================
-   內部：展開狀態管理
+   內部：展開狀態管理（🆕 用過濾後群組）
    ============================================ */
 
 function _loadOpenGroupSet() {
@@ -261,7 +266,7 @@ function _saveOpenGroupSet(set) {
 
 function _getDefaultOpenSet() {
   const set = new Set();
-  SIDEBAR_GROUPS.forEach((g) => {
+  _filteredGroups.forEach((g) => {
     if (g.defaultOpen) set.add(g.key);
   });
   return set;
@@ -269,9 +274,16 @@ function _getDefaultOpenSet() {
 
 function _ensureGroupOpenFor(set, activeHref) {
   if (!activeHref) return set;
-  const g = SIDEBAR_GROUPS.find((group) =>
+  const g = _filteredGroups.find((group) =>
     (group.items || []).some((it) => it.href === activeHref)
   );
   if (g) set.add(g.key);
   return set;
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: js/layout/sidebar.js
+   Version: v103.0.31
+   Batch: B26-4
+   ═══════════════════════════════════════════ */
