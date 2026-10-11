@@ -1,10 +1,11 @@
 /* ============================================
    components.css — 卡片、按鈕、表格、Modal、表單
    -------------------------------------------------
+   v103.0.28（B26-3.1）：
+     ✅ 移除 .page-controls .year-switcher / .month-switcher 舊樣式
+     ✅ 加 .page-controls-period-group（改用 .btn btn-sm）
    v103.0.27（B26-3）：
-     ✅ 加 .page-controls-* 標準樣式（統一控制列）
-   v102.1.0 更新：
-     ✅ [P3-9] .stats-integrated-grid 改用 gap + 背景色形成邊框
+     ✅ 加 .page-controls-* 標準樣式
    ============================================ */
 
 /* ================= GlassCard ================= */
@@ -451,7 +452,7 @@
 }
 
 /* ============================================
-   🆕 Page Controls（統一控制列，B26-3）
+   🆕 Page Controls（統一控制列，B26-3 / B26-3.1）
    ============================================ */
 .page-controls {
   display: flex;
@@ -466,10 +467,6 @@
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-}
-
-.page-controls-row.page-controls-period {
-  /* 年 / 月 分行 */
 }
 
 .page-controls-row.page-controls-full {
@@ -499,54 +496,33 @@
   width: 100%;
 }
 
-.page-controls .year-switcher,
-.page-controls .month-switcher {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.page-controls .year-switcher .year-btn,
-.page-controls .month-switcher .month-btn {
+/* 🆕 v103.0.28：年 / 月容器（3 顆 .btn btn-sm） */
+.page-controls-period-group {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 6px 12px;
+}
+
+.page-controls-period-group .btn {
+  padding: 6px 10px;
   font-size: 13px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--glass-border);
-  background: var(--glass-bg);
-  color: var(--text-secondary);
-  transition: all var(--transition);
-  cursor: pointer;
-  font-family: inherit;
-  white-space: nowrap;
+  min-width: auto;
 }
 
-.page-controls .year-switcher .year-btn:hover:not(:disabled):not(.active),
-.page-controls .month-switcher .month-btn:hover:not(:disabled):not(.active) {
-  color: var(--neon-cyan);
-  border-color: var(--glass-border-hover);
+.page-controls-period-group .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-.page-controls .year-switcher .year-btn.active,
-.page-controls .month-switcher .month-btn.active {
+/* 「當前」按鈕雖 disabled，但保留 primary 視覺 */
+.page-controls-period-group .btn:disabled.btn-primary {
+  opacity: 1;
+  cursor: default;
   background: rgba(0, 240, 255, 0.15);
   border-color: rgba(0, 240, 255, 0.5);
   color: var(--neon-cyan);
   font-weight: 700;
-  cursor: default;
-}
-
-.page-controls .year-switcher .year-btn:disabled,
-.page-controls .month-switcher .month-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.page-controls .year-switcher .year-btn span,
-.page-controls .month-switcher .month-btn span {
-  font-family: var(--font-mono);
+  box-shadow: none;
 }
 
 @media (max-width: 640px) {
@@ -557,11 +533,9 @@
   .page-controls-right {
     gap: 6px;
   }
-  .page-controls .year-switcher .year-btn,
-  .page-controls .month-switcher .month-btn {
-    padding: 5px 9px;
+  .page-controls-period-group .btn {
+    padding: 5px 8px;
     font-size: 12px;
-    gap: 3px;
   }
 }
 
@@ -1509,6 +1483,6 @@
 /* ═══════════════════════════════════════════
    END OF FILE
    File: css/components.css
-   Version: v103.0.27
-   Batch: B26-3
+   Version: v103.0.28
+   Batch: B26-3.1
    ═══════════════════════════════════════════ */

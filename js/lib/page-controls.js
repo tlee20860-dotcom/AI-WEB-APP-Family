@@ -1,19 +1,19 @@
 // ============================================
-// page-controls.js — 統一控制列渲染（v103.0.27）
+// page-controls.js — 統一控制列渲染（v103.0.28）
 // 位置：js/lib/page-controls.js
 // ============================================
-// v103.0.27（B26-3）：
-//   ✅ 修正 _findByItem：改用 root.__pcItems（棄用 document WeakMap）
-// v103.0.26（B26-3）：
-//   ✅ 新增：全站頁面控制列統一渲染
+// v103.0.28（B26-3.1）：
+//   ✅ 月份邊界：< 1 / > 12 顯示「—」+ disabled
+//   ✅ toolbar 過濾排除 filter / viewSwitcher（修正雙重渲染）
+//   ✅ 年月按鈕改用 .btn btn-sm（深色主題）
+//   ✅ 點擊當前年/月無效
+// v103.0.27：
+//   ✅ 修正 _findByItem：改用 root.__pcItems
 // ============================================
 
 import { esc } from './dom.js';
 import { STORAGE_PREFIXES } from '../config/constants.js';
 
-/* ============================================
-   主入口
-   ============================================ */
 export function renderPageControls(config) {
   const { containerId, items = [] } = config || {};
   const root = document.getElementById(containerId);
@@ -22,7 +22,6 @@ export function renderPageControls(config) {
     return null;
   }
 
-  /* 為每個 item 生成 pcId */
   items.forEach((it) => {
     if (!it.__pcId) {
       it.__pcId = it.id || `pc-${it.type}-${Math.random().toString(36).slice(2, 8)}`;
@@ -35,8 +34,13 @@ export function renderPageControls(config) {
   const paint = () => {
     if (_destroyed) return;
 
-    const toolbarLeft = items.filter((it) => it.type !== 'year' && it.type !== 'month' && it.align !== 'right');
-    const toolbarRight = items.filter((it) => it.type !== 'year' && it.type !== 'month' && it.align === 'right');
+    /* 🆕 v103.0.28：toolbar 過濾排除 filter / viewSwitcher */
+    const _isToolbarItem = (it) =>
+      it.type !== 'year' && it.type !== 'month' &&
+      it.type !== 'filter' && it.type !== 'viewSwitcher';
+
+    const toolbarLeft = items.filter((it) => _isToolbarItem(it) && it.align !== 'right');
+    const toolbarRight = items.filter((it) => _isToolbarItem(it) && it.align === 'right');
     const yearItem = items.find((it) => it.type === 'year');
     const monthItem = items.find((it) => it.type === 'month');
     const fullRowItems = items.filter((it) => it.type === 'filter' || it.type === 'viewSwitcher');
@@ -189,23 +193,23 @@ function _renderCustom(item) {
 }
 
 /* ============================================
-   年 / 月 切換（3 顆按鈕設計）
+   年 / 月 切換（3 顆按鈕設計，改用 .btn btn-sm）
    ============================================ */
 function _renderYearSwitcher(item) {
   const { year, __pcId } = item;
   const cur = Number(year);
   const prevY = cur - 1;
   const nextY = cur + 1;
-  return `<div class="year-switcher" data-pc-year data-pc-id="${esc(__pcId)}">
-    <button type="button" class="year-btn" data-pc-year-val="${prevY}">
+  return `<div class="page-controls-period-group" data-pc-year data-pc-id="${esc(__pcId)}">
+    <button type="button" class="btn btn-sm btn-ghost" data-pc-year-val="${prevY}">
       <i data-lucide="chevron-left" style="width:14px;height:14px;"></i>
-      <span>${prevY}</span>
+      <span class="mono">${prevY}</span>
     </button>
-    <button type="button" class="year-btn active" data-pc-year-val="${cur}">
-      <span>${cur}</span>
+    <button type="button" class="btn btn-sm btn-primary" data-pc-year-val="${cur}" disabled>
+      <span class="mono">${cur}</span>
     </button>
-    <button type="button" class="year-btn" data-pc-year-val="${nextY}">
-      <span>${nextY}</span>
+    <button type="button" class="btn btn-sm btn-ghost" data-pc-year-val="${nextY}">
+      <span class="mono">${nextY}</span>
       <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
     </button>
   </div>`;
@@ -218,23 +222,28 @@ function _renderMonthSwitcher(item) {
   const nextM = cur + 1;
   const canPrev = prevM >= 1;
   const canNext = nextM <= 12;
-  return `<div class="month-switcher" data-pc-month data-pc-id="${esc(__pcId)}">
-    <button type="button" class="month-btn" data-pc-month-val="${String(prevM).padStart(2, '0')}" ${canPrev ? '' : 'disabled'}>
+
+  /* 🆕 v103.0.28：邊界外顯示「—」 */
+  const prevLabel = canPrev ? `${prevM} 月` : '—';
+  const nextLabel = canNext ? `${nextM} 月` : '—';
+
+  return `<div class="page-controls-period-group" data-pc-month data-pc-id="${esc(__pcId)}">
+    <button type="button" class="btn btn-sm btn-ghost" data-pc-month-val="${canPrev ? String(prevM).padStart(2, '0') : ''}" ${canPrev ? '' : 'disabled'}>
       <i data-lucide="chevron-left" style="width:14px;height:14px;"></i>
-      <span>${prevM} 月</span>
+      <span class="mono">${prevLabel}</span>
     </button>
-    <button type="button" class="month-btn active" data-pc-month-val="${String(cur).padStart(2, '0')}">
-      <span>${cur} 月</span>
+    <button type="button" class="btn btn-sm btn-primary" data-pc-month-val="${String(cur).padStart(2, '0')}" disabled>
+      <span class="mono">${cur} 月</span>
     </button>
-    <button type="button" class="month-btn" data-pc-month-val="${String(nextM).padStart(2, '0')}" ${canNext ? '' : 'disabled'}>
-      <span>${nextM} 月</span>
+    <button type="button" class="btn btn-sm btn-ghost" data-pc-month-val="${canNext ? String(nextM).padStart(2, '0') : ''}" ${canNext ? '' : 'disabled'}>
+      <span class="mono">${nextLabel}</span>
       <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
     </button>
   </div>`;
 }
 
 /* ============================================
-   事件綁定（單一 listener 委派）
+   事件綁定
    ============================================ */
 function _findByItem(root, type, id) {
   const list = root.__pcItems || [];
@@ -297,11 +306,14 @@ function _bindAll(root) {
     }
 
     const yearBtn = e.target.closest('[data-pc-year] button[data-pc-year-val]');
-    if (yearBtn) {
+    if (yearBtn && !yearBtn.disabled) {
       const group = yearBtn.closest('[data-pc-year]');
       const y = Number(yearBtn.dataset.pcYearVal);
       const item = _findByItem(root, 'year', group.dataset.pcId);
-      if (item && typeof item.onChange === 'function') item.onChange(y);
+      if (!item) return;
+      /* 🆕 v103.0.28：點擊當前年無效 */
+      if (Number(item.year) === y) return;
+      if (typeof item.onChange === 'function') item.onChange(y);
       return;
     }
 
@@ -309,8 +321,12 @@ function _bindAll(root) {
     if (monthBtn && !monthBtn.disabled) {
       const group = monthBtn.closest('[data-pc-month]');
       const m = monthBtn.dataset.pcMonthVal;
+      if (!m) return;
       const item = _findByItem(root, 'month', group.dataset.pcId);
-      if (item && typeof item.onChange === 'function') item.onChange(m);
+      if (!item) return;
+      /* 🆕 v103.0.28：點擊當前月無效 */
+      if (String(Number(item.month)).padStart(2, '0') === m) return;
+      if (typeof item.onChange === 'function') item.onChange(m);
       return;
     }
   };
@@ -332,6 +348,6 @@ function _bindAll(root) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/lib/page-controls.js
-   Version: v103.0.27
-   Batch: B26-3
+   Version: v103.0.28
+   Batch: B26-3.1
    ═══════════════════════════════════════════ */
