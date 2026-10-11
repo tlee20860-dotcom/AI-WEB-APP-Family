@@ -1,29 +1,24 @@
 // ============================================
-// navbar.js — 頂部導覽列（v103.0.12）
+// navbar.js — 頂部導覽列（v103.0.27）
 // 位置：js/layout/navbar.js
 // ============================================
-// v103.0.12 修正：
-//   ✅ [L01] 移除 _bindGlobalEvents 中的空 return 分支
-//   ✅ 保留 hamburger 按鈕的實際綁定
+// v103.0.27（B26-3）：
+//   ✅ 移除年月選擇器（改由各頁 page-controls 統一）
+//   ✅ 移除 SHOW_YEAR_MONTH_PAGES 依賴
+//   ✅ 移除 ym-change 訂閱
 // ============================================
 
 import { AppState } from '../core/state.js';
 import { getDisplayName } from '../core/auth.js';
-import { STORAGE_KEYS, SHOW_YEAR_MONTH_PAGES, ROUTES, ROLES } from '../config/constants.js';
-import { getYearList } from '../config/app-config.js';
+import { ROUTES, ROLES } from '../config/constants.js';
 import { esc } from '../lib/dom.js';
 import { toggleSidebar } from './sidebar.js';
 
-/* ============================================
-   Module 狀態
-   ============================================ */
 let _eventBound = false;
 let _unsubscribeUserChange = null;
 let _unsubscribeFamilyChange = null;
 let _unsubscribeMemberAccountChange = null;
-let _unsubscribeYMChange = null;
 let _currentActiveHref = '';
-let _yearMonthChangeHandler = null;
 let _hamburgerHandler = null;
 
 /* ============================================
@@ -44,24 +39,16 @@ export function renderNavbar(containerId = 'navbar-root', title = '', activeHref
        </a>`
     : '';
 
-  const showYearMonth = SHOW_YEAR_MONTH_PAGES.includes(activeHref);
-  const yearMonthHtml = showYearMonth ? `<div id="navbar-year-month" class="navbar-year-month"></div>` : '';
-
   root.innerHTML = `
     <button type="button" class="hamburger" id="hamburger-btn" aria-label="切換選單">
       <i data-lucide="menu"></i>
     </button>
     <div class="navbar-title">${esc(title)}</div>
-    ${yearMonthHtml}
     ${adminBtn}
     <div class="navbar-user" id="navbar-user"></div>
   `;
 
   _renderUserInfo();
-
-  if (showYearMonth) {
-    _renderYearMonth();
-  }
 
   if (!_eventBound) {
     _eventBound = true;
@@ -69,56 +56,6 @@ export function renderNavbar(containerId = 'navbar-root', title = '', activeHref
   }
 
   if (window.lucide) window.lucide.createIcons();
-}
-
-/* ============================================
-   年月選擇器
-   ============================================ */
-function _renderYearMonth() {
-  const box = document.getElementById('navbar-year-month');
-  if (!box) return;
-
-  const { year, month } = AppState.getYearMonth();
-  const years = getYearList();
-
-  let yearOpts = '';
-  years.forEach((y) => {
-    const sel = String(y) === String(year) ? 'selected' : '';
-    yearOpts += `<option value="${y}" ${sel}>${y} 年</option>`;
-  });
-
-  let monthOpts = `<option value="all" ${month === 'all' ? 'selected' : ''}>全部</option>`;
-  for (let m = 1; m <= 12; m++) {
-    const mm = String(m).padStart(2, '0');
-    const sel = mm === String(month) ? 'selected' : '';
-    monthOpts += `<option value="${mm}" ${sel}>${m} 月</option>`;
-  }
-
-  box.innerHTML = `
-    <select class="navbar-ym-select navbar-ym-year" data-ym="year" aria-label="年份">
-      ${yearOpts}
-    </select>
-    <select class="navbar-ym-select navbar-ym-month" data-ym="month" aria-label="月份">
-      ${monthOpts}
-    </select>
-  `;
-
-  if (_yearMonthChangeHandler) {
-    box.removeEventListener('change', _yearMonthChangeHandler);
-  }
-
-  _yearMonthChangeHandler = (e) => {
-    const sel = e.target.closest('[data-ym]');
-    if (!sel) return;
-
-    const ySel = box.querySelector('[data-ym="year"]');
-    const mSel = box.querySelector('[data-ym="month"]');
-    if (ySel && mSel) {
-      AppState.setYearMonth(ySel.value, mSel.value);
-    }
-  };
-
-  box.addEventListener('change', _yearMonthChangeHandler);
 }
 
 /* ============================================
@@ -163,13 +100,8 @@ function _renderUserInfo() {
 
 /* ============================================
    全域事件
-   -------------------------------------------------
-   🆕 [L01]：只保留 hamburger 按鈕的實際綁定；
-            其他事件（backdrop、nav-item、group-toggle）
-            由 sidebar.js 自行處理，此處不再攔截。
    ============================================ */
 function _bindGlobalEvents(root) {
-  /* Hamburger：切換 Sidebar（委派至 root） */
   _hamburgerHandler = (e) => {
     if (!e.target.closest('#hamburger-btn')) return;
     e.preventDefault();
@@ -178,7 +110,6 @@ function _bindGlobalEvents(root) {
   };
   root.addEventListener('click', _hamburgerHandler);
 
-  /* AppState 事件訂閱 */
   if (_unsubscribeUserChange) { try { _unsubscribeUserChange(); } catch (err) { /* noop */ } }
   _unsubscribeUserChange = AppState.on('user-change', () => _renderUserInfo());
 
@@ -187,18 +118,6 @@ function _bindGlobalEvents(root) {
 
   if (_unsubscribeMemberAccountChange) { try { _unsubscribeMemberAccountChange(); } catch (err) { /* noop */ } }
   _unsubscribeMemberAccountChange = AppState.on('member-account-change', () => _renderUserInfo());
-
-  if (_unsubscribeYMChange) { try { _unsubscribeYMChange(); } catch (err) { /* noop */ } }
-  _unsubscribeYMChange = AppState.on('ym-change', () => {
-    if (!SHOW_YEAR_MONTH_PAGES.includes(_currentActiveHref)) return;
-    const box = document.getElementById('navbar-year-month');
-    if (!box) return;
-    const { year, month } = AppState.getYearMonth();
-    const ySel = box.querySelector('[data-ym="year"]');
-    const mSel = box.querySelector('[data-ym="month"]');
-    if (ySel && ySel.value !== String(year)) ySel.value = String(year);
-    if (mSel && mSel.value !== String(month)) mSel.value = String(month);
-  });
 }
 
 /* ============================================
@@ -217,15 +136,6 @@ export function destroyNavbar() {
   if (_unsubscribeUserChange) { try { _unsubscribeUserChange(); } catch (err) { /* noop */ } _unsubscribeUserChange = null; }
   if (_unsubscribeFamilyChange) { try { _unsubscribeFamilyChange(); } catch (err) { /* noop */ } _unsubscribeFamilyChange = null; }
   if (_unsubscribeMemberAccountChange) { try { _unsubscribeMemberAccountChange(); } catch (err) { /* noop */ } _unsubscribeMemberAccountChange = null; }
-  if (_unsubscribeYMChange) { try { _unsubscribeYMChange(); } catch (err) { /* noop */ } _unsubscribeYMChange = null; }
-
-  if (_yearMonthChangeHandler) {
-    const box = document.getElementById('navbar-year-month');
-    if (box) {
-      try { box.removeEventListener('change', _yearMonthChangeHandler); } catch (e) { /* noop */ }
-    }
-    _yearMonthChangeHandler = null;
-  }
 
   if (_hamburgerHandler) {
     const root = document.getElementById('navbar-root');
@@ -237,3 +147,10 @@ export function destroyNavbar() {
 
   _eventBound = false;
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: js/layout/navbar.js
+   Version: v103.0.27
+   Batch: B26-3
+   ═══════════════════════════════════════════ */

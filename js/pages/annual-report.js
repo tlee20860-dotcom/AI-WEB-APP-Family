@@ -1,17 +1,16 @@
-// annual-report.js — 年度報表（v103.0.22）
-// v103.0.22（B25-5.1）：
-//   ✅ P23：年份 / 月份切換器改為「3 顆按鈕」設計（前 / 當 / 後）
-//   ✅ 到邊界（年範圍 / 1 月 / 12 月）時 disabled
-// v103.0.22（B25-5）：
-//   ✅ R5 連帶：view-toggle 傳 syncAppState: false
+// annual-report.js — 年度報表（v103.0.27）
+// v103.0.27（B26-3）：
+//   ✅ 改用 page-controls 渲染（export + viewSwitcher + year + month）
+//   ✅ 年月改用 AppState（全站統一）
+//   ✅ 移除自繪 year/month switcher
+//   ✅ view 為頁面內 local 概念（summary/monthly）
 // ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
 import { AppState } from '../core/state.js';
 import { RESERVED_IDS } from '../config/constants.js';
 import { resolveName } from '../config/entity-registry.js';
-import { getYearList } from '../config/app-config.js';
-import { initViewToggle } from '../ui/view-toggle.js';
+import { renderPageControls } from '../lib/page-controls.js';
 
 export default {
   title: '年度報表',
@@ -45,7 +44,7 @@ export default {
   ],
 
   customMount: (ctx) => {
-    let _toggle = null;
+    let _controls = null;
     const _sumView = document.getElementById('annual-summary-view');
     const _monView = document.getElementById('annual-monthly-view');
 
@@ -72,27 +71,52 @@ export default {
 
     const paint = () => { if (ctx.state.view === 'monthly') paintMonthly(); else paintSummary(); };
 
-    _renderYearSwitcher(ctx, paint);
-    _renderMonthSwitcher(ctx, paint);
-
-    _toggle = initViewToggle({
-      containerId: 'annual-view-toggle',
-      storageKey: 'annual-report-view',
-      defaultView: 'summary',
-      cardText: '全年總合',
-      tableText: '月度明細',
-      cardValue: 'summary',
-      tableValue: 'monthly',
-      syncAppState: false,
-      onChange: (view) => {
-        ctx.state.view = view;
-        _sumView.style.display = view === 'summary' ? 'block' : 'none';
-        _monView.style.display = view === 'monthly' ? 'block' : 'none';
-        paint();
-      },
+    /* 🆕 v103.0.27：page-controls */
+    _controls = renderPageControls({
+      containerId: 'page-controls-root',
+      items: [
+        {
+          type: 'export',
+          align: 'right',
+          label: '匯出 Excel',
+          onClick: () => _exportCsv(ctx),
+        },
+        {
+          type: 'year',
+          year: ctx.state.year,
+          onChange: (y) => {
+            ctx.state.year = String(y);
+            /* 同步全域（若月份為 all 則保持） */
+            AppState.setYearMonth(String(y), AppState.month === 'all' ? ctx.state.displayMonth : AppState.month);
+            paint();
+          },
+        },
+        {
+          type: 'month',
+          month: ctx.state.displayMonth,
+          onChange: (m) => {
+            ctx.state.displayMonth = m;
+            AppState.setYearMonth(ctx.state.year, m);
+            paint();
+          },
+        },
+        {
+          type: 'viewSwitcher',
+          value: ctx.state.view,
+          options: [
+            { value: 'summary', label: '全年總合' },
+            { value: 'monthly', label: '月度明細' },
+          ],
+          onChange: (v) => {
+            ctx.state.view = v;
+            _sumView.style.display = v === 'summary' ? 'block' : 'none';
+            _monView.style.display = v === 'monthly' ? 'block' : 'none';
+            paint();
+          },
+        },
+      ],
     });
 
-    ctx.state.view = _toggle?.getView() || 'summary';
     _sumView.style.display = ctx.state.view === 'summary' ? 'block' : 'none';
     _monView.style.display = ctx.state.view === 'monthly' ? 'block' : 'none';
     paint();
@@ -101,116 +125,22 @@ export default {
       if (key === '__APP__') {
         const y = String(AppState.year || new Date().getFullYear());
         if (ctx.state.year !== y) ctx.state.year = y;
+        const m = AppState.month === 'all' ? '01' : (AppState.month || '01');
+        const mm = String(m).padStart(2, '0');
+        if (ctx.state.displayMonth !== mm) ctx.state.displayMonth = mm;
+        if (_controls) { try { _controls.refresh(); } catch (e) {} }
       }
       paint();
     });
 
-    const exportBtn = document.getElementById('export-excel-btn');
-    const onExport = () => _exportCsv(ctx);
-    if (exportBtn) exportBtn.addEventListener('click', onExport);
-
     return {
       destroy: () => {
         unsub();
-        if (_toggle) { try { _toggle.destroy(); } catch (e) {} }
-        if (exportBtn) exportBtn.removeEventListener('click', onExport);
+        if (_controls) { try { _controls.destroy(); } catch (e) {} }
       },
     };
   },
 };
-
-/* ============================================
-   年份切換器（3 顆按鈕：◀ 前 / 當 / 後 ▶）
-   ============================================ */
-function _renderYearSwitcher(ctx, onChange) {
-  const root = document.getElementById('annual-year-switcher');
-  if (!root) return;
-
-  const paint = () => {
-    const cur = Number(ctx.state.year);
-    const years = getYearList();
-    const minY = years[0];
-    const maxY = years[years.length - 1];
-    const prevY = cur - 1;
-    const nextY = cur + 1;
-    const canPrev = prevY >= minY;
-    const canNext = nextY <= maxY;
-
-    root.innerHTML = `
-      <div class="year-switcher">
-        <button type="button" class="year-btn" data-year="${prevY}" ${canPrev ? '' : 'disabled'}>
-          <i data-lucide="chevron-left" style="width:14px;height:14px;"></i>
-          <span>${prevY}</span>
-        </button>
-        <button type="button" class="year-btn active" data-year="${cur}">
-          <span>${cur}</span>
-        </button>
-        <button type="button" class="year-btn" data-year="${nextY}" ${canNext ? '' : 'disabled'}>
-          <span>${nextY}</span>
-          <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
-        </button>
-      </div>
-    `;
-    if (window.lucide) window.lucide.createIcons();
-  };
-
-  paint();
-
-  root.addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-year]');
-    if (!btn || btn.disabled) return;
-    const y = btn.dataset.year;
-    if (y === ctx.state.year) return;
-    ctx.state.year = y;
-    paint();
-    onChange();
-  });
-}
-
-/* ============================================
-   月份切換器（同設計：◀ 前 / 當 / 後 ▶）
-   ============================================ */
-function _renderMonthSwitcher(ctx, onChange) {
-  const root = document.getElementById('annual-month-switcher');
-  if (!root) return;
-
-  const paint = () => {
-    const cur = Number(ctx.state.displayMonth);
-    const prevM = cur - 1;
-    const nextM = cur + 1;
-    const canPrev = prevM >= 1;
-    const canNext = nextM <= 12;
-
-    root.innerHTML = `
-      <div class="month-switcher">
-        <button type="button" class="month-btn" data-month="${String(prevM).padStart(2, '0')}" ${canPrev ? '' : 'disabled'}>
-          <i data-lucide="chevron-left" style="width:14px;height:14px;"></i>
-          <span>${prevM} 月</span>
-        </button>
-        <button type="button" class="month-btn active" data-month="${String(cur).padStart(2, '0')}">
-          <span>${cur} 月</span>
-        </button>
-        <button type="button" class="month-btn" data-month="${String(nextM).padStart(2, '0')}" ${canNext ? '' : 'disabled'}>
-          <span>${nextM} 月</span>
-          <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
-        </button>
-      </div>
-    `;
-    if (window.lucide) window.lucide.createIcons();
-  };
-
-  paint();
-
-  root.addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-month]');
-    if (!btn || btn.disabled) return;
-    const m = btn.dataset.month;
-    if (m === ctx.state.displayMonth) return;
-    ctx.state.displayMonth = m;
-    paint();
-    onChange();
-  });
-}
 
 /* ============================================
    Stats 依 view 切換
@@ -372,6 +302,6 @@ function _exportCsv(ctx) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/annual-report.js
-   Version: v103.0.22
-   Batch: B25-5.1
+   Version: v103.0.27
+   Batch: B26-3
    ═══════════════════════════════════════════ */

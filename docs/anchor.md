@@ -1,7 +1,7 @@
 # 主錨點 — 家庭財務 Web App
 
-最後更新：B25
-當前批次：B24（程式碼）
+最後更新：B26-3
+當前批次：B25（程式碼）
 專案狀態：測試中
 
 ---
@@ -20,6 +20,7 @@ Firebase RTDB → data-engine → page-engine → derived → block → DOM
 - 3 Engine：page / data / render
 - 5 Block：stats / list / filter / detail / form
 - 13 Page Schema：純宣告式
+- page-controls：統一控制列渲染
 
 **五大鐵則**：
 1. 最簡潔實用
@@ -388,7 +389,7 @@ anchor → ai-guide → file-manifest → progress → 依情境讀其餘
 **違反判定**：🟥 A 級（機會型重構必改）
 
 **理由**：
-- 避免同一欄位多入口修改（問題 4 根因）
+- 避免同一欄位多入口修改
 - 資料輸入與狀態操作語意分離
 
 ### 0.20 Modal 統一（強制）
@@ -452,8 +453,8 @@ anchor → ai-guide → file-manifest → progress → 依情境讀其餘
 **違反判定**：🟥 A 級
 
 **理由**：
-- R2 雙重按鈕根因
-- R3 卡片無按鈕根因
+- 雙重按鈕根因
+- 卡片無按鈕根因
 
 ### 0.22 版面規格保護（強制）
 
@@ -492,8 +493,53 @@ anchor → ai-guide → file-manifest → progress → 依情境讀其餘
 - 若恢復不可行 → 提出方案請使用者決策
 
 **理由**：
-- 避免 AI 優化時無意砍掉區塊（如年度總覽）
+- 避免 AI 優化時無意砍掉區塊
 - 版面是使用者可見的契約
+
+### 0.23 重大修改對比（強制）
+
+**原則**：涉及重大結構改動時，交付前必須附「更新前後對比」，讓使用者清晰判斷改動必要性。
+
+**觸發條件**（符合任一）：
+
+| 條件 | 說明 |
+|---|---|
+| 涉及 ≥ 3 檔案 | 跨檔改動 |
+| 涉及架構調整 | 新增 lib / 改 API / 改資料結構 |
+| 涉及跨頁一致性 | 版面統一 / 元件抽換 |
+| 涉及資料結構變更 | 新增節點 / 改欄位 |
+| 涉及核心引擎 | page-engine / data-engine / render-engine |
+
+**對比內容**（交付前必附）：
+
+| 面向 | 說明 |
+|---|---|
+| 檔案數 | 更新前 / 更新後 / 變化 |
+| 代碼行數 | 更新前 / 更新後 / 變化（估） |
+| 維護方便性 | 關鍵情境的改動成本對照 |
+| 學習曲線 | 新增概念 / 需理解的機制 |
+| 必要性論證 | 痛點 → 收益 → 代價 |
+
+**流程**：
+
+| 步驟 | 動作 |
+|---|---|
+| 1 | 提出對比表 |
+| 2 | 待使用者確認 |
+| 3 | 確認後才交付 |
+
+**禁止**：
+
+| 項目 | 說明 |
+|---|---|
+| 未附對比直接交付 | 違反 |
+| 對比只寫「優化」不列數字 | 違反 |
+| 只寫好處不寫代價 | 違反 |
+
+**理由**：
+- 使用者需判斷改動必要性
+- 避免 AI 過度重構
+- 建立決策透明化
 
 ---
 
@@ -602,13 +648,72 @@ ctx 提供：
 
 ---
 
-## 七、目標檔案結構
+## 七、page-controls（統一控制列）
+
+**模組**：`js/lib/page-controls.js`
+
+**用途**：全站頁面控制列統一渲染，改一處生效全站。
+
+**對外 API**：
+
+| 函式 | 說明 |
+|---|---|
+| renderPageControls(config) | 渲染控制列 |
+| destroyPageControls(instance) | 清理 |
+
+**config 結構**：
+
+| 欄位 | 說明 |
+|---|---|
+| containerId | 容器 ID（通常 `page-controls-root`） |
+| items | 元素陣列 |
+| onChange | 通用變更回呼（可選） |
+
+**items 元素結構**：
+
+| 欄位 | 說明 |
+|---|---|
+| type | 內建 type 或 'custom' |
+| align | 'left' / 'right'（預設 left） |
+| ... | type 專屬參數 |
+
+**內建 type 清單**：
+
+| type | 必要參數 | 說明 |
+|---|---|---|
+| add | label, onClick | 新增按鈕 |
+| viewToggle | storageKey, onChange | 卡片/表格切換 |
+| export | label, onClick | 匯出按鈕 |
+| year | year, onChange | 年份（3 顆按鈕） |
+| month | month, onChange | 月份（3 顆按鈕） |
+| viewSwitcher | options, onChange | 檢視切換 |
+| sort | options, value, onChange | 排序下拉 |
+| filter | render | 自訂篩選 HTML |
+| custom | render | 逃生艙 |
+
+**排版規則**：
+
+| 規則 | 說明 |
+|---|---|
+| toolbar 行 | 自動分左右 |
+| period 行 | 年 + 月（自動分左右） |
+| 通用 | 各項依 items 順序渲染 |
+
+**各頁 HTML 統一容器**：
+
+| 容器 ID | 用途 |
+|---|---|
+| page-controls-root | 所有頁面統一 |
+
+---
+
+## 八、目標檔案結構
 
 js/config（7 檔）：constants / firebase-config / app-config / 4 Registry
 
 js/core（8 檔）：state / api / db / auth / auth-guard / utils / pwa / debug
 
-js/lib（11 檔）：dom / async / lifecycle / registry / merge / insurance / bank / format / expense-modal / income-modal / filter-sort
+js/lib（12 檔）：dom / async / lifecycle / registry / merge / insurance / bank / format / expense-modal / income-modal / filter-sort / **page-controls**
 
 js/engines（3 檔）：page / data / render
 
@@ -630,7 +735,7 @@ docs（14 檔）：README / anchor / ai-guide / file-manifest / progress / sop /
 
 ---
 
-## 八、關鍵字索引
+## 九、關鍵字索引
 
 | 關鍵字 | 讀此檔 |
 |---|---|
@@ -655,10 +760,12 @@ docs（14 檔）：README / anchor / ai-guide / file-manifest / progress / sop /
 | Modal 統一 | anchor.md 0.20 |
 | Action 契約 | anchor.md 0.21 |
 | 版面規格保護 | anchor.md 0.22 |
+| 重大修改對比 | anchor.md 0.23 |
+| 控制列 | anchor.md 七 + lib/page-controls.js |
 
 ---
 
-## 九、下一步
+## 十、下一步
 
 | 使用者說 | AI 動作 |
 |---|---|
@@ -669,34 +776,35 @@ docs（14 檔）：README / anchor / ai-guide / file-manifest / progress / sop /
 
 ---
 
-## 十、目前狀態
+## 十一、目前狀態
 
 | 項目 | 值 |
 |---|---|
-| 當前批次 | B23（程式碼） |
-| SW 版本 | family-fin-v139 |
+| 當前批次 | B25（程式碼） |
+| SW 版本 | family-fin-v140 |
 | 部署 URL | family-financial-management-system.pages.dev |
-| 測試狀態 | B23 已部署，測試中 |
-| B25 修復規劃 | 進行中（7 批次） |
+| 測試狀態 | B25 已部署，B26 進行中 |
+| B26 修復規劃 | 6 批次（docs / P22 / P24 / sidebar / 遷移 / 年度總覽） |
 
 ---
 
-## 十一、待辦事項
+## 十二、待辦事項
 
 | 項目 | 狀態 |
 |---|---|
+| P22 年月切換需重整 | ✅ B26-2 已修 |
+| P24 全站佈局統一 | 🔄 B26-3 進行中 |
+| Superadmin sidebar | 📋 B26-4 |
+| 遷移按鈕方案 C | 📋 B26-5 |
+| 年度總覽恢復 | 📋 B26-6 |
 | 效能優化：SW 改回 stale-while-revalidate | 未做 |
-| 補齊 js/shared/ 未使用檔案清理 | 未做 |
 | 補 _headers | 未做 |
-| B20 起所有交付加 END OF FILE | 已生效 |
-| 機會型重構套用 | B21 起生效 |
-| 版面規格保護 | B25 起生效 |
 
 ---
 
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/anchor.md
-   Version: v103.0.22
-   Batch: B25-1
+   Version: v103.0.23
+   Batch: B26-3
    ═══════════════════════════════════════════ */

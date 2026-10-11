@@ -17,28 +17,15 @@
     <div class="main-area">
       <header id="navbar-root"></header>
       <main class="content content-min-height">
-        <div class="page-header flex flex-between items-end flex-wrap gap-12">
-          <div>
-            <h1 class="page-title" id="report-year-title">年度報表</h1>
-            <p class="page-subtitle">全年總合與明細</p>
-          </div>
-          <button type="button" class="btn btn-magenta" id="export-excel-btn">
-            <i data-lucide="file-spreadsheet"></i> 匯出 Excel
-          </button>
+        <div class="page-header">
+          <h1 class="page-title">年度報表</h1>
+          <p class="page-subtitle">全年總合與明細</p>
         </div>
 
-        <!-- 🆕 v103.0.14：控制列（年份切換 + view toggle） -->
-        <div class="report-controls">
-          <div id="annual-year-switcher"></div>
-          <div id="annual-view-toggle"></div>
-        </div>
-
-        <!-- 月份切換（僅月度明細顯示時可用） -->
-        <div id="annual-month-switcher" class="mb-16"></div>
+        <div id="page-controls-root"></div>
 
         <div id="annual-stats-root"></div>
 
-        <!-- 兩個 view -->
         <div id="annual-summary-view"></div>
         <div id="annual-monthly-view" style="display:none;"></div>
       </main>
@@ -63,3 +50,10 @@
   </script>
 </body>
 </html>
+
+<!-- ═══════════════════════════════════════════
+     END OF FILE
+     File: annual-report.html
+     Version: v103.0.27
+     Batch: B26-3
+     ═══════════════════════════════════════════ -->

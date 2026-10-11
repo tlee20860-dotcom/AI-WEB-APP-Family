@@ -1,13 +1,19 @@
-// finance-overview.js — 銀行交易（v103.0.20）
+// finance-overview.js — 銀行交易（v103.0.27）
+// v103.0.27（B26-3）：
+//   ✅ 改用 page-controls 渲染（viewToggle + year + month）
+//   ✅ 移除 header 內 view toggle
+//   ✅ 支援年 / 月切換
+// ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
 import { calcTotalBankBalance, calcBankBalance } from '../lib/bank.js';
 import { renderDataTable } from '../shared/data-table.js';
 import { renderDataCard } from '../shared/data-card.js';
 import { renderStatsCards } from '../shared/stats-cards.js';
-import { initViewToggle } from '../ui/view-toggle.js';
+import { renderPageControls } from '../lib/page-controls.js';
 import { resolveName } from '../config/entity-registry.js';
 import { AppState } from '../core/state.js';
+import { STORAGE_PREFIXES } from '../config/constants.js';
 
 export default {
   title: '銀行交易',
@@ -35,7 +41,14 @@ export default {
   blocks: [],
 
   customMount: (ctx) => {
-    let _statsApi = null, _tabH = null, _filterH = null, _toggle = null;
+    let _statsApi = null, _tabH = null, _filterH = null;
+    let _controls = null;
+    let _view = 'table';
+
+    try {
+      const v = localStorage.getItem(`${STORAGE_PREFIXES.VIEW}finance-overview-view`);
+      if (v === 'card' || v === 'table') _view = v;
+    } catch (e) { /* noop */ }
 
     const syncState = () => {
       const y = String(AppState.year || new Date().getFullYear());
@@ -120,8 +133,7 @@ export default {
         return;
       }
       root.__lastHtml = '';
-      const canInput = AppState.getCanInput();
-      if (ctx.state.view === 'card') {
+      if (_view === 'card') {
         renderDataCard({
           container: root,
           entityKey: '__bank_account__',
@@ -150,7 +162,7 @@ export default {
         return;
       }
       root.__lastHtml = '';
-      if (ctx.state.view === 'card') {
+      if (_view === 'card') {
         renderDataCard({
           container: root,
           entityKey: '__bank_txn__',
@@ -189,20 +201,40 @@ export default {
       filterRoot.addEventListener('change', _filterH);
     }
 
-    _toggle = initViewToggle({
-      containerId: 'finance-view-toggle',
-      storageKey: 'finance-overview-view',
-      defaultView: 'table',
-      onChange: (view) => { ctx.state.view = view; render(); },
+    /* 🆕 v103.0.27：page-controls */
+    _controls = renderPageControls({
+      containerId: 'page-controls-root',
+      items: [
+        {
+          type: 'viewToggle',
+          align: 'right',
+          storageKey: 'finance-overview-view',
+          defaultView: 'table',
+          onChange: (v) => { _view = v; render(); },
+        },
+        {
+          type: 'year',
+          year: AppState.year,
+          onChange: (y) => AppState.setYearMonth(y, AppState.month === 'all' ? '01' : AppState.month),
+        },
+        {
+          type: 'month',
+          month: AppState.month === 'all' ? '01' : AppState.month,
+          onChange: (m) => AppState.setYearMonth(AppState.year, m),
+        },
+      ],
     });
-    ctx.state.view = _toggle?.getView() || 'table';
 
     syncState();
     syncSubtitle();
     render();
 
     const unsub = ctx.onDataChange((key) => {
-      if (key === '__APP__') { syncState(); syncSubtitle(); }
+      if (key === '__APP__') {
+        syncState();
+        syncSubtitle();
+        if (_controls) { try { _controls.refresh(); } catch (e) {} }
+      }
       render();
     });
 
@@ -210,7 +242,7 @@ export default {
       destroy: () => {
         unsub();
         if (_statsApi) { try { _statsApi.destroy(); } catch (e) {} }
-        if (_toggle) { try { _toggle.destroy(); } catch (e) {} }
+        if (_controls) { try { _controls.destroy(); } catch (e) {} }
         if (_tabH) tabsRoot?.removeEventListener('click', _tabH);
         if (_filterH) filterRoot?.removeEventListener('change', _filterH);
       },
@@ -265,6 +297,6 @@ function _filterTxns(txns, filters, year, month) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/finance-overview.js
-   Version: v103.0.20
-   Batch: B22
+   Version: v103.0.27
+   Batch: B26-3
    ═══════════════════════════════════════════ */

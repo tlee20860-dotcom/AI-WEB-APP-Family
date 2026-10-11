@@ -16,27 +16,17 @@
     <div class="main-area">
       <header id="navbar-root"></header>
       <main class="content content-min-height">
-        <div class="page-header flex flex-between items-end flex-wrap gap-12">
-          <div>
-            <h1 class="page-title">結算清單</h1>
-            <p class="page-subtitle" id="settlement-month"></p>
-          </div>
-          <div class="flex items-center gap-12 flex-wrap">
-            <div id="settlement-view-toggle"></div>
-            <select class="select" id="settlement-sort" style="width:auto; padding:8px 12px;">
-              <option value="pending-first">未處理置頂</option>
-              <option value="date-desc">日期（新→舊）</option>
-              <option value="date-asc">日期（舊→新）</option>
-              <option value="amount-desc">金額（大→小）</option>
-            </select>
-          </div>
+        <div class="page-header">
+          <h1 class="page-title">結算清單</h1>
+          <p class="page-subtitle" id="settlement-month"></p>
         </div>
+
+        <div id="page-controls-root"></div>
 
         <div class="banner mb-16">
           ℹ️ 整合「個人支出 / 家庭共用支出 / 保險扣款」三大來源。
         </div>
 
-        <div id="page-filter-root" class="mb-16"></div>
         <div id="settlement-stats-root"></div>
         <div id="settlement-table-root"></div>
       </main>
@@ -65,6 +55,6 @@
 <!-- ═══════════════════════════════════════════
      END OF FILE
      File: settlements.html
-     Version: v103.0.19
-     Batch: B20
+     Version: v103.0.27
+     Batch: B26-3
      ═══════════════════════════════════════════ -->

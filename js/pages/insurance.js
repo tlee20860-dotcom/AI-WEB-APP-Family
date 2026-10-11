@@ -1,4 +1,9 @@
-// insurance.js — 保險清單表（v103.0.20）
+// insurance.js — 保險清單表（v103.0.27）
+// v103.0.27（B26-3）：
+//   ✅ 改用 page-controls 渲染（add + viewToggle + year + month）
+//   ✅ 移除 header 內按鈕
+//   ✅ 支援年 / 月切換（取代 navbar 年月選擇器）
+// ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
 import { computeEnrichedPolicies, calcProgress, getPolicyHolderId } from '../lib/insurance.js';
@@ -12,8 +17,8 @@ import { showToast } from '../ui/toast.js';
 import { renderStatsCards } from '../shared/stats-cards.js';
 import { renderDataTable } from '../shared/data-table.js';
 import { renderDataCard } from '../shared/data-card.js';
-import { initViewToggle } from '../ui/view-toggle.js';
-import { ENTITY_KEYS } from '../config/constants.js';
+import { renderPageControls } from '../lib/page-controls.js';
+import { ENTITY_KEYS, STORAGE_PREFIXES } from '../config/constants.js';
 
 export default {
   title: '保險清單表',
@@ -29,8 +34,20 @@ export default {
     let _cardApi = null;
     let _clickHandler = null;
     let _toggleHandler = null;
-    let _toggle = null;
+    let _controls = null;
     let _lastIds = '';
+    let _view = 'card';
+
+    /* 讀取上次儲存的 view */
+    try {
+      const saved = localStorage.getItem(`${STORAGE_PREFIXES.VIEW}insurance-view`);
+      if (saved === 'card' || saved === 'table') _view = saved;
+    } catch (e) { /* noop */ }
+
+    const syncSubtitle = () => {
+      const el = document.getElementById('insurance-month');
+      if (el) el.textContent = AppState.getYearMonthLabel();
+    };
 
     const render = () => {
       const policies = ctx.data.policies || [];
@@ -55,6 +72,7 @@ export default {
 
       _paintSection(enriched.filter((p) => p._isCompleted));
       _paintActive(enriched.filter((p) => !p._isCompleted), policies.length);
+      syncSubtitle();
       if (window.lucide) window.lucide.createIcons();
     };
 
@@ -121,7 +139,7 @@ export default {
       if (_tableApi) { try { _tableApi.destroy(); } catch (e) {} _tableApi = null; }
       if (_cardApi) { try { _cardApi.destroy(); } catch (e) {} _cardApi = null; }
 
-      if (ctx.state.view === 'table') {
+      if (_view === 'table') {
         cardEl.style.display = 'none';
         tableEl.style.display = 'block';
         if (active.length === 0) {
@@ -206,13 +224,39 @@ export default {
     };
     if (headerEl) headerEl.addEventListener('click', _toggleHandler);
 
-    _toggle = initViewToggle({
-      containerId: 'insurance-view-toggle',
-      storageKey: 'insurance-view',
-      defaultView: 'card',
-      onChange: (view) => { ctx.state.view = view; render(); },
+    /* 🆕 v103.0.27：page-controls */
+    _controls = renderPageControls({
+      containerId: 'page-controls-root',
+      items: [
+        {
+          type: 'add',
+          label: '新增保單',
+          onClick: () => openEntityModal({ entity: ENTITY_KEYS.POLICY, mode: 'add' }),
+        },
+        {
+          type: 'viewToggle',
+          align: 'right',
+          storageKey: 'insurance-view',
+          defaultView: 'card',
+          onChange: (v) => { _view = v; render(); },
+        },
+        {
+          type: 'year',
+          year: AppState.year,
+          onChange: (y) => AppState.setYearMonth(y, AppState.month === 'all' ? '01' : AppState.month),
+        },
+        {
+          type: 'month',
+          month: AppState.month === 'all' ? '01' : AppState.month,
+          onChange: (m) => AppState.setYearMonth(AppState.year, m),
+        },
+      ],
     });
-    ctx.state.view = _toggle?.getView() || 'card';
+
+    /* 空狀態內的新增按鈕（保留） */
+    const addFirstBtn = document.getElementById('add-first-policy-btn');
+    const onAddFirst = () => openEntityModal({ entity: ENTITY_KEYS.POLICY, mode: 'add' });
+    if (addFirstBtn) addFirstBtn.addEventListener('click', onAddFirst);
 
     const _loadPayments = async () => {
       const policies = ctx.data.policies || [];
@@ -228,7 +272,12 @@ export default {
     };
 
     const unsub = ctx.onDataChange(async (key) => {
-      if (key.startsWith('data.policies') || key === '__APP__') await _loadPayments();
+      if (key.startsWith('data.policies') || key === '__APP__') {
+        if (key === '__APP__' && _controls) {
+          try { _controls.refresh(); } catch (e) {}
+        }
+        await _loadPayments();
+      }
       render();
     });
 
@@ -240,12 +289,13 @@ export default {
         if (_statsApi) { try { _statsApi.destroy(); } catch (e) {} }
         if (_tableApi) { try { _tableApi.destroy(); } catch (e) {} }
         if (_cardApi) { try { _cardApi.destroy(); } catch (e) {} }
-        if (_toggle) { try { _toggle.destroy(); } catch (e) {} }
+        if (_controls) { try { _controls.destroy(); } catch (e) {} }
         if (_clickHandler) {
           document.getElementById('insurance-card-view')?.removeEventListener('click', _clickHandler);
           document.getElementById('completed-grid')?.removeEventListener('click', _clickHandler);
         }
         if (_toggleHandler && headerEl) headerEl.removeEventListener('click', _toggleHandler);
+        if (addFirstBtn) addFirstBtn.removeEventListener('click', onAddFirst);
       },
     };
   },
@@ -254,6 +304,6 @@ export default {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/insurance.js
-   Version: v103.0.20
-   Batch: B22
+   Version: v103.0.27
+   Batch: B26-3
    ═══════════════════════════════════════════ */

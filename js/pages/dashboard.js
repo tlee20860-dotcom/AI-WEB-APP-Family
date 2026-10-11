@@ -1,14 +1,16 @@
 // ============================================
-// dashboard.js — 總覽儀表板（v103.0.17 Page Schema）
+// dashboard.js — 總覽儀表板（v103.0.27 Page Schema）
 // 位置：js/pages/dashboard.js
 // ============================================
-// v103.0.17 修正：
-//   ✅ 用 ctx.onDataChange 統一訂閱（無補丁）
+// v103.0.27（B26-3）：
+//   ✅ 改用 page-controls 渲染「查看年度報表」按鈕
+//   ✅ 副標題位置統一（在 page-header 內）
 // ============================================
 
 import { calcTotalBankBalance } from '../lib/bank.js';
 import { formatHKD } from '../lib/format.js';
 import { AppState } from '../core/state.js';
+import { renderPageControls } from '../lib/page-controls.js';
 
 export default {
   title: '總覽儀表板',
@@ -46,6 +48,8 @@ export default {
   ],
 
   customMount: (ctx) => {
+    let _controls = null;
+
     const syncYear = () => {
       const y = String(AppState.year || new Date().getFullYear());
       if (ctx.state.currentYear !== y) ctx.state.currentYear = y;
@@ -60,13 +64,29 @@ export default {
 
     update();
 
-    /* 🆕 統一訂閱 */
+    /* 🆕 v103.0.27：page-controls */
+    _controls = renderPageControls({
+      containerId: 'page-controls-root',
+      items: [
+        {
+          type: 'custom',
+          align: 'right',
+          render: () => `<a class="btn btn-primary" href="annual-report.html"><i data-lucide="bar-chart-3"></i> 查看年度報表</a>`,
+        },
+      ],
+    });
+
     const unsub = ctx.onDataChange((key) => {
       if (key === '__APP__') syncYear();
       update();
     });
 
-    return { destroy: unsub };
+    return {
+      destroy: () => {
+        unsub();
+        if (_controls) { try { _controls.destroy(); } catch (e) {} _controls = null; }
+      },
+    };
   },
 };
 
@@ -121,3 +141,10 @@ function _buildCards(totalBankBalance, accounts, year, yearTotals) {
 function _buildSubtitle(members, accounts, txns, year) {
   return `${year} 年 · ${(members || []).length} 位成員 · ${(accounts || []).length} 個銀行帳號 · ${(txns || []).length} 筆交易`;
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: js/pages/dashboard.js
+   Version: v103.0.27
+   Batch: B26-3
+   ═══════════════════════════════════════════ */

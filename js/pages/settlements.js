@@ -1,14 +1,13 @@
-// settlements.js — 結算清單（v103.0.25）
+// settlements.js — 結算清單（v103.0.27）
+// v103.0.27（B26-3）：
+//   ✅ 改用 page-controls 渲染（viewToggle + sort + year + month + filter）
+//   ✅ filter 整合 source + hideCompleted
+//   ✅ 移除 renderPageFilter 依賴
+//   ✅ 移除 header 內切換 / 排序
 // v103.0.25（B26-2）：
-//   ✅ P22 修正：reload 開頭同步 filters.year/month（navbar 切換後自動更新）
+//   ✅ P22 修正：reload 開頭同步 filters.year/month
 // v103.0.24（B25-3d）：
 //   ✅ P21 修正：hideCompleted 移出 filters
-// v103.0.23（B25-3c）：
-//   ✅ 保險扣款：加期間判斷
-//   ✅ 加「隱藏已供滿保單」開關
-// v103.0.22（B25-3b）：
-//   ✅ D2(a)：保險扣款「確認扣款 / 取消扣款」接線
-//   ✅ 個人支出編輯改 mode: 'settle'
 // ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
@@ -28,12 +27,11 @@ import { AppState } from '../core/state.js';
 import { showToast } from '../ui/toast.js';
 import { openConfirm, openModal, closeModal } from '../ui/modal.js';
 import { openExpenseModal } from '../lib/expense-modal.js';
-import { renderPageFilter } from '../shared/page-filter.js';
 import { renderStatsCards } from '../shared/stats-cards.js';
 import { renderDataTable } from '../shared/data-table.js';
 import { renderDataCard } from '../shared/data-card.js';
-import { initViewToggle } from '../ui/view-toggle.js';
-import { RESERVED_IDS } from '../config/constants.js';
+import { renderPageControls } from '../lib/page-controls.js';
+import { RESERVED_IDS, STORAGE_PREFIXES } from '../config/constants.js';
 
 const INS_MODAL_ID = 'settle-insurance-modal';
 const HIDE_COMPLETED_KEY = 'fin_ui_settle_hide_completed';
@@ -54,12 +52,23 @@ export default {
     let _rows = [], _filtered = [];
     let _memberExpenses = [], _insuranceRows = [];
     let _statsApi = null, _tableApi = null, _cardApi = null;
-    let _filterInstance = null, _sortH = null, _monthlyUnsub = null, _toggle = null;
+    let _monthlyUnsub = null, _controls = null;
+    let _view = 'table';
 
     try {
       const saved = localStorage.getItem(HIDE_COMPLETED_KEY);
       ctx.state.hideCompleted = saved === null ? true : saved === 'true';
     } catch (e) { /* noop */ }
+
+    try {
+      const v = localStorage.getItem(`${STORAGE_PREFIXES.VIEW}settlement-view`);
+      if (v === 'card' || v === 'table') _view = v;
+    } catch (e) { /* noop */ }
+
+    const syncSubtitle = () => {
+      const el = document.getElementById('settlement-month');
+      if (el) el.textContent = AppState.getYearMonthLabel();
+    };
 
     const _recompute = () => {
       const { year, month } = AppState.getYearMonth();
@@ -163,9 +172,6 @@ export default {
 
     const reload = async () => {
       const { year, month } = AppState.getYearMonth();
-
-      /* 🆕 v103.0.25（B26-2 / P22）：
-         同步 filters.year/month，避免 navbar 切換年月後 filters 未更新 */
       ctx.state.filters.year = String(year);
       ctx.state.filters.month = month === 'all' ? '' : String(month);
 
@@ -176,6 +182,7 @@ export default {
       });
       await _loadInsuranceRows();
       _recompute();
+      syncSubtitle();
     };
 
     const render = () => {
@@ -260,7 +267,7 @@ export default {
 
       const canInput = AppState.getCanInput();
 
-      if (ctx.state.view === 'card') {
+      if (_view === 'card') {
         _cardApi = renderDataCard({
           container: root,
           entityKey: '__settlement__',
@@ -280,55 +287,90 @@ export default {
       }
     };
 
-    /* 首次初始化 filters（給 _filterInstance 的 onChange 用） */
+    /* 首次初始化 filters */
     const { year, month } = AppState.getYearMonth();
     ctx.state.filters.year = String(year);
     ctx.state.filters.month = month === 'all' ? '' : String(month);
 
-    _filterInstance = renderPageFilter({
-      containerId: 'page-filter-root',
-      fields: [],
-      renderExtra: () => `
-        <div class="filter-group">
-          <label class="field-label">來源</label>
-          <select class="select" data-filter="source">
-            <option value="">全部</option>
-            <option value="personal">🏷 個人支出</option>
-            <option value="insurance">🛡 保險扣款</option>
-          </select>
-        </div>
-        <div class="filter-group" style="flex-direction:row;align-items:center;gap:8px;min-width:auto;">
-          <input type="checkbox" id="settle-hide-completed" style="width:auto;cursor:pointer;" ${ctx.state.hideCompleted ? 'checked' : ''}>
-          <label for="settle-hide-completed" class="field-label" style="margin:0;cursor:pointer;">隱藏已供滿</label>
-        </div>
-      `,
-      onChange: (f) => {
-        ctx.state.filters.source = f.source || '';
+    /* 🆕 v103.0.27：page-controls（含 filter 整合 hideCompleted + source） */
+    _controls = renderPageControls({
+      containerId: 'page-controls-root',
+      items: [
+        {
+          type: 'viewToggle',
+          align: 'right',
+          storageKey: 'settlement-view',
+          defaultView: 'table',
+          onChange: (v) => { _view = v; _paintList(); },
+        },
+        {
+          type: 'sort',
+          align: 'right',
+          value: ctx.state.sortMode,
+          options: [
+            { value: 'pending-first', label: '未處理置頂' },
+            { value: 'date-desc', label: '日期（新→舊）' },
+            { value: 'date-asc', label: '日期（舊→新）' },
+            { value: 'amount-desc', label: '金額（大→小）' },
+          ],
+          onChange: (v) => { ctx.state.sortMode = v; render(); },
+        },
+        {
+          type: 'year',
+          year: AppState.year,
+          onChange: (y) => AppState.setYearMonth(y, AppState.month === 'all' ? '01' : AppState.month),
+        },
+        {
+          type: 'month',
+          month: AppState.month === 'all' ? '01' : AppState.month,
+          onChange: (m) => AppState.setYearMonth(AppState.year, m),
+        },
+        {
+          type: 'filter',
+          render: () => `
+            <div class="page-filter-bar">
+              <div class="filter-group">
+                <label class="field-label">來源</label>
+                <select class="select" data-settle-filter="source">
+                  <option value="" ${ctx.state.filters.source === '' ? 'selected' : ''}>全部</option>
+                  <option value="personal" ${ctx.state.filters.source === 'personal' ? 'selected' : ''}>🏷 個人支出</option>
+                  <option value="insurance" ${ctx.state.filters.source === 'insurance' ? 'selected' : ''}>🛡 保險扣款</option>
+                </select>
+              </div>
+              <div class="filter-group" style="flex-direction:row;align-items:center;gap:8px;min-width:auto;">
+                <input type="checkbox" id="settle-hide-completed" style="width:auto;cursor:pointer;" ${ctx.state.hideCompleted ? 'checked' : ''}>
+                <label for="settle-hide-completed" class="field-label" style="margin:0;cursor:pointer;">隱藏已供滿</label>
+              </div>
+            </div>
+          `,
+        },
+      ],
+    });
+
+    /* filter 事件綁定（page-controls 不管 filter 內部事件） */
+    const onFilterChange = (e) => {
+      const sel = e.target.closest('[data-settle-filter="source"]');
+      if (sel) {
+        ctx.state.filters.source = sel.value;
         render();
-      },
-    });
-
-    const hideCb = document.getElementById('settle-hide-completed');
-    const onHideChange = () => {
-      const val = hideCb?.checked === true;
-      ctx.state.hideCompleted = val;
-      try { localStorage.setItem(HIDE_COMPLETED_KEY, String(val)); } catch (e) {}
-      reload();
+        return;
+      }
+      const cb = e.target.closest('#settle-hide-completed');
+      if (cb) {
+        ctx.state.hideCompleted = cb.checked;
+        try { localStorage.setItem(HIDE_COMPLETED_KEY, String(cb.checked)); } catch (err) {}
+        reload();
+      }
     };
-    hideCb?.addEventListener('change', onHideChange);
+    const controlsRoot = document.getElementById('page-controls-root');
+    controlsRoot?.addEventListener('change', onFilterChange);
 
-    _sortH = (e) => { ctx.state.sortMode = e.target.value; render(); };
-    document.getElementById('settlement-sort')?.addEventListener('change', _sortH);
-
-    _toggle = initViewToggle({
-      containerId: 'settlement-view-toggle',
-      storageKey: 'settlement-view',
-      defaultView: 'table',
-      onChange: (view) => { ctx.state.view = view; _paintList(); },
+    const unsub = ctx.onDataChange((key) => {
+      if (key === '__APP__') {
+        reload();
+        if (_controls) { try { _controls.refresh(); } catch (e) {} }
+      }
     });
-    ctx.state.view = _toggle?.getView() || 'table';
-
-    const unsub = ctx.onDataChange((key) => { if (key === '__APP__') reload(); });
 
     reload();
 
@@ -336,13 +378,11 @@ export default {
       destroy: () => {
         unsub();
         if (_monthlyUnsub) { try { _monthlyUnsub(); } catch (e) {} }
-        if (_filterInstance) { try { _filterInstance.destroy(); } catch (e) {} }
         if (_statsApi) { try { _statsApi.destroy(); } catch (e) {} }
         if (_tableApi) { try { _tableApi.destroy(); } catch (e) {} }
         if (_cardApi) { try { _cardApi.destroy(); } catch (e) {} }
-        if (_toggle) { try { _toggle.destroy(); } catch (e) {} }
-        if (_sortH) document.getElementById('settlement-sort')?.removeEventListener('change', _sortH);
-        if (hideCb && onHideChange) hideCb.removeEventListener('change', onHideChange);
+        if (_controls) { try { _controls.destroy(); } catch (e) {} }
+        if (controlsRoot && onFilterChange) controlsRoot.removeEventListener('change', onFilterChange);
       },
     };
   },
@@ -462,6 +502,6 @@ async function _openBankPickerModal(row) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/settlements.js
-   Version: v103.0.25
-   Batch: B26-2
+   Version: v103.0.27
+   Batch: B26-3
    ═══════════════════════════════════════════ */

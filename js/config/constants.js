@@ -1,18 +1,18 @@
 // ============================================
-// constants.js — 全站常數集中管理（v103.0.22）
+// constants.js — 全站常數集中管理（v103.0.27）
 // 位置：js/config/constants.js
 // ============================================
+// v103.0.27（B26-3）：
+//   ✅ 移除 SHOW_YEAR_MONTH_PAGES（navbar 年月選擇器已移除）
 // v103.0.22（B25-5）：
-//   ✅ L2：APP_VERSION 更新至 v103.0.22
-//   ✅ SW_VERSION 更新至 family-fin-v140
-//   ✅ 補 END OF FILE
+//   ✅ APP_VERSION / SW_VERSION 更新
 // ============================================
 
 /* ============================================
    0. 版本號
    ============================================ */
-export const APP_VERSION = 'v103.0.22';
-export const SW_VERSION = 'family-fin-v140';
+export const APP_VERSION = 'v103.0.27';
+export const SW_VERSION = 'family-fin-v141';
 
 /* ============================================
    1. localStorage Keys
@@ -447,13 +447,7 @@ export const ROUTES = {
   SETTINGS:         'settings.html',
 };
 
-export const SHOW_YEAR_MONTH_PAGES = [
-  ROUTES.INSURANCE,
-  ROUTES.PORTFOLIO,
-  ROUTES.SETTLEMENTS,
-  ROUTES.FINANCE_OVERVIEW,
-  ROUTES.MEMBER_REPORT,
-];
+/* 註：SHOW_YEAR_MONTH_PAGES 已於 B26-3 移除（navbar 年月選擇器已移除） */
 
 /* ============================================
    21. 快速摘要卡類型
@@ -478,6 +472,6 @@ export const STATUS_CATEGORIES = {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/config/constants.js
-   Version: v103.0.22
-   Batch: B25-5
+   Version: v103.0.27
+   Batch: B26-3
    ═══════════════════════════════════════════ */

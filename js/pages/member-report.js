@@ -1,11 +1,15 @@
-// member-report.js — 成員收支明細（v103.0.20）
+// member-report.js — 成員收支明細（v103.0.27）
+// v103.0.27（B26-3）：
+//   ✅ 改用 page-controls 渲染（viewToggle + year + month）
+//   ✅ 移除 header 內 view toggle
+// ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
 import { AppState } from '../core/state.js';
-import { RESERVED_IDS } from '../config/constants.js';
+import { RESERVED_IDS, STORAGE_PREFIXES } from '../config/constants.js';
 import { renderDataTable } from '../shared/data-table.js';
 import { renderDataCard } from '../shared/data-card.js';
-import { initViewToggle } from '../ui/view-toggle.js';
+import { renderPageControls } from '../lib/page-controls.js';
 
 export default {
   title: '成員與家庭收入與支出明細',
@@ -23,7 +27,14 @@ export default {
   blocks: [{ type: 'stats', container: 'member-report-stats-root', cards: '$.statsCards' }],
 
   customMount: (ctx) => {
-    let _tableApi = null, _cardApi = null, _toggle = null;
+    let _tableApi = null, _cardApi = null;
+    let _controls = null;
+    let _view = 'table';
+
+    try {
+      const v = localStorage.getItem(`${STORAGE_PREFIXES.VIEW}member-report-view`);
+      if (v === 'card' || v === 'table') _view = v;
+    } catch (e) { /* noop */ }
 
     const syncSubtitle = () => {
       const el = document.getElementById('member-report-subtitle');
@@ -59,7 +70,7 @@ export default {
 
       const rows = ctx.derived.rows || [];
 
-      if (ctx.state.view === 'card') {
+      if (_view === 'card') {
         _cardApi = renderDataCard({
           container: root,
           entityKey: '__member_report__',
@@ -77,13 +88,29 @@ export default {
       }
     };
 
-    _toggle = initViewToggle({
-      containerId: 'member-report-view-toggle',
-      storageKey: 'member-report-view',
-      defaultView: 'table',
-      onChange: (view) => { ctx.state.view = view; paint(); },
+    /* 🆕 v103.0.27：page-controls */
+    _controls = renderPageControls({
+      containerId: 'page-controls-root',
+      items: [
+        {
+          type: 'viewToggle',
+          align: 'right',
+          storageKey: 'member-report-view',
+          defaultView: 'table',
+          onChange: (v) => { _view = v; paint(); },
+        },
+        {
+          type: 'year',
+          year: AppState.year,
+          onChange: (y) => AppState.setYearMonth(y, AppState.month === 'all' ? '01' : AppState.month),
+        },
+        {
+          type: 'month',
+          month: AppState.month === 'all' ? '01' : AppState.month,
+          onChange: (m) => AppState.setYearMonth(AppState.year, m),
+        },
+      ],
     });
-    ctx.state.view = _toggle?.getView() || 'table';
 
     syncSubtitle();
     paint();
@@ -92,6 +119,7 @@ export default {
       if (key === '__APP__') {
         const y = String(AppState.year || new Date().getFullYear());
         if (ctx.state.currentYear !== y) ctx.state.currentYear = y;
+        if (_controls) { try { _controls.refresh(); } catch (e) {} }
       }
       syncSubtitle();
       paint();
@@ -102,7 +130,7 @@ export default {
         unsub();
         if (_tableApi) { try { _tableApi.destroy(); } catch (e) {} }
         if (_cardApi) { try { _cardApi.destroy(); } catch (e) {} }
-        if (_toggle) { try { _toggle.destroy(); } catch (e) {} }
+        if (_controls) { try { _controls.destroy(); } catch (e) {} }
       },
     };
   },
@@ -152,6 +180,6 @@ function _buildStats(rows, year) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/member-report.js
-   Version: v103.0.20
-   Batch: B22
+   Version: v103.0.27
+   Batch: B26-3
    ═══════════════════════════════════════════ */

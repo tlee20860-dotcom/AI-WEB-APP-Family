@@ -1,18 +1,13 @@
 // ============================================
-// sw.js — Service Worker（v103.0.22）
+// sw.js — Service Worker（v103.0.27）
 // 位置：sw.js
 // ============================================
-// v103.0.22（B25-5）：
-//   ✅ R4：STATIC_ASSETS 補 5 檔（B19 / B23 新增）
-//      - js/lib/expense-modal.js
-//      - js/lib/income-modal.js
-//      - js/lib/filter-sort.js
-//      - js/entity/entity-resolvers.js
-//      - js/entity/entity-funds-allocation.js
-//   ✅ CACHE_NAME 升版 v139 → v140
+// v103.0.27（B26-3）：
+//   ✅ 加 js/lib/page-controls.js
+//   ✅ CACHE_NAME 升版 v140 → v141
 // ============================================
 
-const CACHE_NAME = 'family-fin-v140';
+const CACHE_NAME = 'family-fin-v141';
 
 const STATIC_ASSETS = [
   './css/theme.css',
@@ -50,6 +45,7 @@ const STATIC_ASSETS = [
   './js/lib/expense-modal.js',
   './js/lib/income-modal.js',
   './js/lib/filter-sort.js',
+  './js/lib/page-controls.js',
 
   './js/engines/data-engine.js',
   './js/engines/render-engine.js',
@@ -112,11 +108,8 @@ const STATIC_ASSETS = [
   './icons/icon.svg',
 ];
 
-/* ============================================
-   INSTALL
-   ============================================ */
 self.addEventListener('install', (e) => {
-  console.log('[SW] install (v103.0.22, cache=' + CACHE_NAME + ')');
+  console.log('[SW] install (v103.0.27, cache=' + CACHE_NAME + ')');
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) =>
       Promise.all(
@@ -131,9 +124,6 @@ self.addEventListener('install', (e) => {
   );
 });
 
-/* ============================================
-   ACTIVATE
-   ============================================ */
 self.addEventListener('activate', (e) => {
   console.log('[SW] activate');
   e.waitUntil(
@@ -153,9 +143,6 @@ self.addEventListener('activate', (e) => {
   );
 });
 
-/* ============================================
-   FETCH（全部 network-first）
-   ============================================ */
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
 
@@ -166,9 +153,6 @@ self.addEventListener('fetch', (e) => {
   e.respondWith(_networkFirst(e.request));
 });
 
-/* ============================================
-   策略：Network First
-   ============================================ */
 async function _networkFirst(request) {
   const url = new URL(request.url);
   const isHtml = request.mode === 'navigate'
@@ -204,6 +188,6 @@ async function _networkFirst(request) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: sw.js
-   Version: v103.0.22
-   Batch: B25-5
+   Version: v103.0.27
+   Batch: B26-3
    ═══════════════════════════════════════════ */

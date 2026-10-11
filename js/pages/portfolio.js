@@ -1,7 +1,8 @@
-// portfolio.js — 基金投資表（v103.0.22）
-// v103.0.22（B25-2）：
-//   ✅ H5：快照 Modal document click 監聽移入 customMount + destroy 時移除
-//   ✅ H6：移除 setTimeout(render, 0)，改為同步 render
+// portfolio.js — 基金投資表（v103.0.27）
+// v103.0.27（B26-3）：
+//   ✅ 改用 page-controls 渲染（add + year + month）
+//   ✅ 移除 header 內新增按鈕
+//   ✅ 支援年 / 月切換
 // ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
@@ -12,6 +13,7 @@ import { buildForm } from '../ui/form-builder.js';
 import { showToast } from '../ui/toast.js';
 import { saveFundSnapshot, getFundSnapshotsOnce } from '../core/db.js';
 import { AppState } from '../core/state.js';
+import { renderPageControls } from '../lib/page-controls.js';
 import { ENTITY_KEYS } from '../config/constants.js';
 
 const SNAP_MODAL_ID = 'fund-snapshot-modal';
@@ -42,6 +44,8 @@ export default {
   ],
 
   customMount: (ctx) => {
+    let _controls = null;
+
     const render = () => {
       _paintInsurance(ctx);
       _paintStandalone(ctx);
@@ -50,17 +54,41 @@ export default {
 
     const unsub = ctx.onDataChange((key) => {
       if (key.startsWith('data.funds') || key.startsWith('data.policies') || key === '__APP__') {
+        if (key === '__APP__' && _controls) {
+          try { _controls.refresh(); } catch (e) {}
+        }
         render();
       }
     });
 
     render();
 
-    const addBtn = document.getElementById('add-fund-btn');
+    /* 🆕 v103.0.27：page-controls */
+    _controls = renderPageControls({
+      containerId: 'page-controls-root',
+      items: [
+        {
+          type: 'add',
+          label: '新增基金',
+          onClick: () => openEntityModal({ entity: ENTITY_KEYS.FUND, mode: 'add', onSuccess: render }),
+        },
+        {
+          type: 'year',
+          year: AppState.year,
+          onChange: (y) => AppState.setYearMonth(y, AppState.month === 'all' ? '01' : AppState.month),
+        },
+        {
+          type: 'month',
+          month: AppState.month === 'all' ? '01' : AppState.month,
+          onChange: (m) => AppState.setYearMonth(AppState.year, m),
+        },
+      ],
+    });
+
+    /* 空狀態內的新增按鈕（保留） */
     const addFirstBtn = document.getElementById('add-first-fund-btn');
-    const onAdd = () => openEntityModal({ entity: ENTITY_KEYS.FUND, mode: 'add', onSuccess: render });
-    addBtn?.addEventListener('click', onAdd);
-    addFirstBtn?.addEventListener('click', onAdd);
+    const onAddFirst = () => openEntityModal({ entity: ENTITY_KEYS.FUND, mode: 'add', onSuccess: render });
+    if (addFirstBtn) addFirstBtn.addEventListener('click', onAddFirst);
 
     const cardClickHandler = async (e) => {
       const btn = e.target.closest('button[data-action]');
@@ -81,7 +109,6 @@ export default {
       }
     };
 
-    /* 🆕 v103.0.22：快照按鈕監聽改在 customMount 內註冊 + destroy 移除 */
     const snapshotHandler = async (e) => {
       const btn = e.target.closest('button[data-action="snapshot"]');
       if (!btn) return;
@@ -101,8 +128,8 @@ export default {
     return {
       destroy: () => {
         unsub();
-        addBtn?.removeEventListener('click', onAdd);
-        addFirstBtn?.removeEventListener('click', onAdd);
+        if (_controls) { try { _controls.destroy(); } catch (e) {} }
+        if (addFirstBtn) addFirstBtn.removeEventListener('click', onAddFirst);
         insRoot?.removeEventListener('click', cardClickHandler);
         stdRoot?.removeEventListener('click', cardClickHandler);
         document.removeEventListener('click', snapshotHandler);
@@ -311,6 +338,6 @@ function _buildStats(funds) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/portfolio.js
-   Version: v103.0.22
-   Batch: B25-2
+   Version: v103.0.27
+   Batch: B26-3
    ═══════════════════════════════════════════ */
