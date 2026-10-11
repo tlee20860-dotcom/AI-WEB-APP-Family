@@ -1,7 +1,7 @@
 # 家庭財務 Web App — 文檔索引
 
-最後更新：B26-3.2
-當前批次：B26-3.2
+最後更新：B26-7
+當前批次：B26-7
 用途：新對話時，將整個 docs/ 上傳給 AI
 
 ---
@@ -18,7 +18,7 @@
 | 6 | sop.md | 常見任務 SOP |
 | 7 | adr.md | 關鍵決策記錄（ADR-001~019） |
 | 8 | page-map.md | 頁面 → 檔案對照 + 各頁可編輯欄位 + 頁面區塊規格 |
-| 9 | ui-spec.md | 🆕 UI 術語 + 頁面結構 + 元件對照 |
+| 9 | ui-spec.md | UI 術語 + 頁面結構 + 元件對照 |
 | 10 | delivery-rules.md | 交付規則（詳細版） |
 | 11 | refactor-plan.md | 重構計畫 |
 | 12 | api-contracts.md | API 契約 |
@@ -56,6 +56,7 @@
 | 編輯入口職責 | page-map.md + anchor 0.19 |
 | UI 術語 | ui-spec.md |
 | 重大修改對比 | anchor 0.23 |
+| 側邊欄群組 | constants.js + ui-spec.md |
 
 ---
 
@@ -94,7 +95,7 @@
 |---|---|
 | 1 | 讀 ui-spec.md |
 | 2 | 用術語描述（如「add 移到 header」） |
-| 3 | AI 依 page-controls 的 `position` 屬性處理 |
+| 3 | AI 依 page-controls 的 position 屬性處理 |
 
 ### 若 AI 回應「檔案內容不完整」
 
@@ -106,11 +107,11 @@
 
 | 項目 | 值 |
 |---|---|
-| 當前批次 | B26-3.2 |
-| docs 批次 | B26-3.2 |
+| 當前批次 | B26-7 |
+| docs 批次 | B26-7 |
 | SW 版本 | family-fin-v141 |
 | 部署 URL | family-financial-management-system.pages.dev |
-| 測試狀態 | B26-3.2 部署中 |
+| 測試狀態 | B26 已部署測試通過 |
 
 ---
 
@@ -132,6 +133,9 @@
 | page-controls 統一控制列（B26-3） | ✅ |
 | page-header 統一（B26-3.2） | ✅ |
 | UI 術語表（B26-3.2） | ✅ |
+| Superadmin sidebar（B26-4） | ✅ |
+| 遷移按鈕加家庭選擇器（B26-5） | ✅ |
+| 年度總覽恢復（B26-6） | ✅ |
 
 ---
 
@@ -169,14 +173,15 @@
 
 ---
 
-## 待辦事項（P 系列）
+## 待辦事項
 
-| 編號 | 主題 | 優先 |
-|---|---|---|
-| B26-4 | Superadmin sidebar | 🟠 高 |
-| B26-5 | 遷移按鈕方案 C | 🟠 高 |
-| B26-6 | 年度總覽恢復 | 🟠 高 |
-| B27 | page-engine 統一佈局（方案 A） | 🟡 中 |
+| 項目 | 狀態 |
+|---|---|
+| B27 偏好設定系統 | 📋 暫緩 |
+| B28 page-engine 統一佈局 | 📋 記錄 |
+| _headers | ✅ 確認不需 |
+| SW 改 stale | ✅ 確認不需 |
+| 清理 deprecated 檔（v104） | 📋 記錄 |
 
 ---
 
@@ -184,6 +189,7 @@
 
 | 批次 | 更新 |
 |---|---|
+| B26-7 | docs 收尾（7 檔） |
 | B26-3.2 | 新增 ui-spec.md（15 檔）；README + file-manifest + anchor 更新 |
 | B26-1b | docs 補齊（ai-guide / delivery-rules / sop） |
 | B26-1a | docs 補齊（api-contracts / compatibility） |
@@ -196,6 +202,6 @@
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/README.md
-   Version: v103.0.29
-   Batch: B26-3.2
+   Version: v103.0.32
+   Batch: B26-7
    ═══════════════════════════════════════════ */

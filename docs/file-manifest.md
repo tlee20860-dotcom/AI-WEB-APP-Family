@@ -1,7 +1,7 @@
 # 檔案清單
 
-最後更新：B26-3.2
-當前批次：B26
+最後更新：B26-7
+當前批次：B26-7
 
 **說明**：
 - 每次交付後必須更新此表
@@ -14,7 +14,7 @@
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
-| constants.js | v103.0.27 | B26-3 |
+| constants.js | v103.0.31 | B26-4 |
 | firebase-config.js | v103.0.22 | B25 |
 | app-config.js | v103.0.22 | B25 |
 | status-registry.js | v103.0.0 | B01 |
@@ -98,7 +98,7 @@
 | 檔案 | 版本 | 批次 |
 |---|---|---|
 | navbar.js | v103.0.27 | B26-3 |
-| sidebar.js | v103.0.12 | B15 |
+| sidebar.js | v103.0.31 | B26-4 |
 | app-shell.js | v103.0.9 | B11 |
 
 ---
@@ -147,10 +147,10 @@
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
-| dashboard.js | v103.0.29 | B26-3.2 |
+| dashboard.js | v103.0.32 | B26-6 |
 | portfolio.js | v103.0.27 | B26-3 |
 | annual-report.js | v103.0.29 | B26-3.2 |
-| settings.js | v103.0.22 | B25 |
+| settings.js | v103.0.32 | B26-5 |
 | finance-overview.js | v103.0.27 | B26-3 |
 | member-report.js | v103.0.27 | B26-3 |
 | input-center.js | v103.0.20 | B22 |
@@ -186,7 +186,7 @@
 |---|---|---|
 | theme.css | v101 | 未變 |
 | layout.css | v103.0.19 | B20 |
-| components.css | v103.0.29 | B26-3.2 |
+| components.css | v103.0.30 | B26-3.3 |
 | utilities.css | v101.6.6 | 未變 |
 | pages/annual-report.css | v103.0.22 | B25 |
 | pages/insurance.css | v101.10.0 | 未變 |
@@ -197,11 +197,11 @@
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
-| admin.html | — | B11 |
+| admin.html | v103.0.31 | B26-4 |
 | annual-report.html | v103.0.29 | B26-3.2 |
 | database.html | — | B11 |
 | finance-overview.html | v103.0.29 | B26-3.2 |
-| index.html | v103.0.29 | B26-3.2 |
+| index.html | v103.0.32 | B26-6 |
 | input-center.html | — | B12 |
 | insurance.html | v103.0.29 | B26-3.2 |
 | login.html | — | B14C |
@@ -219,7 +219,7 @@
 |---|---|---|
 | sw.js | v103.0.27 | B26-3 |
 | manifest.json | — | 未變 |
-| docs/（15 檔） | v103.0.29 | B26-3.2 |
+| docs/（15 檔） | v103.0.32 | B26-7 |
 
 ---
 
@@ -247,14 +247,18 @@
 
 ---
 
-## 待處理（P 系列）
+## 待處理
 
-| 編號 | 主題 | 狀態 |
-|---|---|---|
-| B26-4 | Superadmin sidebar | 📋 待處理 |
-| B26-5 | 遷移按鈕方案 C | 📋 待處理 |
-| B26-6 | 年度總覽恢復 | 📋 待處理 |
-| B27 | page-engine 統一佈局 | 📋 記錄 |
+| 項目 | 狀態 |
+|---|---|
+| B27 偏好設定系統 | 暫緩 |
+| B28 page-engine 統一佈局 | 記錄 |
+| _headers | ✅ 確認不需 |
+| SW 改 stale | ✅ 確認不需 |
+| js/shared/date-helpers.js | v101，未重構 |
+| js/shared/form-handler.js | deprecated（v104 移除） |
+| js/shared/listener-group.js | deprecated（v104 移除） |
+| js/core/utils.js | 過渡期轉接層（v104 移除） |
 
 ---
 
@@ -262,9 +266,14 @@
 
 | 批次 | 更新 |
 |---|---|
+| B26-7 | docs 收尾（file-manifest / progress / README / anchor / page-map / ui-spec / ai-guide） |
+| B26-6 | dashboard.js / index.html（年度總覽恢復） |
+| B26-5 | settings.js（遷移加家庭選擇器） |
+| B26-4 | constants.js / sidebar.js / admin.html（roles 過濾） |
+| B26-3.3 | components.css（手機版 page-header） |
 | B26-3.2 | page-controls / components.css / navbar / constants / 7 HTML / 3 JS / sw.js + ui-spec 新 + docs |
 | B26-3.1 | page-controls / components.css / 7 HTML |
-| B26-3 | page-controls（新）/ navbar / constants / sw / dashboard / insurance / portfolio / settlements / finance-overview / annual-report / member-report + 7 HTML |
+| B26-3 | page-controls（新）/ navbar / constants / sw / 7 JS + 7 HTML |
 | B25 | 27 檔 + docs |
 | B23 | entity-definitions / entity-modal / entity-funds-allocation（新）/ _insurance / db / column-registry / portfolio / portfolio.html |
 
@@ -273,6 +282,6 @@
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/file-manifest.md
-   Version: v103.0.29
-   Batch: B26-3.2
+   Version: v103.0.32
+   Batch: B26-7
    ═══════════════════════════════════════════ */

@@ -1,6 +1,6 @@
 # UI 規格書（UI Spec）
 
-最後更新：B26-3.2
+最後更新：B26-7
 用途：全站 UI 術語 + 頁面結構 + 元件對照，供 AI 與使用者共同詞彙
 
 **權威來源**：本檔為 UI 術語唯一真相；其他 docs 引用本檔。
@@ -26,6 +26,7 @@
 | 術語 | 中文 | 用途 | 標準位置 |
 |---|---|---|---|
 | `page-header` | 頁首 | 標題 + 副標題 + 主要操作 | 頁面最上 |
+| `page-header-actions` | 頁首操作區 | 標題行右側的主要操作 | page-header 內 |
 | `stats` | 統計卡區 | 數字統計 | header 之後 |
 | `page-controls` | 控制列 | 篩選 / 切換 / 年月 | stats 之後 |
 | `content` | 內容區 | 表格 / 卡片 | 最底 |
@@ -33,6 +34,8 @@
 | `empty-state` | 空狀態 | 無資料時顯示 | 內容區內 |
 | `tab-bar` | 分頁列 | 同頁多分頁 | 各處 |
 | `tab-panel` | 分頁內容 | Tab 對應內容 | 分頁列下方 |
+| `sidebar` | 側邊欄 | 左側導覽 | 頁面左側 |
+| `navbar` | 頂部導覽 | 使用者資訊 | 頁面頂部 |
 
 ---
 
@@ -55,7 +58,7 @@
 | position | 渲染位置 |
 |---|---|
 | （未設） | page-controls body |
-| `'header'` | page-header 右側 |
+| `'header'` | page-header 右側（page-header-actions） |
 
 ---
 
@@ -110,7 +113,7 @@
 
 | 頁面 | 類型 |
 |---|---|
-| index.html | 清單頁（報表類） |
+| index.html | 清單頁（含年度總覽） |
 | insurance.html | 清單頁 |
 | portfolio.html | 清單頁 |
 | settlements.html | 清單頁（報表類） |
@@ -124,7 +127,42 @@
 
 ---
 
-## 七、常用術語對照（使用者 ↔ AI）
+## 七、側邊欄群組（依角色過濾）
+
+**依據**：anchor 八（側邊欄角色過濾）
+
+**原則**：`SIDEBAR_GROUPS` 每群組加 `roles` 陣列；依當前角色過濾。
+
+**群組清單**：
+
+| 群組 key | 標籤 | roles |
+|---|---|---|
+| overview | 總覽 | owner / member |
+| record | 記錄中心 | owner / member |
+| insurance-fund | 保險與基金 | owner / member |
+| settle | 對帳 | owner / member |
+| assets | 資產 | owner / member |
+| reports | 報表 | owner / member |
+| platform | 平台管理 | **superadmin** |
+| system | 系統 | owner / member / superadmin |
+
+**各角色實際可見**：
+
+| 角色 | 可見群組 |
+|---|---|
+| superadmin | 平台管理 + 系統 |
+| owner | 總覽 / 記錄 / 保險基金 / 對帳 / 資產 / 報表 / 系統 |
+| member | 同 owner |
+
+**對外函式**：
+
+| 函式 | 位置 | 說明 |
+|---|---|---|
+| getSidebarGroupsByRole(role) | constants.js | 依角色過濾群組 |
+
+---
+
+## 八、常用術語對照（使用者 ↔ AI）
 
 **使用者描述 → 術語**：
 
@@ -142,10 +180,12 @@
 | 「右上角那顆按鈕」 | page-header-actions 內的 item |
 | 「Tab」 | tab-bar + tab-panel |
 | 「列表」 | table 或 card（依 viewToggle） |
+| 「側邊欄 / 左側欄」 | sidebar |
+| 「角色 / 權限」 | ROLES（superadmin / owner / member） |
 
 ---
 
-## 八、AI 使用本檔的方式
+## 九、AI 使用本檔的方式
 
 **情境 1：使用者要求移動元素**
 
@@ -171,9 +211,17 @@
 | 「那個按鈕」 | 列舉可能的 item，請使用者確認 |
 | 「樣式不對」 | 反問「哪個術語」 |
 
+**情境 4：使用者要求改側邊欄**
+
+| 使用者說 | AI 動作 |
+|---|---|
+| 「加新群組」 | constants.js SIDEBAR_GROUPS 加群組 + roles |
+| 「改某群組可見角色」 | 改該群組的 roles 陣列 |
+| 「加新角色」 | ROLES 加角色；各群組 roles 更新（如需） |
+
 ---
 
-## 九、擴充規則
+## 十、擴充規則
 
 **新增術語時**：
 
@@ -194,13 +242,14 @@
 
 ---
 
-## 十、參考
+## 十一、參考
 
 | 主題 | 檔案 |
 |---|---|
 | 頁面區塊規格 | page-map.md |
 | 版面規格保護規則 | anchor 0.22 |
-| 頁面 → 檔案對照 | page-map.md |
+| UI 術語權威規則 | anchor 0.24 |
+| 側邊欄角色過濾 | anchor 八 + page-map.md |
 | 控制列實作 | lib/page-controls.js |
 
 ---
@@ -208,6 +257,6 @@
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/ui-spec.md
-   Version: v103.0.29
-   Batch: B26-3.2
+   Version: v103.0.32
+   Batch: B26-7
    ═══════════════════════════════════════════ */

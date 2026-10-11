@@ -1,7 +1,7 @@
 # 主錨點 — 家庭財務 Web App
 
-最後更新：B26-3.2
-當前批次：B26-3.2
+最後更新：B26-7
+當前批次：B26-7
 專案狀態：測試中
 
 ---
@@ -21,6 +21,7 @@ Firebase RTDB → data-engine → page-engine → derived → block → DOM
 - 5 Block：stats / list / filter / detail / form
 - 13 Page Schema：純宣告式
 - page-controls：統一控制列渲染
+- 側邊欄依角色過濾（roles 標記）
 
 **五大鐵則**：
 1. 最簡潔實用
@@ -519,15 +520,6 @@ anchor → ai-guide → file-manifest → progress → ui-spec（如需）→ �
 | anchor.md | 規則（本檔） |
 | page-controls.js | 實作 |
 
-**使用範例**：
-
-| 使用者說 | AI 動作 |
-|---|---|
-| 「add 移到 header」 | page-controls `add` 加 `position: 'header'` |
-| 「viewToggle 換位置」 | 改 page-controls item 的 position / align |
-| 「調整統計卡」 | stats section（block） |
-| 「調整那個按鈕」 | 反問：「哪個 section / item？」 |
-
 **違反判定**：🟧 高
 
 **理由**：建立共同詞彙，避免模糊溝通導致 AI 誤解。
@@ -686,7 +678,44 @@ ctx 提供：
 
 ---
 
-## 八、目標檔案結構
+## 八、側邊欄角色過濾
+
+**模組**：`js/config/constants.js` + `js/layout/sidebar.js`
+
+**原則**：`SIDEBAR_GROUPS` 每群組加 `roles` 陣列，依當前角色過濾。
+
+**角色可見群組**：
+
+| 角色 | 可見群組 |
+|---|---|
+| superadmin | 平台管理 + 系統 |
+| owner | 總覽 / 記錄中心 / 保險與基金 / 對帳 / 資產 / 報表 / 系統 |
+| member | 同 owner |
+
+**對外函式**：
+
+| 函式 | 說明 |
+|---|---|
+| getSidebarGroupsByRole(role) | 依角色過濾群組 |
+
+**新增群組流程**：
+
+| 步驟 | 動作 |
+|---|---|
+| 1 | 在 SIDEBAR_GROUPS 加新群組 |
+| 2 | 加 `roles` 陣列 |
+| 3 | sidebar.js 自動過濾 |
+
+**新增角色流程**：
+
+| 步驟 | 動作 |
+|---|---|
+| 1 | 在 ROLES 加新角色 |
+| 2 | 各群組的 `roles` 加新角色（如需） |
+
+---
+
+## 九、目標檔案結構
 
 js/config（7 檔）：constants / firebase-config / app-config / 4 Registry
 
@@ -714,7 +743,7 @@ docs（15 檔）：README / anchor / ai-guide / file-manifest / progress / sop /
 
 ---
 
-## 九、關鍵字索引
+## 十、關鍵字索引
 
 | 關鍵字 | 讀此檔 |
 |---|---|
@@ -743,10 +772,11 @@ docs（15 檔）：README / anchor / ai-guide / file-manifest / progress / sop /
 | 重大修改對比 | anchor.md 0.23 |
 | UI 術語權威 | anchor.md 0.24 + ui-spec.md |
 | 控制列 | anchor.md 七 + lib/page-controls.js |
+| 側邊欄角色過濾 | anchor.md 八 + constants.js |
 
 ---
 
-## 十、下一步
+## 十一、下一步
 
 | 使用者說 | AI 動作 |
 |---|---|
@@ -757,36 +787,33 @@ docs（15 檔）：README / anchor / ai-guide / file-manifest / progress / sop /
 
 ---
 
-## 十一、目前狀態
+## 十二、目前狀態
 
 | 項目 | 值 |
 |---|---|
-| 當前批次 | B26-3.2 |
+| 當前批次 | B26-7 |
 | SW 版本 | family-fin-v141 |
 | 部署 URL | family-financial-management-system.pages.dev |
-| 測試狀態 | B26-3.2 部署中 |
-| B26 修復規劃 | 6 批次（docs / P22 / P24 / sidebar / 遷移 / 年度總覽） |
+| 測試狀態 | B26 已部署測試通過 |
+| 下一步 | docs 收尾（B26-7 進行中） |
 
 ---
 
-## 十二、待辦事項
+## 十三、待辦事項
 
 | 項目 | 狀態 |
 |---|---|
-| P22 年月切換需重整 | ✅ B26-2 已修 |
-| P24 全站佈局統一 | ✅ B26-3 + B26-3.2 |
-| Superadmin sidebar | 📋 B26-4 |
-| 遷移按鈕方案 C | 📋 B26-5 |
-| 年度總覽恢復 | 📋 B26-6 |
-| page-engine 統一佈局 | 📋 B27（記錄） |
-| 效能優化：SW 改回 stale-while-revalidate | 未做 |
-| 補 _headers | 未做 |
+| B27 偏好設定系統 | 📋 暫緩（已確認方案，待重啟） |
+| B28 page-engine 統一佈局 | 📋 記錄 |
+| _headers | ✅ 確認不需 |
+| SW 改 stale | ✅ 確認不需 |
+| 清理 deprecated 檔（v104） | 📋 記錄 |
 
 ---
 
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/anchor.md
-   Version: v103.0.29
-   Batch: B26-3.2
+   Version: v103.0.32
+   Batch: B26-7
    ═══════════════════════════════════════════ */
