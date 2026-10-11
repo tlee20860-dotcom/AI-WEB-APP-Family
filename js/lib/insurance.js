@@ -1,30 +1,18 @@
 // ============================================
-// insurance.js — 保險計算模組（v103.0.0）
+// insurance.js — 保險計算模組（v103.0.22）
 // 位置：js/lib/insurance.js
 // ============================================
-// 來源：從 js/shared/insurance-calc.js 改名（v103.0.0）
-//
-// 職責：
-//   1. 保單持有人 fallback（policyHolderId → memberId）
-//   2. 保單期間範圍 / 期數計算
-//   3. 年繳保費 / 月平均 / 總供款
-//   4. 已供款總額 / 完成期數
-//   5. 供款進度 / 完成判斷
-//   6. 批次 enrich（computeEnrichedPolicies）
+// v103.0.22（B25-4）：
+//   ✅ H8：硬編碼 '已扣款' 改走 status-registry 的 isDone
 // ============================================
 
 import { getPolicyEffectiveMemberId } from '../config/constants.js';
+import { isDone as isDoneStatus } from '../config/status-registry.js';
 
-/* ============================================
-   1. 成員 ID fallback
-   ============================================ */
 export function getPolicyHolderId(policy) {
   return getPolicyEffectiveMemberId(policy);
 }
 
-/* ============================================
-   2. 期間範圍
-   ============================================ */
 export function getPeriodRange(policy, periodIndex) {
   const firstY = Number(policy.firstStartYear) || 0;
   const firstM = Number(policy.firstStartMonth) || 1;
@@ -68,9 +56,6 @@ export function getPeriodInfo(policy, year, month) {
   return { periodIndex, ...getPeriodRange(policy, periodIndex) };
 }
 
-/* ============================================
-   3. 年繳保費
-   ============================================ */
 export function getPolicyAnnualPremium(policy, targetYear) {
   if (!policy) return 0;
 
@@ -84,7 +69,6 @@ export function getPolicyAnnualPremium(policy, targetYear) {
 
   if (totalYears > 0 && periodIndex > totalYears) return 0;
 
-  // 基金保險 = monthlyPremium × 12
   if (policy.type === 'fund_insurance') {
     const mp = Number(policy.monthlyPremium) || 0;
     return Math.round(mp * 12);
@@ -112,9 +96,6 @@ export function getPolicyAnnualPremium(policy, targetYear) {
   return Math.round(Number(policy.annualPremium) || 0);
 }
 
-/* ============================================
-   4. 每月分攤金額
-   ============================================ */
 export function resolveMonthlyAmount(policy, year, month, paymentData) {
   if (!policy) return 0;
 
@@ -141,9 +122,6 @@ export function estimateMonthlyAmount(policy, year, month) {
   return resolveMonthlyAmount(policy, year, month, null);
 }
 
-/* ============================================
-   5. 保單總供款
-   ============================================ */
 export function getPolicyTotalPremium(policy) {
   if (!policy) return 0;
 
@@ -184,14 +162,14 @@ export function getPolicyTotalPremium(policy) {
   return total;
 }
 
-/* ============================================
-   6. 已供款總額 / 完成期數
-   ============================================ */
+/**
+ * 🆕 v103.0.22：走 status-registry.isDone（取代硬編碼 '已扣款'）
+ */
 export function getPolicyPaidTotal(payments) {
   let total = 0;
   Object.values(payments || {}).forEach((yearData) => {
     Object.values(yearData || {}).forEach((mData) => {
-      if (mData && mData.status === '已扣款') {
+      if (mData && isDoneStatus(mData.status)) {
         total += Math.round(Number(mData.amount) || 0);
       }
     });
@@ -199,19 +177,19 @@ export function getPolicyPaidTotal(payments) {
   return total;
 }
 
+/**
+ * 🆕 v103.0.22：走 status-registry.isDone（取代硬編碼 '已扣款'）
+ */
 export function countCompletedPeriods(payments) {
   let count = 0;
   Object.values(payments || {}).forEach((yearData) => {
     Object.values(yearData || {}).forEach((mData) => {
-      if (mData && mData.status === '已扣款') count++;
+      if (mData && isDoneStatus(mData.status)) count++;
     });
   });
   return count;
 }
 
-/* ============================================
-   7. 供款狀態
-   ============================================ */
 export function isPolicyCompleted(policy) {
   if (!policy) return false;
   if (policy.isCompleted) return true;
@@ -231,9 +209,6 @@ export function calcProgress(policy) {
   return Math.min(100, Math.round((done / total) * 100));
 }
 
-/* ============================================
-   8. 批次計算
-   ============================================ */
 export function computeEnrichedPolicies(policies, paymentsCache, targetYear) {
   const year = Number(targetYear) || new Date().getFullYear();
 
@@ -265,9 +240,6 @@ export function countCompletedPolicies(enriched) {
   return (enriched || []).filter((p) => p._isCompleted).length;
 }
 
-/* ============================================
-   9. 統計
-   ============================================ */
 export function calcYearTotalPremium(enriched, year) {
   return (enriched || []).reduce((s, p) => s + getPolicyAnnualPremium(p, year), 0);
 }
@@ -291,3 +263,10 @@ export function calcMonthlyTotalAverage(enriched, year, month) {
   });
   return total;
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: js/lib/insurance.js
+   Version: v103.0.22
+   Batch: B25-4
+   ═══════════════════════════════════════════ */

@@ -1,17 +1,15 @@
 // ============================================
-// _helpers.js — API 共用輔助（v103.0.0）
+// _helpers.js — API 共用輔助（v103.0.22）
 // 位置：functions/api/_helpers.js
 // ============================================
-// v103.0.0 精簡：
-//   ✅ 保留 v102.0.0 全部功能
-//   ✅ 版本號更新
+// v103.0.22（B25-4）：
+//   ✅ H3：移除重複定義的 FIREBASE_API_KEY / IDENTITY_TOOLKIT_URL，改從 _config.js 導入
 // ============================================
 
-import { SUPERADMIN_EMAIL, jsonResponse, dbGet } from './_config.js';
+import { SUPERADMIN_EMAIL, FIREBASE_API_KEY, IDENTITY_TOOLKIT_URL as IDENTITY_TOOLKIT_BASE, jsonResponse, dbGet } from './_config.js';
 
-/* ============================================
-   CORS preflight
-   ============================================ */
+const IDENTITY_TOOLKIT_LOOKUP_URL = `${IDENTITY_TOOLKIT_BASE}/accounts:lookup`;
+
 export function handleOptions() {
   return new Response(null, {
     status: 204,
@@ -24,12 +22,6 @@ export function handleOptions() {
   });
 }
 
-const FIREBASE_API_KEY = 'AIzaSyCQlrNdorKJI9xsqr4m4ME046lrubo9Y7I';
-const IDENTITY_TOOLKIT_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:lookup';
-
-/* ============================================
-   平台資源對照表
-   ============================================ */
 export const PLATFORM_RESOURCES = {
   members:     { path: 'members',             type: 'list' },
   banks:       { path: 'banks',               type: 'list' },
@@ -43,15 +35,9 @@ export const PLATFORM_RESOURCES = {
   uiConstants: { path: 'ui_constants',        type: 'object' },
 };
 
-/* ============================================
-   Token 快取
-   ============================================ */
 const _tokenCache = new Map();
 const _TOKEN_CACHE_MS = 60 * 1000;
 
-/* ============================================
-   1. Token 解析 / 驗證
-   ============================================ */
 export function extractToken(request) {
   const authHeader = request.headers.get('Authorization') || '';
   return authHeader.replace('Bearer ', '').trim();
@@ -64,7 +50,7 @@ export async function verifyToken(token) {
   if (cached && cached.expireAt > Date.now()) return cached.user;
 
   try {
-    const res = await fetch(`${IDENTITY_TOOLKIT_URL}?key=${FIREBASE_API_KEY}`, {
+    const res = await fetch(`${IDENTITY_TOOLKIT_LOOKUP_URL}?key=${FIREBASE_API_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ idToken: token }),
@@ -83,9 +69,6 @@ export async function verifyToken(token) {
   }
 }
 
-/* ============================================
-   2. 權限驗證
-   ============================================ */
 export async function verifySuperAdmin(token) {
   const user = await verifyToken(token);
   if (!user) return null;
@@ -163,9 +146,6 @@ async function _getMemberAccount(familyId, uid, token = '') {
   }
 }
 
-/* ============================================
-   3. 必填欄位檢查
-   ============================================ */
 export function requireFields(body, fields) {
   if (!body || typeof body !== 'object') {
     return { ok: false, error: 'INVALID_BODY', fields };
@@ -178,9 +158,6 @@ export function requireFields(body, fields) {
   return null;
 }
 
-/* ============================================
-   4. 回應
-   ============================================ */
 export function errorResponse(code, message = '', status) {
   const statusMap = {
     UNAUTHORIZED: 401,
@@ -207,9 +184,6 @@ export function successResponse(data = {}) {
   return jsonResponse({ ok: true, ...data });
 }
 
-/* ============================================
-   5. 通用驗證流程
-   ============================================ */
 export async function authenticate(request, options = {}) {
   const { body, requiredFields, needSuperAdmin, needFamily } = options;
   const token = extractToken(request);
@@ -252,9 +226,6 @@ export async function authenticate(request, options = {}) {
   return { token, user, isSuper: user.email === SUPERADMIN_EMAIL };
 }
 
-/* ============================================
-   6. 資料工具
-   ============================================ */
 export function filterEmpty(obj) {
   if (!obj || typeof obj !== 'object') return {};
   const out = {};
@@ -272,11 +243,15 @@ export function roundInt(v) {
   return Math.round(Number(v) || 0);
 }
 
-/* ============================================
-   7. 保險連動前綴
-   ============================================ */
 export const LINKED_PREFIX = 'linked_';
 
 export function buildLinkedKey(policyId) {
   return `${LINKED_PREFIX}${policyId}`;
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: functions/api/_helpers.js
+   Version: v103.0.22
+   Batch: B25-4
+   ═══════════════════════════════════════════ */

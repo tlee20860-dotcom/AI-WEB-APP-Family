@@ -1,25 +1,15 @@
 // ============================================
-// merge.js — 結算資料合併邏輯（v103.0.0）
+// merge.js — 結算資料合併邏輯（v103.0.22）
 // 位置：js/lib/merge.js
 // ============================================
-// 來源：從 js/pages/settlements/merge.js 抽出（v103.0.0）
-//
-// 職責：
-//   1. 合併「個人支出 / 保險扣款」為統一的結算資料列
-//   2. 解析舊 linked_xxx 為保單對照
-//   3. 保險狀態只接受保險類別（避免混用個人類別狀態）
-//
-// 相容：
-//   - 舊 linked_ 前綴完全相容
-//   - 保險狀態 fallback 至「未扣款」
+// v103.0.22（B25-4）：
+//   ✅ H8：fallback 改走 status-registry.toLegacyName
 // ============================================
 
 import { getStatusesByCategory } from '../config/app-config.js';
 import { RESERVED_IDS } from '../config/constants.js';
+import { toLegacyName } from '../config/status-registry.js';
 
-/* ============================================
-   保險類別狀態快取（避免重複查詢）
-   ============================================ */
 let _insuranceStatusNames = null;
 
 function _getInsuranceStatusNames() {
@@ -33,27 +23,10 @@ function _getInsuranceStatusNames() {
   return _insuranceStatusNames;
 }
 
-/**
- * 重置快取（家庭切換 / 設定更新時呼叫）
- */
 export function resetInsuranceStatusCache() {
   _insuranceStatusNames = null;
 }
 
-/* ============================================
-   主函式
-   ============================================ */
-
-/**
- * 合併結算資料
- *
- * @param {Object} params
- * @param {Array} params.memberExpenses - 成員支出（含 isAutoLinked）
- * @param {Array} params.insuranceRows - 保險扣款列
- * @param {string|number} params.year
- * @param {string|number} params.month
- * @returns {Array} 合併後的結算列
- */
 export function mergeSettlementData({
   memberExpenses = [],
   insuranceRows = [],
@@ -62,14 +35,12 @@ export function mergeSettlementData({
 }) {
   const rows = [];
 
-  // 1. 個人支出（含家庭共用）
   memberExpenses
     .filter((e) => !e.isAutoLinked)
     .forEach((e) => {
       rows.push(_buildPersonalRow(e, year, month));
     });
 
-  // 2. linked_xxx 對照
   const linkedMap = {};
   memberExpenses
     .filter((e) => e.isAutoLinked)
@@ -79,7 +50,6 @@ export function mergeSettlementData({
       linkedMap[policyId] = e;
     });
 
-  // 3. 合併 linked_xxx + insuranceRows
   const allPolicyIds = new Set([
     ...Object.keys(linkedMap),
     ...insuranceRows.map((p) => p.policyId),
@@ -99,9 +69,6 @@ export function mergeSettlementData({
   return rows;
 }
 
-/* ============================================
-   個人支出
-   ============================================ */
 function _buildPersonalRow(e, year, month) {
   const isShared = e.memberId === RESERVED_IDS.SHARED_MEMBER;
 
@@ -130,19 +97,12 @@ function _buildPersonalRow(e, year, month) {
   };
 }
 
-/* ============================================
-   保險平攤（以 linked 為主）
-   ============================================ */
 function _buildLinkedInsuranceRow(linked, insuranceRow, year, month, policyId) {
   const effectiveMemberId = insuranceRow?.policyHolderId
     || insuranceRow?.memberId
     || linked.memberId
     || '';
 
-  // 保險類別狀態解析（優先順序）：
-  //   1. insurance_payments.status（若為保險類別狀態）
-  //   2. linked.status（若為保險類別狀態）
-  //   3. '未扣款'（fallback）
   const status = _resolveInsuranceStatus(insuranceRow?.status, linked.status);
 
   return {
@@ -171,9 +131,6 @@ function _buildLinkedInsuranceRow(linked, insuranceRow, year, month, policyId) {
   };
 }
 
-/* ============================================
-   保險（無 linked_xxx 時）
-   ============================================ */
 function _buildInsuranceRow(p, year, month) {
   const effectiveMemberId = p.policyHolderId || p.memberId || '';
   const displayName = p.policyName || '（未命名保單）';
@@ -205,21 +162,18 @@ function _buildInsuranceRow(p, year, month) {
   };
 }
 
-/* ============================================
-   保險狀態解析（只接受保險類別狀態）
-   ============================================ */
+/**
+ * 🆕 v103.0.22：fallback 走 status-registry.toLegacyName（SSOT）
+ */
 function _resolveInsuranceStatus(...candidates) {
   const validNames = _getInsuranceStatusNames();
   for (const c of candidates) {
     if (!c) continue;
     if (validNames.has(c)) return c;
   }
-  return '未扣款';
+  return toLegacyName('pending', 'insurance');
 }
 
-/* ============================================
-   內部工具
-   ============================================ */
 function _extractPolicyId(id) {
   if (!id || typeof id !== 'string') return '';
   if (id.startsWith('linked_')) return id.slice(7);
@@ -239,3 +193,10 @@ function _isDoneStatus(statusName, category) {
 
   return statusName.startsWith('已');
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: js/lib/merge.js
+   Version: v103.0.22
+   Batch: B25-4
+   ═══════════════════════════════════════════ */

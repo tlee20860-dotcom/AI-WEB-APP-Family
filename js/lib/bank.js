@@ -1,22 +1,15 @@
 // ============================================
-// bank.js — 銀行業務輔助（v103.0.0）
+// bank.js — 銀行業務輔助（v103.0.22）
 // 位置：js/lib/bank.js
 // ============================================
-// 來源：從 js/shared/bank-helpers.js 改名（v103.0.0）
-//
-// 職責：
-//   1. 銀行餘額計算（SSOT）
-//   2. 銀行交易建立（支出 / 保險 / 代墊 / 家用轉入）
-//   3. 支出編輯同步（銀行交易更新 / 刪除）
-//   4. 保險編輯同步
-//   5. 交易分類統計
+// v103.0.22（B25-4）：
+//   ✅ M7：移除未使用的 checkBankSufficiency 佔位（無呼叫點）
 // ============================================
 
 import {
   addBankTransaction,
   updateBankTransaction,
   removeBankTransaction,
-  getBankAccountsOnce,
 } from '../core/db.js';
 import {
   BANK_TXN_TYPES,
@@ -28,10 +21,6 @@ import { roundHKD, todayISO } from '../core/utils.js';
 /* ============================================
    1. 銀行餘額計算（純函式）
    ============================================ */
-
-/**
- * 計算單一銀行在指定年月的餘額
- */
 export function calcBankBalance(bankAccount, transactions, targetYear, targetMonth) {
   if (!bankAccount) return 0;
 
@@ -44,7 +33,6 @@ export function calcBankBalance(bankAccount, transactions, targetYear, targetMon
   const tY = Number(targetYear);
   const tM = Number(targetMonth);
 
-  // 目標年月早於初始年月 → 只回傳初始值
   if (tY < initY || (tY === initY && tM < initM)) {
     return initial;
   }
@@ -73,9 +61,6 @@ export function calcBankBalance(bankAccount, transactions, targetYear, targetMon
   return balance;
 }
 
-/**
- * 計算所有銀行的總餘額
- */
 export function calcTotalBankBalance(bankAccounts, allTransactions, targetYear, targetMonth) {
   let total = 0;
   (bankAccounts || []).forEach((acc) => {
@@ -85,20 +70,13 @@ export function calcTotalBankBalance(bankAccounts, allTransactions, targetYear, 
   return total;
 }
 
-/**
- * 取得單一銀行的所有交易
- */
 export function getBankTransactions(allTransactions, bankId) {
   return (allTransactions || []).filter((t) => t.bankId === bankId);
 }
 
 /* ============================================
-   2. 銀行交易建立（業務邏輯封裝）
+   2. 銀行交易建立
    ============================================ */
-
-/**
- * 為支出建立銀行交易
- */
 export async function createTransactionForExpense({
   bankId,
   memberId,
@@ -120,9 +98,6 @@ export async function createTransactionForExpense({
   });
 }
 
-/**
- * 為保險建立銀行交易
- */
 export async function createTransactionForInsurance({
   bankId,
   memberId,
@@ -144,9 +119,6 @@ export async function createTransactionForInsurance({
   });
 }
 
-/**
- * 為代墊還款建立銀行交易
- */
 export async function createTransactionForReimbursement({
   bankId,
   memberId,
@@ -168,9 +140,6 @@ export async function createTransactionForReimbursement({
   });
 }
 
-/**
- * 為家用轉入建立銀行交易
- */
 export async function createTransactionForContribution({
   bankId,
   memberId,
@@ -194,10 +163,6 @@ export async function createTransactionForContribution({
 /* ============================================
    3. 支出編輯同步
    ============================================ */
-
-/**
- * 同步支出編輯到銀行交易
- */
 export async function syncExpenseToBank({
   oldBankId,
   oldTxnId,
@@ -208,7 +173,6 @@ export async function syncExpenseToBank({
   const hasOld = !!(oldBankId && oldTxnId);
   const hasNew = !!newBankId;
 
-  // 情況 1：原本有，現在沒有 → 刪除交易
   if (hasOld && !hasNew) {
     try {
       await removeBankTransaction(oldBankId, oldTxnId);
@@ -218,7 +182,6 @@ export async function syncExpenseToBank({
     return '';
   }
 
-  // 情況 2：原本沒有，現在有 → 新增交易
   if (!hasOld && hasNew) {
     return await createTransactionForExpense({
       bankId: newBankId,
@@ -230,7 +193,6 @@ export async function syncExpenseToBank({
     });
   }
 
-  // 情況 3：都有，且相同 → 更新交易
   if (hasOld && hasNew && oldBankId === newBankId) {
     try {
       await updateBankTransaction(oldBankId, oldTxnId, {
@@ -245,7 +207,6 @@ export async function syncExpenseToBank({
     return oldTxnId;
   }
 
-  // 情況 4：都有，但銀行不同 → 刪除舊 + 新增新
   if (hasOld && hasNew && oldBankId !== newBankId) {
     try {
       await removeBankTransaction(oldBankId, oldTxnId);
@@ -265,9 +226,6 @@ export async function syncExpenseToBank({
   return oldTxnId || '';
 }
 
-/**
- * 支出刪除時清理銀行交易
- */
 export async function cleanupExpenseBankTransaction(bankId, txnId) {
   if (!bankId || !txnId) return;
   try {
@@ -280,10 +238,6 @@ export async function cleanupExpenseBankTransaction(bankId, txnId) {
 /* ============================================
    4. 保險編輯同步
    ============================================ */
-
-/**
- * 保險付款 → 銀行交易
- */
 export async function createTransactionForInsurancePayment({
   paymentMode,
   bankId,
@@ -319,34 +273,8 @@ export async function createTransactionForInsurancePayment({
 }
 
 /* ============================================
-   5. 餘額檢查
+   5. 交易分析
    ============================================ */
-
-/**
- * 檢查銀行餘額是否足夠
- */
-export async function checkBankSufficiency(bankId, amount, year, month) {
-  try {
-    const accounts = await getBankAccountsOnce();
-    const account = accounts.find((a) => a.id === bankId);
-    if (!account) {
-      return { balance: 0, sufficient: false, after: 0 };
-    }
-    // 簡化：假設足夠（完整實作需讀取交易）
-    return { balance: 0, sufficient: true, after: 0 };
-  } catch (e) {
-    console.warn('[bank] 檢查餘額失敗：', e);
-    return { balance: 0, sufficient: true, after: 0 };
-  }
-}
-
-/* ============================================
-   6. 交易分析
-   ============================================ */
-
-/**
- * 依分類統計銀行交易
- */
 export function groupTransactionsByCategory(transactions) {
   const groups = {
     [BANK_TXN_CATEGORIES.CONTRIBUTION]:  { count: 0, amount: 0 },
@@ -368,10 +296,14 @@ export function groupTransactionsByCategory(transactions) {
   return groups;
 }
 
-/**
- * 依月份過濾交易
- */
 export function filterTransactionsByMonth(transactions, year, month) {
   const prefix = `${year}-${String(month).padStart(2, '0')}`;
   return (transactions || []).filter((t) => (t.date || '').startsWith(prefix));
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: js/lib/bank.js
+   Version: v103.0.22
+   Batch: B25-4
+   ═══════════════════════════════════════════ */

@@ -1,27 +1,18 @@
 // ============================================
-// utils.js — 通用工具（v103.0.11）
+// utils.js — 通用工具（v103.0.22）
 // 位置：js/core/utils.js
 // ============================================
+// v103.0.22（B25-4）：
+//   ✅ H2 + L7：renderEmptyState 自寫 esc 改用 lib/dom.js
 // v103.0.11 重構：
 //   ✅ [H02] 格式化函式改為從 lib/format.js re-export
 //   ✅ [H03] escapeHtml 改為從 lib/dom.js re-export（別名 esc）
-//   ✅ [M07] getMemberDisplayName 回傳 '（未命名）'（與 label-registry 一致）
-//   ✅ 標記為「過渡期轉接層」，v104 完全廢除
+//   ✅ [M07] getMemberDisplayName 回傳 '（未命名）'
 // ============================================
 
-import {
-  LIMITS, RESERVED_IDS,
-} from '../config/constants.js';
+import { LIMITS, RESERVED_IDS } from '../config/constants.js';
+import { esc } from '../lib/dom.js';
 
-/* ============================================
-   SSOT 轉接層（v103.0.11 過渡期）
-   -------------------------------------------------
-   ⚠️ 格式化相關 → lib/format.js
-   ⚠️ HTML 逸出 → lib/dom.js（別名 esc → escapeHtml）
-   本檔案不再「定義」這些函式，只 re-export。
-   ============================================ */
-
-/* ---------- 格式化（來自 lib/format.js） ---------- */
 export {
   formatHKD,
   formatNumber,
@@ -34,13 +25,11 @@ export {
   getCategoryBadgeClass,
 } from '../lib/format.js';
 
-/* ---------- HTML 逸出（來自 lib/dom.js，舊名相容） ---------- */
-export { esc as escapeHtml } from '../lib/dom.js';
+export { esc as escapeHtml };
 
 /* ============================================
-   日期工具（保留）
+   日期工具
    ============================================ */
-
 export function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -70,9 +59,8 @@ export function parseDate(str) {
 }
 
 /* ============================================
-   字串工具（保留）
+   字串工具
    ============================================ */
-
 export function truncate(name, maxLen) {
   if (!name) return '';
   const s = String(name);
@@ -97,9 +85,8 @@ export function safeParseFloat(value, fallback = 0) {
 }
 
 /* ============================================
-   DOM 工具（保留）
+   DOM 工具
    ============================================ */
-
 export function qs(sel, parent = document) {
   return parent.querySelector(sel);
 }
@@ -113,25 +100,23 @@ export function setText(target, text) {
   if (el) el.textContent = text;
 }
 
+/**
+ * 🆕 v103.0.22：內部 esc 改用 lib/dom.js 的 esc（SSOT）
+ */
 export function renderEmptyState(container, message, options = {}) {
   const el = typeof container === 'string' ? document.getElementById(container) : container;
   if (!el) return;
 
   const { icon, actionHtml } = options;
 
-  // 使用 lib/dom.js 的 esc（透過 re-export 的 escapeHtml 別名）
-  const escFn = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  }[c]));
-
   const iconHtml = icon
-    ? `<i data-lucide="${escFn(icon)}" style="width:48px;height:48px;opacity:0.4;"></i>`
+    ? `<i data-lucide="${esc(icon)}" style="width:48px;height:48px;opacity:0.4;"></i>`
     : '';
 
   el.innerHTML = `
     <div class="empty-state">
       ${iconHtml}
-      <p style="margin-top:12px;">${escFn(message)}</p>
+      <p style="margin-top:12px;">${esc(message)}</p>
       ${actionHtml || ''}
     </div>
   `;
@@ -140,9 +125,8 @@ export function renderEmptyState(container, message, options = {}) {
 }
 
 /* ============================================
-   成員排序（保留）
+   成員排序
    ============================================ */
-
 export function sortMembers(members) {
   return [...(members || [])].sort((a, b) => {
     const oa = a.order != null ? a.order : Number.MAX_SAFE_INTEGER;
@@ -160,10 +144,6 @@ export function isSharedMember(memberId) {
   return memberId === RESERVED_IDS.SHARED_MEMBER;
 }
 
-/**
- * 🆕 v103.0.11 [M07]：
- *   回傳「（未命名）」與 label-registry 的 common.unnamed 一致
- */
 export function getMemberDisplayName(memberId, members = []) {
   if (isExtraIncome(memberId)) return '額外收入';
   if (isSharedMember(memberId)) return '家庭共用';
@@ -172,9 +152,8 @@ export function getMemberDisplayName(memberId, members = []) {
 }
 
 /* ============================================
-   效能工具（保留）
+   效能工具
    ============================================ */
-
 export function debounce(fn, wait = 300) {
   let timer = null;
   return function (...args) {
@@ -195,9 +174,8 @@ export function throttle(fn, wait = 300) {
 }
 
 /* ============================================
-   雜項（保留）
+   雜項
    ============================================ */
-
 export function deepClone(obj) {
   if (obj == null || typeof obj !== 'object') return obj;
   return JSON.parse(JSON.stringify(obj));
@@ -232,3 +210,10 @@ export function makeSortFn(sortKey, order = 'asc') {
     return String(va).localeCompare(String(vb), 'zh-HK') * dir;
   };
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: js/core/utils.js
+   Version: v103.0.22
+   Batch: B25-4
+   ═══════════════════════════════════════════ */

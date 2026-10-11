@@ -1,4 +1,7 @@
-// db.js — Firebase RTDB 讀寫封裝（v103.0.21）
+// db.js — Firebase RTDB 讀寫封裝（v103.0.22）
+// v103.0.22（B25-4）：
+//   ✅ 新增 getBanksOnce / getInsuranceCompaniesOnce（供 entity-helpers 靜態調用）
+// ============================================
 import { db } from '../config/firebase-config.js';
 import { AppState } from './state.js';
 import { RESERVED_IDS, buildLinkedKey, PLATFORM_RESOURCES } from '../config/constants.js';
@@ -75,6 +78,12 @@ export async function deleteMemberAndData(memberId) {
 
 /* ============ 銀行（舊） ============ */
 export function listenBanks(cb, err) { return listenList('banks', byOrderThenCreated, cb, err); }
+export async function getBanksOnce() {
+  const snap = await get(familyRef('banks'));
+  const list = Object.entries(snap.val() || {}).map(([id, b]) => ({ id, ...b }));
+  list.sort(byOrderThenCreated);
+  return list;
+}
 export async function addBank(x) {
   const name = typeof x === 'string' ? x : (x?.name || '');
   const r = push(familyRef('banks'));
@@ -290,6 +299,12 @@ export async function clearAllBankBalances() {
 
 /* ============ 保險公司 ============ */
 export function listenInsuranceCompanies(cb, err) { return listenList('insurance_companies', byCreatedAt, cb, err); }
+export async function getInsuranceCompaniesOnce() {
+  const snap = await get(familyRef('insurance_companies'));
+  const list = Object.entries(snap.val() || {}).map(([id, c]) => ({ id, ...c }));
+  list.sort(byCreatedAt);
+  return list;
+}
 export async function addInsuranceCompany(name) {
   const r = push(familyRef('insurance_companies'));
   await set(r, { name: name || '', createdAt: Date.now() });
@@ -722,7 +737,7 @@ export async function updateFund(id, p) {
 }
 export async function removeFund(id) { await remove(familyRef(`funds/${id}`)); }
 
-/* 🆕 基金快照 */
+/* 基金快照 */
 export function listenFundSnapshots(fundId, cb, err) {
   return listen(`funds/${fundId}/snapshots`, (snap) => cb(snap.val() || {}), err);
 }
@@ -780,6 +795,6 @@ export async function saveSidebarOrder(order) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/core/db.js
-   Version: v103.0.21
-   Batch: B23
+   Version: v103.0.22
+   Batch: B25-4
    ═══════════════════════════════════════════ */

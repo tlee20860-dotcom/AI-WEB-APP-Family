@@ -1,23 +1,22 @@
 // ============================================
-// entity-helpers.js — 通用實體 CRUD 輔助（v103.0.0）
+// entity-helpers.js — 通用實體 CRUD 輔助（v103.0.22）
 // 位置：js/entity/entity-helpers.js
 // ============================================
-// v103.0.0 重構：
-//   ✅ 從 js/shared/entity-helpers.js 移入 js/entity/
-//   ✅ 逸出改用 lib/dom.js 的 esc()
-//   ✅ getDynamicOptions 來源改為 entity-definitions.js（SSOT）
-//   ✅ 保留 v102.0.0 全部功能（含 paymentModes / bankAccounts）
+// v103.0.22（B25-4）：
+//   ✅ M1：_getOnce 移除動態 import Firebase，改用 db.js 靜態 getOnce
 // ============================================
 
 import {
   listenMembers, getMembersOnce,
-  listenBanks, listenFunds,
+  listenBanks, getBanksOnce,
+  listenFunds,
   listenInsurancePolicies, getInsurancePoliciesOnce,
-  listenInsuranceCompanies,
-  listenPaymentMethods,
-  listenCategories, listenItems,
+  listenInsuranceCompanies, getInsuranceCompaniesOnce,
+  listenPaymentMethods, getPaymentMethodsOnce,
+  listenCategories, getCategoriesOnce,
+  listenItems, getItemsOnce,
   listenStatuses,
-  listenBankAccounts,
+  listenBankAccounts, getBankAccountsOnce,
   updateEntityStatus as dbUpdateEntityStatus,
 } from '../core/db.js';
 
@@ -100,14 +99,12 @@ export async function getDynamicOptions(source, context = {}) {
       }
 
       case 'categories': {
-        const list = await _getOnce('expense_categories');
-        return list
-          .sort((a, b) => (a.order || 0) - (b.order || 0))
-          .map((c) => ({ value: c.id, label: c.name }));
+        const list = await getCategoriesOnce();
+        return list.map((c) => ({ value: c.id, label: c.name }));
       }
 
       case 'items': {
-        const list = await _getOnce('expense_items');
+        const list = await getItemsOnce();
         const filtered = context.categoryId
           ? list.filter((i) => i.categoryId === context.categoryId)
           : list;
@@ -115,29 +112,23 @@ export async function getDynamicOptions(source, context = {}) {
       }
 
       case 'payments': {
-        const list = await _getOnce('payment_methods');
-        return list
-          .sort((a, b) => (a.order || 0) - (b.order || 0))
-          .map((p) => ({ value: p.id, label: p.name }));
+        const list = await getPaymentMethodsOnce();
+        return list.map((p) => ({ value: p.id, label: p.name }));
       }
 
       case 'companies': {
-        const list = await _getOnce('insurance_companies');
+        const list = await getInsuranceCompaniesOnce();
         return list.map((c) => ({ value: c.name, label: c.name }));
       }
 
       case 'banks': {
-        const list = await _getOnce('banks');
-        return list
-          .sort((a, b) => (a.order || 0) - (b.order || 0))
-          .map((b) => ({ value: b.id, label: b.name }));
+        const list = await getBanksOnce();
+        return list.map((b) => ({ value: b.id, label: b.name }));
       }
 
       case 'bankAccounts': {
-        const list = await _getOnce('bank_accounts');
-        return list
-          .sort((a, b) => (a.order || 0) - (b.order || 0))
-          .map((b) => ({ value: b.id, label: b.name }));
+        const list = await getBankAccountsOnce();
+        return list.map((b) => ({ value: b.id, label: b.name }));
       }
 
       case 'statuses:personal':
@@ -192,14 +183,6 @@ export async function getDynamicOptions(source, context = {}) {
 function _statusOptions(category) {
   const list = getStatusesByCategory(category);
   return list.map((s) => ({ value: s.name, label: s.name }));
-}
-
-async function _getOnce(path) {
-  const { get } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js');
-  const { familyRef } = await import('../core/db.js');
-  const snap = await get(familyRef(path));
-  const val = snap.val() || {};
-  return Object.entries(val).map(([id, x]) => ({ id, ...x }));
 }
 
 /* ============================================
@@ -306,9 +289,13 @@ export async function getPoliciesOnce() {
   return getInsurancePoliciesOnce();
 }
 
-/**
- * 判斷 ID 是否為保留 ID
- */
 export function isReservedId(id) {
   return id === RESERVED_IDS.EXTRA_INCOME || id === RESERVED_IDS.SHARED_MEMBER;
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: js/entity/entity-helpers.js
+   Version: v103.0.22
+   Batch: B25-4
+   ═══════════════════════════════════════════ */
