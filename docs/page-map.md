@@ -1,6 +1,6 @@
 # 頁面 → 檔案對照表
 
-最後更新：B24
+最後更新：B25
 用途：改某功能時，快速查哪些頁面受影響
 
 ---
@@ -135,7 +135,6 @@
 | js/entity/entity-modal.js | 基金編輯 |
 | js/entity/entity-funds-allocation.js | 保單關聯基金（B23） |
 | js/entity/entity-helpers.js | CRUD |
-| js/ui/view-toggle.js | （B23 移除，改分區） |
 | js/ui/modal.js | 快照 Modal（B23） |
 | js/ui/form-builder.js | 快照表單（B23） |
 | js/core/db.js | 基金 + snapshot CRUD |
@@ -272,6 +271,175 @@
 
 ---
 
+## 各頁可編輯欄位對照
+
+**依據**：anchor 0.19（編輯入口職責分離）
+
+| 頁面 | 可編輯欄位 | 禁止欄位 |
+|---|---|---|
+| input-center（支出） | name / amount / date / categoryId / itemId | status / paymentMethodId / bankId / repaidDate |
+| input-center（收入） | memberId / amount | — |
+| input-center（保單） | 全部保單資料 | 扣款狀態 |
+| input-center（基金） | 全部基金資料 | — |
+| database | 基礎資料（成員 / 銀行 / 類別 / 項目 / 狀態 / 支付方式） | — |
+| settlements（支出） | status / paymentMethodId / bankId / repaidDate | name / amount / date / categoryId / itemId |
+| settlements（保險） | status / bankId | 保單基本資料 |
+| insurance | 保單資料（不含扣款狀態） | 扣款狀態 |
+| portfolio | 基金資料 / 快照 | — |
+
+**實作要求**：
+
+| 情境 | 要求 |
+|---|---|
+| 支出 Modal | `lib/expense-modal.js` 支援 `mode: 'data' \| 'settle'` |
+| data 模式 | 隱藏 status / paymentMethodId / bankId |
+| settle 模式 | 隱藏 name / amount / date / categoryId / itemId |
+| 保險狀態 | 只走 settlements 頁的 `api.insuranceSync` / `insuranceUnsync` |
+| 保險頁 | 只提供「檢視 + 保單資料編輯」 |
+
+---
+
+## 頁面區塊規格
+
+**依據**：anchor 0.22（版面規格保護）
+
+**規則**：未經使用者明確確認，不得刪除 / 移動 / 隱藏 / 改變容器 ID。
+
+**圖例**：
+- ✅ 存在
+- ❌ 缺失（待恢復）
+- 🔒 禁止改動（AI 不得動）
+
+### index.html（總覽儀表板）
+
+| 順序 | 容器 ID | 類型 | 用途 | 狀態 |
+|---|---|---|---|---|
+| 1 | page-header | header | 標題 + 副標題 + 年度報表按鈕 | ✅ |
+| 2 | stats-cards-root | stats | 統計卡（4 張） | ✅ |
+| 3 | annual-overview-root | list | 年度總覽（前後 2 年） | ❌ 待恢復（B25-3） |
+
+### input-center.html（綜合輸入中心）
+
+| 順序 | 容器 ID | 類型 | 用途 | 狀態 |
+|---|---|---|---|---|
+| 1 | page-header | header | 標題 + 副標題 | ✅ |
+| 2 | ic-buttons-root | actions | 5 個操作按鈕 | ✅ |
+| 3 | ic-tab-bar-root | tabs | 4 Tab 切換 | ✅ |
+| 4 | ic-panel-expense | panel | 支出面板 | ✅ |
+| 5 | ic-panel-insurance | panel | 保險面板 | ✅ |
+| 6 | ic-panel-fund | panel | 基金面板 | ✅ |
+| 7 | ic-panel-bank | panel | 銀行面板 | ✅ |
+
+### database.html（基礎資料庫）
+
+| 順序 | 容器 ID | 類型 | 用途 | 狀態 |
+|---|---|---|---|---|
+| 1 | page-header | header | 標題 + 副標題 | ✅ |
+| 2 | db-tab-bar-root | tabs | 6 Tab 切換 | ✅ |
+| 3 | db-panel-members | panel | 成員 | ✅ |
+| 4 | db-panel-banks | panel | 銀行 | ✅ |
+| 5 | db-panel-categories | panel | 支出結構 | ✅ |
+| 6 | db-panel-options | panel | 支付/狀態 | ✅ |
+| 7 | db-panel-dropdowns | panel | 下拉選項 | ✅ |
+| 8 | db-panel-yearrange | panel | 年份範圍 | ✅ |
+
+### insurance.html（保險清單表）
+
+| 順序 | 容器 ID | 類型 | 用途 | 狀態 |
+|---|---|---|---|---|
+| 1 | page-header | header | 標題 + view toggle + 按鈕 | ✅ |
+| 2 | insurance-stats-root | stats | 統計卡 | ✅ |
+| 3 | completed-section | section | 已供滿保單區塊 | ✅ |
+| 4 | insurance-card-view | list | 卡片檢視 | ✅ |
+| 5 | insurance-table-view | list | 表格檢視 | ✅ |
+| 6 | insurance-empty-state | empty | 空狀態 | ✅ |
+
+**待處理（B25-3）**：
+- 移除「同步所有支出」按鈕（`sync-all-btn`）→ 職責移至 settlements
+
+### portfolio.html（基金投資表）
+
+| 順序 | 容器 ID | 類型 | 用途 | 狀態 |
+|---|---|---|---|---|
+| 1 | page-header | header | 標題 + 新增基金按鈕 | ✅ |
+| 2 | portfolio-stats-root | stats | 統計卡 | ✅ |
+| 3 | insurance-funds-list | list | 保險基金區 | ✅ |
+| 4 | standalone-funds-list | list | 獨立基金區 | ✅ |
+| 5 | fund-empty-state | empty | 空狀態 | ✅ |
+
+### settlements.html（結算清單）
+
+| 順序 | 容器 ID | 類型 | 用途 | 狀態 |
+|---|---|---|---|---|
+| 1 | page-header | header | 標題 + view toggle + 排序選單 | ✅ |
+| 2 | page-filter-root | filter | 篩選列 | ✅ |
+| 3 | settlement-stats-root | stats | 統計卡 | ✅ |
+| 4 | settlement-table-root | list | 表格 / 卡片 | ✅ |
+
+**待新增（B25-3）**：
+- 保險扣款「確認扣款」按鈕（currently 缺）
+- 保險扣款「取消扣款」按鈕（currently 有按鈕無實作）
+
+### finance-overview.html（銀行交易）
+
+| 順序 | 容器 ID | 類型 | 用途 | 狀態 |
+|---|---|---|---|---|
+| 1 | page-header | header | 標題 + 副標題 + view toggle | ✅ |
+| 2 | finance-stats-root | stats | 統計卡 | ✅ |
+| 3 | finance-tabs | tabs | 銀行/交易切換 | ✅ |
+| 4 | finance-panel-banks | panel | 銀行清單 | ✅ |
+| 5 | finance-panel-transactions | panel | 交易記錄 | ✅ |
+
+### annual-report.html（年度報表）
+
+| 順序 | 容器 ID | 類型 | 用途 | 狀態 |
+|---|---|---|---|---|
+| 1 | page-header | header | 標題 + 匯出按鈕 | ✅ |
+| 2 | annual-year-switcher | switcher | 年份切換 | ✅ |
+| 3 | annual-view-toggle | toggle | 全年/月度切換 | ✅ |
+| 4 | annual-month-switcher | switcher | 月份切換 | ✅ |
+| 5 | annual-stats-root | stats | 統計卡 | ✅ |
+| 6 | annual-summary-view | view | 全年總合 | ✅ |
+| 7 | annual-monthly-view | view | 月度明細 | ✅ |
+
+### member-report.html（成員報表）
+
+| 順序 | 容器 ID | 類型 | 用途 | 狀態 |
+|---|---|---|---|---|
+| 1 | page-header | header | 標題 + 副標題 + view toggle | ✅ |
+| 2 | member-report-stats-root | stats | 統計卡 | ✅ |
+| 3 | member-list-root | list | 成員明細 | ✅ |
+
+### settings.html（系統設定）
+
+| 順序 | 容器 ID | 類型 | 用途 | 狀態 |
+|---|---|---|---|---|
+| 1 | page-header | header | 標題 + 副標題 | ✅ |
+| 2 | settings-tabs | tabs | Tab 切換 | ✅ |
+| 3 | settings-panel-platform | panel | 平台設定（superadmin） | ✅ |
+| 4 | settings-panel-banks | panel | 銀行帳號 | ✅ |
+| 5 | settings-panel-personal | panel | 個人化 | ✅ |
+
+### admin.html（平台管理）
+
+| 順序 | 容器 ID | 類型 | 用途 | 狀態 |
+|---|---|---|---|---|
+| 1 | page-header | header | 標題 + 登出按鈕 | ✅ |
+| 2 | admin-error | banner | 錯誤訊息 | ✅ |
+| 3 | admin-tabs | tabs | 3 Tab 切換 | ✅ |
+| 4 | admin-panel-families | panel | 家庭管理 | ✅ |
+| 5 | admin-panel-accounts | panel | 帳號總覽 | ✅ |
+| 6 | admin-panel-defaults | panel | 預設資料庫 | ✅ |
+
+### login.html / register.html
+
+| 頁面 | 容器 ID | 類型 | 用途 | 狀態 |
+|---|---|---|---|---|
+| login | login-form | form | 登入表單 | ✅ |
+| register | — | static | 靜態說明 | ✅ |
+
+---
+
 ## 改動影響對照
 
 | 若改此檔 | 影響頁面 |
@@ -310,6 +478,6 @@
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/page-map.md
-   Version: v103.0.21
-   Batch: B24
+   Version: v103.0.22
+   Batch: B25-1
    ═══════════════════════════════════════════ */

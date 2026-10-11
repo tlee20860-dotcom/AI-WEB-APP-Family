@@ -1,7 +1,7 @@
 # 主錨點 — 家庭財務 Web App
 
-最後更新：B24
-當前批次：B23
+最後更新：B25
+當前批次：B24（程式碼）
 專案狀態：測試中
 
 ---
@@ -299,6 +299,10 @@ anchor → ai-guide → file-manifest → progress → 依情境讀其餘
 2. 分級處理：
    - 🟥 A 級（違反硬規則）→ 一定順便改：
      - 重複邏輯 / 補丁思維 / 檔案 > 500 行 / 手寫 HTML 字串
+     - 違反 0.19 編輯入口職責分離
+     - 違反 0.20 Modal 統一
+     - 違反 0.21 Action 契約
+     - 違反 0.22 版面規格保護
    - 🟧 B 級（可優化）→ 順便改，需記錄：
      - 可縮短行數 / 可抽區域變數 / 命名可精簡
    - 🟨 C 級（微調）→ 記錄但不改：
@@ -352,6 +356,144 @@ anchor → ai-guide → file-manifest → progress → 依情境讀其餘
    - 重複定義 anchor 已有的規則
    - 表格 > 30 行
    - 表格內含 | 特殊字元
+
+### 0.19 編輯入口職責分離（強制）
+
+**原則**：資料建立與狀態操作分離。各欄位只允許在指定頁面編輯。
+
+**各頁可編輯欄位對照**：
+
+| 頁面 | 可編輯 | 禁止編輯 |
+|---|---|---|
+| input-center（支出） | name / amount / date / categoryId / itemId | status / paymentMethodId / bankId / repaidDate |
+| input-center（收入） | memberId / amount | — |
+| input-center（保單） | 全部保單資料 | 扣款狀態 |
+| input-center（基金） | 全部基金資料 | — |
+| database | 基礎資料（成員 / 銀行 / 類別 / 項目 / 狀態 / 支付方式） | — |
+| settlements（支出） | status / paymentMethodId / bankId / repaidDate | name / amount / date / categoryId / itemId |
+| settlements（保險） | status / bankId | 保單基本資料 |
+| insurance | 保單資料（不含扣款狀態） | 扣款狀態 |
+| portfolio | 基金資料 / 快照 | — |
+
+**實作要求**：
+
+| 情境 | 要求 |
+|---|---|
+| Modal 共用 | `lib/expense-modal.js` 需支援 `mode: 'data' \| 'settle'` 參數 |
+| data 模式 | 不顯示 status / paymentMethodId / bankId |
+| settle 模式 | 不顯示 name / amount / date / categoryId / itemId |
+| 保險狀態 | 只走 `settlements` 頁的 `api.insuranceSync` / `insuranceUnsync` |
+| 保險頁 | 只提供「檢視 + 保單資料編輯」 |
+
+**違反判定**：🟥 A 級（機會型重構必改）
+
+**理由**：
+- 避免同一欄位多入口修改（問題 4 根因）
+- 資料輸入與狀態操作語意分離
+
+### 0.20 Modal 統一（強制）
+
+**原則**：所有 Modal 一律走 `ui/modal.js`。
+
+| 項目 | 規則 |
+|---|---|
+| 建立 | 使用 `openModal` / `closeModal`（或封裝的 `openConfirm` / `openEntityModal`） |
+| 禁止 | 自建 `div.modal-overlay` + 手動加 `.active` class |
+| 禁止 | 自建 overlay 而不進入 modal 堆疊（`_stack`） |
+| 例外 | 無 |
+
+**違反判定**：
+
+| 情況 | 級別 |
+|---|---|
+| 自建 overlay 且功能故障 | 🔴 阻斷 |
+| 自建 overlay 但功能正常 | 🟠 高（下次順便改） |
+
+**理由**：
+- 統一 ESC 關閉 / backdrop 點擊 / 堆疊管理
+- 避免「缺 .active」類 bug
+- 避免監聽器累積
+
+### 0.21 Action 契約（強制）
+
+**原則**：`customActions` 與引擎預設 action 互斥。
+
+**契約表**：
+
+| 呼叫端傳入 | 引擎行為 |
+|---|---|
+| 只傳 `hooks.onEdit` / `hooks.onDelete` | 引擎生成預設按鈕 |
+| 只傳 `hooks.customActions` | 引擎**不生成**預設按鈕 |
+| 兩者皆傳 | 引擎**不生成**預設（customActions 優先） |
+| 明示要兩者 | 需傳 `disableBuiltinActions: false` + `customActions` |
+
+**實作位置**：
+
+| 檔案 | 位置 |
+|---|---|
+| `js/shared/data-table.js` | `hasActions` 判斷 |
+| `js/shared/data-card.js` | `hasActions` 判斷 |
+
+**統一代碼模式**：
+
+| 變數 | 計算 |
+|---|---|
+| `hasBuiltin` | `effectiveUi.canEdit !== false \|\| effectiveUi.canDelete !== false` |
+| `hasCustom` | `typeof hooks.customActions === 'function'` |
+| `shouldActions` | `hasCustom \|\| (hasBuiltin && extra.disableBuiltinActions !== true)` |
+| 當 `hasCustom` 為真時 | 預設按鈕**不生成** |
+
+**虛構 entity 的 fallback**：
+
+| 情況 | `effectiveUi` 值 |
+|---|---|
+| `getEntityDef(key)` 為 null | `{}`（不是 `{ canEdit: false, canDelete: false }`） |
+
+**違反判定**：🟥 A 級
+
+**理由**：
+- R2 雙重按鈕根因
+- R3 卡片無按鈕根因
+
+### 0.22 版面規格保護（強制）
+
+**原則**：每個頁面的區塊結構是規格。未經使用者明確確認，不得刪除 / 移動 / 隱藏 / 改變容器 ID。
+
+**權威來源**：`docs/page-map.md` 的「頁面區塊規格」章節。
+
+**規則**：
+
+| 項目 | 內容 |
+|---|---|
+| 交付前 | 必須核對目標頁面的區塊清單 |
+| 禁止 | 未經同意刪除區塊 |
+| 禁止 | 未經同意改變區塊順序 |
+| 禁止 | 未經同意改變容器 ID |
+| 允許 | 改區塊內部實作（容器 / 類型 / 用途不變） |
+| 允許 | 新增區塊（需在交付摘要標示） |
+| 例外 | 使用者明確要求刪除 / 重構該頁 |
+
+**判定**：
+
+| 情況 | 級別 |
+|---|---|
+| 未經確認刪除區塊 | 🔴 阻斷 |
+| 未經確認改變容器 ID | 🔴 阻斷 |
+| 未經確認改變順序 | 🟠 高 |
+
+**交付前自我檢查新增項**：
+
+| 檢查項 | 狀態 |
+|---|---|
+| 已核對 page-map.md 頁面區塊規格 | |
+
+**違反處理**：
+- 發現違反 → 立即恢復原狀
+- 若恢復不可行 → 提出方案請使用者決策
+
+**理由**：
+- 避免 AI 優化時無意砍掉區塊（如年度總覽）
+- 版面是使用者可見的契約
 
 ---
 
@@ -509,6 +651,10 @@ docs（14 檔）：README / anchor / ai-guide / file-manifest / progress / sop /
 | 重構歷程 | refactor-plan.md |
 | 進度 | progress.md |
 | AI 決策樹 | ai-guide.md |
+| 編輯入口職責 | anchor.md 0.19 |
+| Modal 統一 | anchor.md 0.20 |
+| Action 契約 | anchor.md 0.21 |
+| 版面規格保護 | anchor.md 0.22 |
 
 ---
 
@@ -527,10 +673,11 @@ docs（14 檔）：README / anchor / ai-guide / file-manifest / progress / sop /
 
 | 項目 | 值 |
 |---|---|
-| 當前批次 | B23 |
+| 當前批次 | B23（程式碼） |
 | SW 版本 | family-fin-v139 |
 | 部署 URL | family-financial-management-system.pages.dev |
-| 測試狀態 | B23 已部署，待測試 |
+| 測試狀態 | B23 已部署，測試中 |
+| B25 修復規劃 | 進行中（7 批次） |
 
 ---
 
@@ -543,12 +690,13 @@ docs（14 檔）：README / anchor / ai-guide / file-manifest / progress / sop /
 | 補 _headers | 未做 |
 | B20 起所有交付加 END OF FILE | 已生效 |
 | 機會型重構套用 | B21 起生效 |
+| 版面規格保護 | B25 起生效 |
 
 ---
 
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/anchor.md
-   Version: v103.0.21
-   Batch: B24
+   Version: v103.0.22
+   Batch: B25-1
    ═══════════════════════════════════════════ */
