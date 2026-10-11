@@ -1,10 +1,11 @@
 /* ============================================
-   annual-report.css — 年度報表專屬樣式（v101.10.0）
+   annual-report.css — 年度報表專屬樣式（v103.0.22）
    ============================================
-   v101.10.0 修正：
-     ✅ [P3-4] 圓角統一：--radius-lg → --radius-sm
-         - .summary-table-wrapper
-         - .monthly-table-wrapper
+   v103.0.22（B25-5.1）：
+     ✅ 年份 / 月份切換器改為「3 顆按鈕」設計
+        - 左右：前一個 / 後一個（含箭頭圖示）
+        - 中間：當前（highlight）
+        - 到邊界時 disabled
    ============================================ */
 
 /* ================= 控制列 ================= */
@@ -25,9 +26,11 @@
 }
 
 .year-switcher .year-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 6px 12px;
   font-size: 13px;
-  font-family: var(--font-mono);
   border-radius: var(--radius-sm);
   border: 1px solid var(--glass-border);
   background: var(--glass-bg);
@@ -35,9 +38,10 @@
   transition: all var(--transition);
   cursor: pointer;
   font-family: inherit;
+  white-space: nowrap;
 }
 
-.year-switcher .year-btn:hover {
+.year-switcher .year-btn:hover:not(:disabled):not(.active) {
   color: var(--neon-cyan);
   border-color: var(--glass-border-hover);
 }
@@ -50,34 +54,44 @@
   cursor: default;
 }
 
-.year-switcher .year-arrow {
-  padding: 6px 8px;
-  font-size: 12px;
-  color: var(--text-muted);
+.year-switcher .year-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
-/* ================= 月份切換 ================= */
+.year-switcher .year-btn i {
+  flex-shrink: 0;
+}
+
+.year-switcher .year-btn span {
+  font-family: var(--font-mono);
+}
+
+/* ================= 月份切換（同年份設計） ================= */
 .month-switcher {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   margin-bottom: 16px;
 }
 
 .month-switcher .month-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 6px 12px;
-  font-size: 12px;
-  font-family: var(--font-mono);
+  font-size: 13px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--glass-border);
   background: var(--glass-bg);
   color: var(--text-secondary);
-  cursor: pointer;
   transition: all var(--transition);
+  cursor: pointer;
   font-family: inherit;
+  white-space: nowrap;
 }
 
-.month-switcher .month-btn:hover {
+.month-switcher .month-btn:hover:not(:disabled):not(.active) {
   color: var(--neon-cyan);
   border-color: var(--glass-border-hover);
 }
@@ -87,6 +101,20 @@
   border-color: rgba(0, 240, 255, 0.5);
   color: var(--neon-cyan);
   font-weight: 700;
+  cursor: default;
+}
+
+.month-switcher .month-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.month-switcher .month-btn i {
+  flex-shrink: 0;
+}
+
+.month-switcher .month-btn span {
+  font-family: var(--font-mono);
 }
 
 /* ================= 全年總合表格 ================= */
@@ -218,12 +246,21 @@
     padding: 8px 10px;
     font-size: 12px;
   }
-  .month-switcher .month-btn {
-    padding: 5px 9px;
-    font-size: 11px;
-  }
   .year-switcher .year-btn {
     padding: 5px 9px;
     font-size: 12px;
+    gap: 3px;
+  }
+  .month-switcher .month-btn {
+    padding: 5px 9px;
+    font-size: 12px;
+    gap: 3px;
   }
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: css/pages/annual-report.css
+   Version: v103.0.22
+   Batch: B25-5.1
+   ═══════════════════════════════════════════ */

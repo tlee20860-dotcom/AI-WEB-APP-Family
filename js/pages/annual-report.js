@@ -1,12 +1,16 @@
 // annual-report.js — 年度報表（v103.0.22）
+// v103.0.22（B25-5.1）：
+//   ✅ P23：年份 / 月份切換器改為「3 顆按鈕」設計（前 / 當 / 後）
+//   ✅ 到邊界（年範圍 / 1 月 / 12 月）時 disabled
 // v103.0.22（B25-5）：
-//   ✅ R5 連帶：view-toggle 傳 syncAppState: false（避免 summary/monthly 污染 AppState）
+//   ✅ R5 連帶：view-toggle 傳 syncAppState: false
 // ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
 import { AppState } from '../core/state.js';
 import { RESERVED_IDS } from '../config/constants.js';
 import { resolveName } from '../config/entity-registry.js';
+import { getYearList } from '../config/app-config.js';
 import { initViewToggle } from '../ui/view-toggle.js';
 
 export default {
@@ -79,7 +83,6 @@ export default {
       tableText: '月度明細',
       cardValue: 'summary',
       tableValue: 'monthly',
-      /* 🆕 v103.0.22：不同步到 AppState（非標準 view） */
       syncAppState: false,
       onChange: (view) => {
         ctx.state.view = view;
@@ -116,39 +119,95 @@ export default {
   },
 };
 
+/* ============================================
+   年份切換器（3 顆按鈕：◀ 前 / 當 / 後 ▶）
+   ============================================ */
 function _renderYearSwitcher(ctx, onChange) {
   const root = document.getElementById('annual-year-switcher');
   if (!root) return;
-  const cur = ctx.state.year;
-  const curY = new Date().getFullYear();
-  const years = [];
-  for (let y = curY - 5; y <= curY + 1; y++) years.push(String(y));
-  root.innerHTML = `<div class="year-switcher">${years.map((y) => `<button type="button" class="year-btn ${y === cur ? 'active' : ''}" data-year="${y}">${y}</button>`).join('')}</div>`;
+
+  const paint = () => {
+    const cur = Number(ctx.state.year);
+    const years = getYearList();
+    const minY = years[0];
+    const maxY = years[years.length - 1];
+    const prevY = cur - 1;
+    const nextY = cur + 1;
+    const canPrev = prevY >= minY;
+    const canNext = nextY <= maxY;
+
+    root.innerHTML = `
+      <div class="year-switcher">
+        <button type="button" class="year-btn" data-year="${prevY}" ${canPrev ? '' : 'disabled'}>
+          <i data-lucide="chevron-left" style="width:14px;height:14px;"></i>
+          <span>${prevY}</span>
+        </button>
+        <button type="button" class="year-btn active" data-year="${cur}">
+          <span>${cur}</span>
+        </button>
+        <button type="button" class="year-btn" data-year="${nextY}" ${canNext ? '' : 'disabled'}>
+          <span>${nextY}</span>
+          <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
+        </button>
+      </div>
+    `;
+    if (window.lucide) window.lucide.createIcons();
+  };
+
+  paint();
+
   root.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-year]');
-    if (!btn) return;
-    ctx.state.year = btn.dataset.year;
-    root.querySelectorAll('.year-btn').forEach((b) => b.classList.toggle('active', b.dataset.year === btn.dataset.year));
+    if (!btn || btn.disabled) return;
+    const y = btn.dataset.year;
+    if (y === ctx.state.year) return;
+    ctx.state.year = y;
+    paint();
     onChange();
   });
 }
 
+/* ============================================
+   月份切換器（同設計：◀ 前 / 當 / 後 ▶）
+   ============================================ */
 function _renderMonthSwitcher(ctx, onChange) {
   const root = document.getElementById('annual-month-switcher');
   if (!root) return;
-  const cur = ctx.state.displayMonth;
-  let html = '<div class="month-switcher">';
-  for (let m = 1; m <= 12; m++) {
-    const mm = String(m).padStart(2, '0');
-    html += `<button type="button" class="month-btn ${mm === cur ? 'active' : ''}" data-month="${mm}">${m}月</button>`;
-  }
-  html += '</div>';
-  root.innerHTML = html;
+
+  const paint = () => {
+    const cur = Number(ctx.state.displayMonth);
+    const prevM = cur - 1;
+    const nextM = cur + 1;
+    const canPrev = prevM >= 1;
+    const canNext = nextM <= 12;
+
+    root.innerHTML = `
+      <div class="month-switcher">
+        <button type="button" class="month-btn" data-month="${String(prevM).padStart(2, '0')}" ${canPrev ? '' : 'disabled'}>
+          <i data-lucide="chevron-left" style="width:14px;height:14px;"></i>
+          <span>${prevM} 月</span>
+        </button>
+        <button type="button" class="month-btn active" data-month="${String(cur).padStart(2, '0')}">
+          <span>${cur} 月</span>
+        </button>
+        <button type="button" class="month-btn" data-month="${String(nextM).padStart(2, '0')}" ${canNext ? '' : 'disabled'}>
+          <span>${nextM} 月</span>
+          <i data-lucide="chevron-right" style="width:14px;height:14px;"></i>
+        </button>
+      </div>
+    `;
+    if (window.lucide) window.lucide.createIcons();
+  };
+
+  paint();
+
   root.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-month]');
-    if (!btn) return;
-    ctx.state.displayMonth = btn.dataset.month;
-    root.querySelectorAll('.month-btn').forEach((b) => b.classList.toggle('active', b.dataset.month === btn.dataset.month));
+    if (!btn || btn.disabled) return;
+    const m = btn.dataset.month;
+    if (m === ctx.state.displayMonth) return;
+    ctx.state.displayMonth = m;
+    paint();
     onChange();
   });
 }
@@ -221,7 +280,7 @@ function _monthlyStats(allIncome, allExpenses, allPersonalIncome, year, month) {
 }
 
 /* ============================================
-   Derived（表格資料）
+   Derived
    ============================================ */
 function _annualRows(members, allIncome, allExpenses, allPersonalIncome, year) {
   const yk = String(year || '');
@@ -314,5 +373,5 @@ function _exportCsv(ctx) {
    END OF FILE
    File: js/pages/annual-report.js
    Version: v103.0.22
-   Batch: B25-5
+   Batch: B25-5.1
    ═══════════════════════════════════════════ */
