@@ -1,14 +1,18 @@
 // ============================================
-// sw.js — Service Worker（v103.0.11）
+// sw.js — Service Worker（v103.0.22）
 // 位置：sw.js
 // ============================================
-// v103.0.11：
-//   ✅ 版本號統一至 v103.0.11
-//   ✅ CACHE_NAME 保持 family-fin-v139
-//   ✅ 全部 network-first（開發階段）
+// v103.0.22（B25-5）：
+//   ✅ R4：STATIC_ASSETS 補 5 檔（B19 / B23 新增）
+//      - js/lib/expense-modal.js
+//      - js/lib/income-modal.js
+//      - js/lib/filter-sort.js
+//      - js/entity/entity-resolvers.js
+//      - js/entity/entity-funds-allocation.js
+//   ✅ CACHE_NAME 升版 v139 → v140
 // ============================================
 
-const CACHE_NAME = 'family-fin-v139';
+const CACHE_NAME = 'family-fin-v140';
 
 const STATIC_ASSETS = [
   './css/theme.css',
@@ -43,6 +47,9 @@ const STATIC_ASSETS = [
   './js/lib/insurance.js',
   './js/lib/bank.js',
   './js/lib/format.js',
+  './js/lib/expense-modal.js',
+  './js/lib/income-modal.js',
+  './js/lib/filter-sort.js',
 
   './js/engines/data-engine.js',
   './js/engines/render-engine.js',
@@ -68,6 +75,8 @@ const STATIC_ASSETS = [
   './js/entity/entity-definitions.js',
   './js/entity/entity-helpers.js',
   './js/entity/entity-modal.js',
+  './js/entity/entity-resolvers.js',
+  './js/entity/entity-funds-allocation.js',
 
   './js/shared/bank-account-manager.js',
   './js/shared/column-settings.js',
@@ -107,7 +116,7 @@ const STATIC_ASSETS = [
    INSTALL
    ============================================ */
 self.addEventListener('install', (e) => {
-  console.log('[SW] install (v103.0.11, cache=' + CACHE_NAME + ')');
+  console.log('[SW] install (v103.0.22, cache=' + CACHE_NAME + ')');
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) =>
       Promise.all(
@@ -191,3 +200,10 @@ async function _networkFirst(request) {
     });
   }
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: sw.js
+   Version: v103.0.22
+   Batch: B25-5
+   ═══════════════════════════════════════════ */

@@ -1,11 +1,12 @@
 // ============================================
-// app-config.js — 平台預設 + 家庭覆蓋設定（v102.0.0）
+// app-config.js — 平台預設 + 家庭覆蓋設定（v103.0.22）
 // 位置：js/config/app-config.js
 // ============================================
+// v103.0.22（B25-5）：
+//   ✅ 補 END OF FILE
 // v102.0.0 修正：
 //   ✅ [P3-3] _toObject / _mergeAll 空物件 fallback 補強
 //   ✅ getOptions('paymentModes') 預設值
-//   ✅ 保留 v101.5 全部功能
 // ============================================
 
 import { db } from './firebase-config.js';
@@ -152,7 +153,6 @@ export function disposeAppConfig() {
 export function getStatuses() {
   const raw = _merged?.statuses;
 
-  // 🆕 P3-3：空物件 fallback（避免 Object.entries({}) 回傳空陣列）
   if (!raw || typeof raw !== 'object' || Object.keys(raw).length === 0) {
     return Object.entries(_toObject(DEFAULT_STATUSES))
       .map(([id, s]) => ({ id, ...s }))
@@ -185,7 +185,6 @@ export function isDoneStatus(name) {
 export function getOptions(key) {
   const opts = _merged?.options;
 
-  // 🆕 P3-3：空物件 fallback
   if (!opts || typeof opts !== 'object' || Object.keys(opts).length === 0) {
     return DEFAULT_OPTIONS[key] || [];
   }
@@ -269,9 +268,6 @@ function _mergeAll() {
   };
 }
 
-/**
- * 🆕 P3-3：挑選非空物件（family → platform → fallback）
- */
 function _pickNonEmpty(familyObj, platformObj, fallback) {
   if (familyObj && typeof familyObj === 'object' && Object.keys(familyObj).length > 0) {
     return familyObj;
@@ -283,7 +279,6 @@ function _pickNonEmpty(familyObj, platformObj, fallback) {
 }
 
 function _mergeOptions(familyOpts, platformOpts) {
-  // 🆕 P3-3：空物件視為無覆蓋
   const hasFamily = familyOpts && typeof familyOpts === 'object' && Object.keys(familyOpts).length > 0;
   const hasPlatform = platformOpts && typeof platformOpts === 'object' && Object.keys(platformOpts).length > 0;
 
@@ -311,3 +306,10 @@ function _notifyAll() {
     try { cb(_merged); } catch (e) { console.error('[app-config] listener error:', e); }
   });
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: js/config/app-config.js
+   Version: v103.0.22
+   Batch: B25-5
+   ═══════════════════════════════════════════ */

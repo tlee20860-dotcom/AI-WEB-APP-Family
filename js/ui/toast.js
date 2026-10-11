@@ -1,20 +1,15 @@
 // ============================================
-// toast.js — Toast 提示（v103.0.0）
+// toast.js — Toast 提示（v103.0.22）
 // 位置：js/ui/toast.js
 // ============================================
-// v103.0.0 重構：
-//   ✅ 從 js/shared/toast.js 移入 js/ui/
-//   ✅ duration 從 app-config 讀取（getUIConstants）
-//   ✅ 支援多個 toast 同時顯示（獨立 DOM）
-//   ✅ 使用 constants.js 統一常數
+// v103.0.22（B25-5）：
+//   ✅ M5：MAX_TOASTS 超出時清 timer，避免 timer 洩漏
+//   ✅ 補 END OF FILE
 // ============================================
 
 import { getUIConstants } from '../config/app-config.js';
 import { LIMITS } from '../config/constants.js';
 
-/* ============================================
-   顏色表
-   ============================================ */
 const COLORS = {
   success: 'rgba(16, 185, 129, 0.95)',
   error:   'rgba(244, 63, 94, 0.95)',
@@ -25,16 +20,9 @@ const COLORS = {
 const CONTAINER_ID = 'app-toast-container';
 const MAX_TOASTS = 3;
 
-/* ============================================
-   主函式
-   ============================================ */
+/* 🆕 v103.0.22：每個 toast 記錄 timer，方便清理 */
+const _timers = new WeakMap();
 
-/**
- * 顯示 Toast 提示
- * @param {string} msg - 訊息內容
- * @param {'success'|'error'|'info'|'warning'} [type='success']
- * @param {number} [duration] - 顯示時間（毫秒），未提供則從 app-config 讀取
- */
 export function showToast(msg, type = 'success', duration) {
   if (duration == null) {
     try {
@@ -47,9 +35,12 @@ export function showToast(msg, type = 'success', duration) {
 
   const container = _getOrCreateContainer();
 
-  // 限制數量
+  /* 🆕 v103.0.22：超出上限時，先清 timer 再移除 */
   while (container.children.length >= MAX_TOASTS) {
-    container.removeChild(container.firstChild);
+    const first = container.firstChild;
+    if (!first) break;
+    _clearToastTimer(first);
+    container.removeChild(first);
   }
 
   const toast = document.createElement('div');
@@ -78,18 +69,20 @@ export function showToast(msg, type = 'success', duration) {
     toast.style.transform = 'translateY(0)';
   });
 
-  setTimeout(() => {
+  /* 🆕 v103.0.22：記錄 timer */
+  const outerTimer = setTimeout(() => {
     toast.style.opacity = '0';
     toast.style.transform = 'translateY(10px)';
-    setTimeout(() => {
+    const innerTimer = setTimeout(() => {
       if (toast.parentNode) toast.parentNode.removeChild(toast);
+      _timers.delete(toast);
     }, 300);
+    _timers.set(toast, innerTimer);
   }, duration);
+
+  _timers.set(toast, outerTimer);
 }
 
-/* ============================================
-   便捷方法
-   ============================================ */
 export const toastSuccess = (msg, duration) => showToast(msg, 'success', duration);
 export const toastError   = (msg, duration) => showToast(msg, 'error', duration);
 export const toastInfo    = (msg, duration) => showToast(msg, 'info', duration);
@@ -98,6 +91,19 @@ export const toastWarning = (msg, duration) => showToast(msg, 'warning', duratio
 /* ============================================
    內部工具
    ============================================ */
+
+/**
+ * 🆕 v103.0.22：清除單一 toast 的 timer
+ * 注意：outerTimer 或 innerTimer 二擇一存於 WeakMap
+ */
+function _clearToastTimer(toast) {
+  const t = _timers.get(toast);
+  if (t) {
+    clearTimeout(t);
+    _timers.delete(toast);
+  }
+}
+
 function _getOrCreateContainer() {
   let container = document.getElementById(CONTAINER_ID);
   if (container) return container;
@@ -119,3 +125,10 @@ function _getOrCreateContainer() {
   document.body.appendChild(container);
   return container;
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: js/ui/toast.js
+   Version: v103.0.22
+   Batch: B25-5
+   ═══════════════════════════════════════════ */

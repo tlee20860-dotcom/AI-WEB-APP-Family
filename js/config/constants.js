@@ -1,17 +1,18 @@
 // ============================================
-// constants.js — 全站常數集中管理（v103.0.11）
+// constants.js — 全站常數集中管理（v103.0.22）
 // 位置：js/config/constants.js
 // ============================================
-// v103.0.11 修正：
-//   ✅ [H01] APP_VERSION / SW_VERSION 統一至最新版
-//   ✅ 保留 v103.0.3 的 SIDEBAR_GROUPS href 修正
+// v103.0.22（B25-5）：
+//   ✅ L2：APP_VERSION 更新至 v103.0.22
+//   ✅ SW_VERSION 更新至 family-fin-v140
+//   ✅ 補 END OF FILE
 // ============================================
 
 /* ============================================
    0. 版本號
    ============================================ */
-export const APP_VERSION = 'v103.0.11';
-export const SW_VERSION = 'family-fin-v139';
+export const APP_VERSION = 'v103.0.22';
+export const SW_VERSION = 'family-fin-v140';
 
 /* ============================================
    1. localStorage Keys
@@ -473,3 +474,10 @@ export const STATUS_CATEGORIES = {
   FIXED:     'fixed',
   INSURANCE: 'insurance',
 };
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: js/config/constants.js
+   Version: v103.0.22
+   Batch: B25-5
+   ═══════════════════════════════════════════ */

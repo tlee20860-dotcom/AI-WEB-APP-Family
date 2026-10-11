@@ -1,6 +1,9 @@
 // ============================================
-// firebase-config.js — Firebase 初始化設定
+// firebase-config.js — Firebase 初始化設定（v103.0.22）
 // 位置：js/config/firebase-config.js
+// ============================================
+// v103.0.22（B25-5）：
+//   ✅ 補 END OF FILE
 // ============================================
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -21,3 +24,10 @@ const firebaseConfig = {
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getDatabase(app);
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: js/config/firebase-config.js
+   Version: v103.0.22
+   Batch: B25-5
+   ═══════════════════════════════════════════ */

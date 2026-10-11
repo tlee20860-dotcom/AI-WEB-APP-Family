@@ -1,4 +1,7 @@
-// annual-report.js — 年度報表（v103.0.20）
+// annual-report.js — 年度報表（v103.0.22）
+// v103.0.22（B25-5）：
+//   ✅ R5 連帶：view-toggle 傳 syncAppState: false（避免 summary/monthly 污染 AppState）
+// ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
 import { AppState } from '../core/state.js';
@@ -76,6 +79,8 @@ export default {
       tableText: '月度明細',
       cardValue: 'summary',
       tableValue: 'monthly',
+      /* 🆕 v103.0.22：不同步到 AppState（非標準 view） */
+      syncAppState: false,
       onChange: (view) => {
         ctx.state.view = view;
         _sumView.style.display = view === 'summary' ? 'block' : 'none';
@@ -308,6 +313,6 @@ function _exportCsv(ctx) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/annual-report.js
-   Version: v103.0.20
-   Batch: B22
+   Version: v103.0.22
+   Batch: B25-5
    ═══════════════════════════════════════════ */

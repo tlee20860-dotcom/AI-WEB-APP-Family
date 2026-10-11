@@ -1,10 +1,12 @@
 // ============================================
-// view-toggle.js — 卡片 / 表格切換（v103.0.19）
+// view-toggle.js — 卡片 / 表格切換（v103.0.22）
 // 位置：js/ui/view-toggle.js
 // ============================================
+// v103.0.22（B25-5）：
+//   ✅ R5：加 syncAppState 選項（預設 true）
+//      - false 時不同步到 AppState（適用非標準 view，如 annual-report 的 summary/monthly）
 // v103.0.19 修正：
-//   ✅ 加 cardValue / tableValue 參數（支援自訂 view 值）
-//   ✅ 向後相容：不傳參數時預設 'card' / 'table'
+//   ✅ 加 cardValue / tableValue 參數
 // ============================================
 
 import { esc } from '../lib/dom.js';
@@ -22,6 +24,8 @@ export function initViewToggle(options) {
     tableValue = 'table',
     onChange,
     autoApply = true,
+    /* 🆕 v103.0.22：是否同步到 AppState（預設 true） */
+    syncAppState = true,
   } = options;
 
   const root = document.getElementById(containerId);
@@ -34,7 +38,8 @@ export function initViewToggle(options) {
   const validValues = [cardValue, tableValue];
   let _currentView = _loadView(storageFullKey, defaultView, validValues);
 
-  if (validValues.includes(_currentView)) {
+  /* 🆕 v103.0.22：只在 syncAppState + 標準 view 時才同步 */
+  if (syncAppState && (_currentView === 'card' || _currentView === 'table')) {
     AppState.setCurrentView(_currentView);
   }
 
@@ -71,7 +76,11 @@ export function initViewToggle(options) {
     try { localStorage.setItem(storageFullKey, view); } catch (e) { /* noop */ }
 
     if (autoApply) _applyIfStandard(view);
-    AppState.setCurrentView(view);
+
+    /* 🆕 v103.0.22：只在 syncAppState + 標準 view 時才同步 */
+    if (syncAppState && (view === 'card' || view === 'table')) {
+      AppState.setCurrentView(view);
+    }
 
     if (typeof onChange === 'function') {
       try { onChange(view); } catch (err) { console.error('[view-toggle] onChange error:', err); }
@@ -92,9 +101,6 @@ export function initViewToggle(options) {
   };
 }
 
-/**
- * 僅當 view 為標準 'card' / 'table' 時，才做 body class 切換
- */
 function _applyIfStandard(view) {
   if (view === 'card' || view === 'table') applyViewToDom(view);
 }
@@ -154,6 +160,6 @@ function _loadView(fullKey, defaultValue, validValues) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/ui/view-toggle.js
-   Version: v103.0.19
-   Batch: B20
+   Version: v103.0.22
+   Batch: B25-5
    ═══════════════════════════════════════════ */
