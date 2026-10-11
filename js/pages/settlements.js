@@ -1,9 +1,11 @@
-// settlements.js — 結算清單（v103.0.22）
+// settlements.js — 結算清單（v103.0.23）
+// v103.0.23（B25-3c）：
+//   ✅ 保險扣款：加期間判斷（供滿 / 未開始的月份不再列出）
+//   ✅ 加「隱藏已供滿保單」開關（預設開啟）
+//   ✅ month='all' 時只列出有 payment 記錄的月份
 // v103.0.22（B25-3b）：
 //   ✅ D2(a)：保險扣款「確認扣款 / 取消扣款」接線
 //   ✅ 個人支出編輯改 mode: 'settle'（anchor 0.19）
-//   ✅ 載入 insuranceRows（來自 policies + payments）
-//   ✅ H8：狀態顯示改走 status-registry
 // ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
@@ -14,9 +16,10 @@ import {
   removeExpense,
   getInsurancePoliciesOnce,
   getInsurancePaymentsOnce,
+  getBankAccountsOnce,
 } from '../core/db.js';
 import { api } from '../core/api.js';
-import { estimateMonthlyAmount } from '../lib/insurance.js';
+import { estimateMonthlyAmount, getPeriodInfo } from '../lib/insurance.js';
 import { resolveName } from '../config/entity-registry.js';
 import { AppState } from '../core/state.js';
 import { showToast } from '../ui/toast.js';
@@ -30,11 +33,16 @@ import { initViewToggle } from '../ui/view-toggle.js';
 import { RESERVED_IDS } from '../config/constants.js';
 
 const INS_MODAL_ID = 'settle-insurance-modal';
+const HIDE_COMPLETED_KEY = 'fin_ui_settle_hide_completed';
 
 export default {
   title: '結算清單',
   data: {},
-  state: { filters: { year: '', month: '', source: '' }, sortMode: 'pending-first', view: 'table' },
+  state: {
+    filters: { year: '', month: '', source: '', hideCompleted: true },
+    sortMode: 'pending-first',
+    view: 'table',
+  },
   derived: {},
   blocks: [],
 
@@ -43,6 +51,12 @@ export default {
     let _memberExpenses = [], _insuranceRows = [];
     let _statsApi = null, _tableApi = null, _cardApi = null;
     let _filterInstance = null, _sortH = null, _monthlyUnsub = null, _toggle = null;
+
+    /* 🆕 v103.0.23：讀取隱藏偏好（持久化） */
+    try {
+      const saved = localStorage.getItem(HIDE_COMPLETED_KEY);
+      ctx.state.filters.hideCompleted = saved === null ? true : saved === 'true';
+    } catch (e) { /* noop */ }
 
     const _recompute = () => {
       const { year, month } = AppState.getYearMonth();
@@ -55,27 +69,90 @@ export default {
       render();
     };
 
+    /* 🆕 v103.0.23：期間判斷（SSOT 用 getPeriodInfo） */
+    const _isInPolicyPeriod = (p, y, m) => {
+      const info = getPeriodInfo(p, y, m);
+      if (!info) return false;
+      if (p.type === 'fund_insurance' && Number(p.monthlyPremium) <= 0) return false;
+      return true;
+    };
+
     const _loadInsuranceRows = async () => {
       const { year, month } = AppState.getYearMonth();
+      const y = String(year);
+      const m = month === 'all' ? null : String(month);
+      const hideCompleted = ctx.state.filters.hideCompleted === true;
+
       try {
         const policies = await getInsurancePoliciesOnce();
         const list = [];
+
         for (const p of policies) {
+          /* 🆕 已供滿過濾（使用者可選） */
+          if (hideCompleted && p.isCompleted) continue;
+
           let payments = {};
           try { payments = await getInsurancePaymentsOnce(p.id); } catch (e) {}
-          const payment = payments?.[year]?.[month];
+
           const holder = p.policyHolderId || p.memberId || '';
-          const amount = payment?.amount || estimateMonthlyAmount(p, year, month) || 0;
+
+          /* 🆕 month='all'：只列出該年有 payment 記錄的月份 */
+          if (!m) {
+            const yearPayments = payments?.[y] || {};
+            for (const mm of Object.keys(yearPayments)) {
+              const payment = yearPayments[mm];
+              list.push({
+                policyId: p.id,
+                policyName: p.name || '（未命名保單）',
+                policyHolderId: holder,
+                memberId: p.memberId || '',
+                status: payment?.status || '',
+                amount: payment?.amount || 0,
+                date: payment?.date || '',
+                bankId: payment?.bankId || '',
+                txnId: payment?.txnId || '',
+                paymentMode: p.paymentMode || 'direct',
+                advanceHolderId: p.advanceHolderId || '',
+                month: mm,
+              });
+            }
+            continue;
+          }
+
+          /* 單月模式 */
+          const payment = payments?.[y]?.[m];
+          if (payment) {
+            /* 🆕 有 payment 記錄 → 一律顯示（歷史紀錄） */
+            list.push({
+              policyId: p.id,
+              policyName: p.name || '（未命名保單）',
+              policyHolderId: holder,
+              memberId: p.memberId || '',
+              status: payment?.status || '',
+              amount: payment?.amount || 0,
+              date: payment?.date || '',
+              bankId: payment?.bankId || '',
+              txnId: payment?.txnId || '',
+              paymentMode: p.paymentMode || 'direct',
+              advanceHolderId: p.advanceHolderId || '',
+            });
+            continue;
+          }
+
+          /* 🆕 無 payment → 檢查期間（供滿 / 未開始皆跳過） */
+          if (!_isInPolicyPeriod(p, y, m)) continue;
+
+          const amount = estimateMonthlyAmount(p, y, m) || 0;
           list.push({
             policyId: p.id,
             policyName: p.name || '（未命名保單）',
             policyHolderId: holder,
             memberId: p.memberId || '',
-            status: payment?.status || '',
+            status: '',
             amount,
-            date: payment?.date || '',
-            bankId: payment?.bankId || '',
-            txnId: payment?.txnId || '',
+            date: '',
+            bankId: '',
+            txnId: '',
             paymentMode: p.paymentMode || 'direct',
             advanceHolderId: p.advanceHolderId || '',
           });
@@ -140,11 +217,6 @@ export default {
       status: (v, r) => `<span class="badge ${r.isDone ? 'badge-success' : 'badge-pending'}">${esc(v)}</span>`,
     };
 
-    /* ============================================
-       Actions（依 anchor 0.19 / 0.21）
-       - 保險：確認扣款 / 取消扣款
-       - 個人：結算（mode:'settle'）/ 刪除
-       ============================================ */
     const _hooks = (canInput) => ({
       customActions: canInput ? (row) => {
         if (row.source === 'insurance') {
@@ -212,9 +284,35 @@ export default {
     _filterInstance = renderPageFilter({
       containerId: 'page-filter-root',
       fields: [],
-      renderExtra: () => `<div class="filter-group"><label class="field-label">來源</label><select class="select" data-filter="source"><option value="">全部</option><option value="personal">🏷 個人支出</option><option value="insurance">🛡 保險扣款</option></select></div>`,
-      onChange: (f) => { ctx.state.filters.source = f.source || ''; render(); },
+      renderExtra: () => `
+        <div class="filter-group">
+          <label class="field-label">來源</label>
+          <select class="select" data-filter="source">
+            <option value="">全部</option>
+            <option value="personal">🏷 個人支出</option>
+            <option value="insurance">🛡 保險扣款</option>
+          </select>
+        </div>
+        <div class="filter-group" style="flex-direction:row;align-items:center;gap:8px;min-width:auto;">
+          <input type="checkbox" id="settle-hide-completed" style="width:auto;cursor:pointer;" ${ctx.state.filters.hideCompleted ? 'checked' : ''}>
+          <label for="settle-hide-completed" class="field-label" style="margin:0;cursor:pointer;">隱藏已供滿</label>
+        </div>
+      `,
+      onChange: (f) => {
+        ctx.state.filters.source = f.source || '';
+        render();
+      },
     });
+
+    /* 🆕 v103.0.23：綁定隱藏已供滿 checkbox */
+    const hideCb = document.getElementById('settle-hide-completed');
+    const onHideChange = () => {
+      const val = hideCb?.checked === true;
+      ctx.state.filters.hideCompleted = val;
+      try { localStorage.setItem(HIDE_COMPLETED_KEY, String(val)); } catch (e) {}
+      reload();  /* 需重新載入 insurance rows */
+    };
+    hideCb?.addEventListener('change', onHideChange);
 
     _sortH = (e) => { ctx.state.sortMode = e.target.value; render(); };
     document.getElementById('settlement-sort')?.addEventListener('change', _sortH);
@@ -241,6 +339,7 @@ export default {
         if (_cardApi) { try { _cardApi.destroy(); } catch (e) {} }
         if (_toggle) { try { _toggle.destroy(); } catch (e) {} }
         if (_sortH) document.getElementById('settlement-sort')?.removeEventListener('change', _sortH);
+        if (hideCb && onHideChange) hideCb.removeEventListener('change', onHideChange);
       },
     };
   },
@@ -297,17 +396,11 @@ async function _onInsuranceUnsync(row, onSuccess) {
   }
 }
 
-/**
- * 銀行選擇 Modal（回傳 { bankId } 或 null）
- */
 async function _openBankPickerModal(row) {
   document.getElementById(INS_MODAL_ID)?.remove();
 
   let banks = [];
-  try {
-    const { getBankAccountsOnce } = await import('../core/db.js');
-    banks = await getBankAccountsOnce();
-  } catch (e) { banks = []; }
+  try { banks = await getBankAccountsOnce(); } catch (e) { banks = []; }
 
   return new Promise((resolve) => {
     const overlay = document.createElement('div');
@@ -366,6 +459,6 @@ async function _openBankPickerModal(row) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/settlements.js
-   Version: v103.0.22
-   Batch: B25-3b
+   Version: v103.0.23
+   Batch: B25-3c
    ═══════════════════════════════════════════ */
