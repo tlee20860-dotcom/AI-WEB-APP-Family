@@ -1,6 +1,6 @@
 # 常見任務 SOP
 
-最後更新：B21
+最後更新：B26-1b
 用途：AI 執行常見任務時，依此步驟操作
 
 ---
@@ -29,6 +29,7 @@
 | 時間點 | 何時開始（對應哪個批次） |
 | 範圍 | 影響哪些頁面 / 檔案 |
 | 根本原因 | 是補丁問題？SSOT 違反？邏輯錯誤？ |
+| 自我引入 | **是否為本批新引入**（P20/P21 教訓） |
 
 ### 修正原則
 
@@ -38,6 +39,7 @@
 | 最小改動 | 範圍 ≤ 30% 檔案 |
 | 順便檢查 | 套用 anchor 0.17 機會型重構 |
 | 完整交付 | 不 diff |
+| **全鏈路檢查** | 改 A 時，檢查是否影響 B/C/D（P21 教訓） |
 
 ---
 
@@ -54,8 +56,9 @@
 | 5 | 更新 constants.js 的 SIDEBAR_GROUPS |
 | 6 | 更新 constants.js 的 ROUTES |
 | 7 | 更新 sw.js 的 STATIC_ASSETS |
-| 8 | 更新 file-manifest.md |
-| 9 | 更新 page-map.md |
+| 8 | **更新 page-map.md 的「頁面區塊規格」**（0.22） |
+| 9 | 更新 file-manifest.md |
+| 10 | 更新 page-map.md |
 
 ### Page Schema 結構
 
@@ -119,7 +122,7 @@
 | sw.js | STATIC_ASSETS 加新檔 |
 | docs/file-manifest.md | 加檔案列 |
 | docs/progress.md | 記錄批次 |
-| docs/page-map.md | 加頁面 → 檔案 |
+| docs/page-map.md | 加頁面 → 檔案 + **頁面區塊規格** |
 
 ---
 
@@ -176,6 +179,7 @@
 | 直接改 export 函式名 | 會破壞其他檔案 |
 | 直接改回傳格式 | 會破壞呼叫端 |
 | 刪除 export | 除非確認無使用 |
+| 硬編碼狀態字串 | 走 status-registry（0.4） |
 
 ### 找使用檔案
 
@@ -234,6 +238,7 @@
 | POST /api/family-settings | _family.js |
 | POST /api/insurance-sync | _insurance.js |
 | POST /api/admin-init-family | _admin.js |
+| POST /api/admin-migrate | _admin.js |
 
 所有端點透過 [[path]].js 分派。
 
@@ -268,6 +273,7 @@
 | 讀取時 normalize | 舊名稱轉新代碼 |
 | 寫入時新格式 | 不寫舊名稱 |
 | 不刪舊節點 | 保留向後相容 |
+| 遷移由使用者決定 | 提供 API，不自動觸發 |
 
 ---
 
@@ -293,6 +299,8 @@
 | 改 Registry API | api-contracts / file-manifest |
 | 修 Bug | incident-log / progress / file-manifest |
 | 改交付規則 | delivery-rules / anchor |
+| 改版面規則 | anchor / page-map |
+| 新增遷移 API | api-contracts / compatibility |
 
 ---
 
@@ -316,9 +324,9 @@
 | settings.html | 3 Tab 可切換 |
 | database.html | 6 Tab 可切換 |
 | input-center.html | 5 按鈕可開啟 Modal |
-| settlements.html | 表格 + toggle |
+| settlements.html | 表格 + toggle + 隱藏已供滿 |
 | insurance.html | 卡片 + 已供滿展開 |
-| annual-report.html | 月度明細分組 |
+| annual-report.html | 年月切換按鈕 |
 | member-report.html | 副標題顯示成員數 |
 | finance-overview.html | 副標題顯示年月 |
 
@@ -360,7 +368,76 @@
 
 ---
 
-## 十一、任務速查
+## 十一、執行一次性資料遷移（B25-6）
+
+### 前置條件
+
+| 條件 | 說明 |
+|---|---|
+| 身分 | 超級管理員 |
+| 家庭 | 已選定目標家庭 |
+
+### 步驟
+
+| 步驟 | 動作 |
+|---|---|
+| 1 | 進「系統設定 → 個人化」Tab |
+| 2 | 找到「一次性資料遷移」卡 |
+| 3 | 點「執行遷移」 |
+| 4 | 確認框 → 執行 |
+| 5 | 查看統計（掃描 / 修改筆數） |
+
+### 檢查項
+
+| 項目 | 預期 |
+|---|---|
+| 執行結果 | 顯示掃描 / 修改筆數 |
+| 重複執行 | 修改筆數應為 0 |
+| UI 顯示 | 完全不變 |
+| vConsole | 無紅字 |
+
+### 注意
+
+| 項目 | 說明 |
+|---|---|
+| 冪等 | 可重複執行 |
+| 不可逆 | 舊格式永久改新格式 |
+| 不刪資料 | 只更新欄位 |
+| 非必要 | 讀取時 normalize 已足夠 |
+
+---
+
+## 十二、改版面（0.22）
+
+### 前置檢查
+
+| 步驟 | 動作 |
+|---|---|
+| 1 | 讀 page-map.md「頁面區塊規格」 |
+| 2 | 確認目標頁面所有容器 ID |
+| 3 | 列出「變更前後對照」 |
+
+### 判斷
+
+| 動作 | 允許 |
+|---|---|
+| 改區塊內部實作 | ✅ |
+| 新增區塊 | ✅（標示） |
+| 改變容器 ID | ❌（除非使用者要求） |
+| 刪除區塊 | ❌（除非使用者要求） |
+| 改變順序 | ⚠️ 需使用者確認 |
+
+### 交付時
+
+| 部分 | 內容 |
+|---|---|
+| 摘要 | 列出變更前後對照 |
+| 影響範圍 | 列出受影響頁面 |
+| 待驗證 | 使用者測試清單 |
+
+---
+
+## 十三、任務速查
 
 | 任務 | 章節 |
 |---|---|
@@ -374,12 +451,14 @@
 | 更新 docs | 八 |
 | 部署後驗證 | 九 |
 | 緊急回滾 | 十 |
+| 執行一次性遷移 | 十一 |
+| 改版面 | 十二 |
 
 ---
 
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/sop.md
-   Version: v103.0.19
-   Batch: B21
+   Version: v103.0.22
+   Batch: B26-1b
    ═══════════════════════════════════════════ */

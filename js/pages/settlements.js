@@ -1,6 +1,8 @@
-// settlements.js — 結算清單（v103.0.24）
+// settlements.js — 結算清單（v103.0.25）
+// v103.0.25（B26-2）：
+//   ✅ P22 修正：reload 開頭同步 filters.year/month（navbar 切換後自動更新）
 // v103.0.24（B25-3d）：
-//   ✅ P21 修正：hideCompleted 移出 filters（不再被 applyFilters 誤當過濾條件）
+//   ✅ P21 修正：hideCompleted 移出 filters
 // v103.0.23（B25-3c）：
 //   ✅ 保險扣款：加期間判斷
 //   ✅ 加「隱藏已供滿保單」開關
@@ -81,7 +83,6 @@ export default {
       const { year, month } = AppState.getYearMonth();
       const y = String(year);
       const m = month === 'all' ? null : String(month);
-      /* 🆕 v103.0.24：從 state 讀（不再從 filters 讀） */
       const hideCompleted = ctx.state.hideCompleted === true;
 
       try {
@@ -162,6 +163,12 @@ export default {
 
     const reload = async () => {
       const { year, month } = AppState.getYearMonth();
+
+      /* 🆕 v103.0.25（B26-2 / P22）：
+         同步 filters.year/month，避免 navbar 切換年月後 filters 未更新 */
+      ctx.state.filters.year = String(year);
+      ctx.state.filters.month = month === 'all' ? '' : String(month);
+
       if (_monthlyUnsub) { try { _monthlyUnsub(); } catch (e) {} }
       _monthlyUnsub = listenAllMemberExpenses(String(year), month, (memberExpenses) => {
         _memberExpenses = memberExpenses;
@@ -273,6 +280,7 @@ export default {
       }
     };
 
+    /* 首次初始化 filters（給 _filterInstance 的 onChange 用） */
     const { year, month } = AppState.getYearMonth();
     ctx.state.filters.year = String(year);
     ctx.state.filters.month = month === 'all' ? '' : String(month);
@@ -303,7 +311,6 @@ export default {
     const hideCb = document.getElementById('settle-hide-completed');
     const onHideChange = () => {
       const val = hideCb?.checked === true;
-      /* 🆕 v103.0.24：寫入 state.hideCompleted（非 filters） */
       ctx.state.hideCompleted = val;
       try { localStorage.setItem(HIDE_COMPLETED_KEY, String(val)); } catch (e) {}
       reload();
@@ -455,6 +462,6 @@ async function _openBankPickerModal(row) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/settlements.js
-   Version: v103.0.24
-   Batch: B25-3d
+   Version: v103.0.25
+   Batch: B26-2
    ═══════════════════════════════════════════ */

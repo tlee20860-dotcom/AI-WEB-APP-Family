@@ -1,6 +1,6 @@
 # API 契約
 
-最後更新：B24
+最後更新：B26-1a
 用途：前後端介面參考
 
 ---
@@ -36,6 +36,8 @@
 | isInitialized() | 是否已初始化 |
 | resolveNames(type, ids) | 批次解析 |
 | resolveEntityName(key, id, fallback) | 依 ENTITY_KEYS 解析 |
+
+**ENTITY_TYPE_MAP**：member / bank / category / item / payment / policy
 
 ---
 
@@ -73,11 +75,13 @@
 
 ---
 
-### entity-funds-allocation.js（B23 新增）
+### entity-funds-allocation.js
 
 | API | 說明 |
 |---|---|
-| renderFundsAllocationField(root, initialAlloc, policyType) | 渲染關聯基金欄位 |
+| renderFundsAllocationField(root, initialAlloc, policyType, opts) | 渲染關聯基金欄位 |
+
+**opts**：`{ defaultYear, defaultMonth }`（B25-2 新增）
 
 **回傳**：`getValue()` 函式（取得 fundsAllocation 陣列）
 
@@ -177,11 +181,18 @@
 
 ---
 
-### lib/expense-modal.js
+### lib/expense-modal.js（B25-3a 加 mode）
 
 | API | 說明 |
 |---|---|
-| openExpenseModal({ row, onSuccess }) | row 省略 = 新增；有值 = 編輯 |
+| openExpenseModal({ row, mode, onSuccess }) | mode: 'data' \| 'settle' |
+
+**mode 行為**：
+
+| mode | 顯示欄位 |
+|---|---|
+| 'data'（預設） | member / name / amount / date / category / item |
+| 'settle' | status / paymentMethod / bank |
 
 ---
 
@@ -200,6 +211,8 @@
 |---|---|
 | applyFilters(list, filters, opts) | 篩選 |
 | applySort(list, mode, modes) | 排序 |
+
+**⚠️ filters 只放 row 過濾欄位**（P21 教訓）
 
 ---
 
@@ -266,12 +279,12 @@
 |---|---|
 | getPolicyHolderId(policy) | 保單持有人（fallback） |
 | getPeriodRange(policy, idx) | 期間範圍 |
-| getPeriodInfo(policy, y, m) | 期間資訊 |
+| getPeriodInfo(policy, y, m) | 期間資訊（供 P20 過濾） |
 | getPolicyAnnualPremium(policy, y) | 年繳 |
 | resolveMonthlyAmount(policy, y, m, pd) | 月攤 |
 | getPolicyTotalPremium(policy) | 總供款 |
-| getPolicyPaidTotal(payments) | 已供款 |
-| countCompletedPeriods(payments) | 完成期數 |
+| getPolicyPaidTotal(payments) | 已供款（B25-4 走 status-registry） |
+| countCompletedPeriods(payments) | 完成期數（B25-4 走 status-registry） |
 | isPolicyCompleted(policy) | 是否供滿 |
 | calcProgress(policy) | 進度 |
 | computeEnrichedPolicies(policies, cache, y) | 批次計算 |
@@ -292,23 +305,24 @@
 | syncExpenseToBank(...) | 支出同步 |
 | cleanupExpenseBankTransaction(bankId, txnId) | 清理 |
 | createTransactionForInsurancePayment(...) | 保險付款 |
-| checkBankSufficiency(bankId, amt, y, m) | 餘額檢查 |
 | groupTransactionsByCategory(txns) | 分類統計 |
 | filterTransactionsByMonth(txns, y, m) | 月份篩選 |
 
+**B25-4 移除**：`checkBankSufficiency`（M7 佔位實作）
+
 ---
 
-### core/db.js（B23 新增 snapshot API）
+### core/db.js
 
 | 類別 | API |
 |---|---|
 | 成員 | listenMembers / getMembersOnce / addMember / updateMember / removeMember / deleteMemberAndData |
-| 銀行 | listenBanks / addBank / updateBank / removeBank |
+| 銀行 | listenBanks / **getBanksOnce（B25-4）** / addBank / updateBank / removeBank |
 | 銀行帳號 | listenBankAccounts / getBankAccountsOnce / addBankAccount / updateBankAccount / removeBankAccount |
 | 銀行交易 | listenAllBankTransactions / addBankTransaction / updateBankTransaction / removeBankTransaction |
 | 個人收入 | listenPersonalIncome / savePersonalIncome |
 | 成員代墊 | listenMemberAdvances / addMemberAdvance / updateMemberAdvance |
-| 保險公司 | listenInsuranceCompanies |
+| 保險公司 | listenInsuranceCompanies / **getInsuranceCompaniesOnce（B25-4）** |
 | 支付方式 | listenPaymentMethods |
 | 類別 | listenCategories / getCategoriesOnce |
 | 項目 | listenItems / getItemsOnce |
@@ -319,7 +333,7 @@
 | 保險 | listenInsurancePolicies / addInsurancePolicy / updateInsurancePolicy / removeInsurancePolicy / getInsurancePaymentsOnce / saveInsurancePaymentBatch |
 | 收入 | listenIncome / getIncomeOnce / saveIncome / listenAllIncome |
 | 基金 | listenFunds / getFundsOnce / addFund / updateFund / removeFund |
-| **基金快照（B23）** | listenFundSnapshots / getFundSnapshotsOnce / saveFundSnapshot / removeFundSnapshot |
+| 基金快照 | listenFundSnapshots / getFundSnapshotsOnce / saveFundSnapshot / removeFundSnapshot |
 
 ---
 
@@ -346,6 +360,32 @@
 | 檢視 | setCurrentView / getCurrentView |
 | 事件 | on / off / emit |
 | 生命週期 | init / destroy |
+
+---
+
+### core/api.js
+
+| API | 說明 |
+|---|---|
+| callApi(path, opts) | 通用呼叫 |
+| api.lookupFamily() | 家庭查詢 |
+| api.summary(y, m) | 單月摘要 |
+| api.fetchAnnualSummary(y) | 年度聚合 |
+| api.fetchAnnualSummaryRange(s, e) | 年度範圍 |
+| api.fetchSettlementsYear(y) | 結算年度 |
+| api.insuranceSync(payload) | 保險扣款觸發連動 |
+| api.insuranceUnsync(payload) | 取消扣款（撤銷連動） |
+| api.adminListFamilies / adminAddFamily / adminRemoveFamily / adminInitFamily | 平台家庭管理 |
+| **api.adminMigrate(familyId)（B25-6）** | 一次性資料遷移 |
+| api.familyAccounts.* | 家庭帳號 CRUD |
+| api.platformSettings.* | 平台設定 |
+| api.platformDefaults.* | 平台預設 CRUD |
+| api.familySettings.* | 家庭設定 |
+| api.bankAccounts.* | 銀行帳號 |
+| api.bankTransactions.* | 銀行交易 |
+| api.personalIncome.* | 個人收入 |
+| api.memberAdvances.* | 成員代墊 |
+| api.clearBankBalances() | 清除舊結餘 |
 
 ---
 
@@ -379,6 +419,7 @@
 | /api/family-accounts | create / restore / update / remove | 帳號 CRUD |
 | /api/admin-families | add / remove | 家庭 CRUD |
 | /api/admin-init-family | — | 初始化家庭 |
+| **/api/admin-migrate** | — | **一次性資料遷移（B25-6）** |
 | /api/platform-settings | update | 平台設定 |
 | /api/platform-defaults | put / delete / set | 平台預設 CRUD |
 | /api/bank-accounts | create / update / remove | 銀行帳號 CRUD |
@@ -386,7 +427,44 @@
 | /api/clear-bank-balances | — | 清除舊結餘 |
 | /api/personal-income | save / remove | 個人收入 |
 | /api/member-advances | create / update / remove | 成員代墊 |
-| /api/insurance-sync | upsert / delete | 保險同步 + 基金累積（B23） |
+| /api/insurance-sync | upsert / delete | 保險同步 + 基金累積 |
+
+### POST /api/admin-migrate
+
+**Request**：
+
+| 欄位 | 說明 |
+|---|---|
+| familyId | 目標家庭 ID |
+| confirm | `'MIGRATE_ALL'`（必填） |
+
+**Response**：
+
+| 欄位 | 說明 |
+|---|---|
+| ok | true |
+| migrated | true |
+| familyId | 家庭 ID |
+| summary | { expenses, payments, policies, funds } |
+
+**summary 結構**：
+
+| 類別 | 欄位 |
+|---|---|
+| expenses | { scanned, normalized } |
+| payments | { scanned, normalized } |
+| policies | { scanned, patched } |
+| funds | { scanned, patched } |
+
+**特性**：
+
+| 項目 | 說明 |
+|---|---|
+| 可重複執行 | 已遷移的不再修改 |
+| 冪等 | 相同輸入 → 相同結果 |
+| 權限 | 需 superadmin |
+
+---
 
 ### Functions 檔案結構
 
@@ -395,7 +473,7 @@
 | [[path]].js | Catch-all 路由器 |
 | _config.js | Firebase REST 設定 |
 | _helpers.js | API 共用輔助 |
-| _admin.js | 2 |
+| _admin.js | 3（含 admin-migrate） |
 | _bank.js | 3 |
 | _family.js | 3 |
 | _insurance.js | 1（含基金累積） |
@@ -448,6 +526,6 @@
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/api-contracts.md
-   Version: v103.0.21
-   Batch: B24
+   Version: v103.0.22
+   Batch: B26-1a
    ═══════════════════════════════════════════ */
