@@ -1,7 +1,9 @@
 // ============================================
-// column-settings.js — 表格欄位設定（v103.0.11）
+// column-settings.js — 表格欄位設定（v103.0.22）
 // 位置：js/shared/column-settings.js
 // ============================================
+// v103.0.22（B25-2）：
+//   ✅ H4：closeModal + overlay.remove 改用 destroyModal（統一封裝）
 // v103.0.11 修正：
 //   ✅ [H04] escapeHtml 改從 lib/dom.js 導入
 //   ✅ [H05] 改用 ui/modal.js 的 openModal / closeModal
@@ -9,7 +11,7 @@
 
 import { buildColumnSettingsKey } from '../config/constants.js';
 import { esc as escapeHtml } from '../lib/dom.js';
-import { openModal, closeModal } from '../ui/modal.js';
+import { openModal, destroyModal } from '../ui/modal.js';
 
 /* ============================================
    主函式
@@ -40,9 +42,6 @@ export function initColumnSettings(options) {
 
   _loadFromStorage();
 
-  /* ============================================
-     內部工具
-     ============================================ */
   function _loadFromStorage() {
     try {
       const raw = localStorage.getItem(storageKey);
@@ -86,9 +85,6 @@ export function initColumnSettings(options) {
     }
   }
 
-  /* ============================================
-     對外 API
-     ============================================ */
   function getVisibleColumns() {
     return _order
       .filter((id) => _visible.includes(id))
@@ -147,9 +143,6 @@ export function initColumnSettings(options) {
     _renderPanel(options.onChange);
   }
 
-  /* ============================================
-     設定面板渲染（改走 ui/modal.js）
-     ============================================ */
   function _renderPanel(onChange) {
     const MODAL_ID = `column-settings-panel-${tableId}`;
     let overlay = document.getElementById(MODAL_ID);
@@ -270,8 +263,8 @@ export function initColumnSettings(options) {
         }
 
         if (action === 'cancel') {
-          closeModal(MODAL_ID);
-          overlay.remove();
+          /* 🆕 v103.0.22：用 destroyModal 統一（closeModal + remove） */
+          destroyModal(MODAL_ID);
           return;
         }
 
@@ -279,16 +272,14 @@ export function initColumnSettings(options) {
           setVisible(tempState.filter((c) => c.visible).map((c) => c.id));
           setOrder(tempState.map((c) => c.id));
           tempState.forEach((c) => setWidth(c.id, c.width));
-          closeModal(MODAL_ID);
-          overlay.remove();
+          destroyModal(MODAL_ID);
           if (typeof onChange === 'function') onChange();
           return;
         }
       }
 
       if (e.target === overlay) {
-        closeModal(MODAL_ID);
-        overlay.remove();
+        destroyModal(MODAL_ID);
       }
     });
 
@@ -307,3 +298,10 @@ export function initColumnSettings(options) {
     openPanel,
   };
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: js/shared/column-settings.js
+   Version: v103.0.22
+   Batch: B25-2
+   ═══════════════════════════════════════════ */

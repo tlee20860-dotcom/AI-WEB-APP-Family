@@ -1,4 +1,8 @@
-// portfolio.js — 基金投資表（v103.0.21）
+// portfolio.js — 基金投資表（v103.0.22）
+// v103.0.22（B25-2）：
+//   ✅ H5：快照 Modal document click 監聽移入 customMount + destroy 時移除
+//   ✅ H6：移除 setTimeout(render, 0)，改為同步 render
+// ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
 import { openEntityModal } from '../entity/entity-modal.js';
@@ -6,7 +10,7 @@ import { deleteEntity } from '../entity/entity-helpers.js';
 import { openConfirm, openModal, closeModal } from '../ui/modal.js';
 import { buildForm } from '../ui/form-builder.js';
 import { showToast } from '../ui/toast.js';
-import { saveFundSnapshot } from '../core/db.js';
+import { saveFundSnapshot, getFundSnapshotsOnce } from '../core/db.js';
 import { AppState } from '../core/state.js';
 import { ENTITY_KEYS } from '../config/constants.js';
 
@@ -46,7 +50,7 @@ export default {
 
     const unsub = ctx.onDataChange((key) => {
       if (key.startsWith('data.funds') || key.startsWith('data.policies') || key === '__APP__') {
-        setTimeout(render, 0);
+        render();
       }
     });
 
@@ -76,16 +80,32 @@ export default {
         catch (err) { showToast('刪除失敗：' + err.message, 'error'); }
       }
     };
-    document.getElementById('insurance-funds-list')?.addEventListener('click', cardClickHandler);
-    document.getElementById('standalone-funds-list')?.addEventListener('click', cardClickHandler);
+
+    /* 🆕 v103.0.22：快照按鈕監聽改在 customMount 內註冊 + destroy 移除 */
+    const snapshotHandler = async (e) => {
+      const btn = e.target.closest('button[data-action="snapshot"]');
+      if (!btn) return;
+      const fundId = btn.dataset.id;
+      const fundName = btn.dataset.name || '';
+      if (!fundId) return;
+      await _openSnapshotModal(fundId, fundName);
+    };
+
+    const insRoot = document.getElementById('insurance-funds-list');
+    const stdRoot = document.getElementById('standalone-funds-list');
+
+    insRoot?.addEventListener('click', cardClickHandler);
+    stdRoot?.addEventListener('click', cardClickHandler);
+    document.addEventListener('click', snapshotHandler);
 
     return {
       destroy: () => {
         unsub();
         addBtn?.removeEventListener('click', onAdd);
         addFirstBtn?.removeEventListener('click', onAdd);
-        document.getElementById('insurance-funds-list')?.removeEventListener('click', cardClickHandler);
-        document.getElementById('standalone-funds-list')?.removeEventListener('click', cardClickHandler);
+        insRoot?.removeEventListener('click', cardClickHandler);
+        stdRoot?.removeEventListener('click', cardClickHandler);
+        document.removeEventListener('click', snapshotHandler);
       },
     };
   },
@@ -126,6 +146,7 @@ function _paintStandalone(ctx) {
   if (list.length === 0) {
     if (empty) empty.style.display = 'block';
     root.innerHTML = '';
+    root.__lastHtml = '';
     return;
   }
   if (empty) empty.style.display = 'none';
@@ -167,13 +188,13 @@ function _cardHtml({ fund, policyName, pct }, isInsurance) {
         <div class="policy-info-item"><span class="policy-info-label">單位數</span><span class="policy-info-value">${fund.units || '—'}</span></div>
       </div>
       <div class="policy-actions">
-        <button type="button" class="btn btn-sm btn-primary" data-action="snapshot" data-id="${fund.id}" data-name="${esc(fund.name)}">
+        <button type="button" class="btn btn-sm btn-primary" data-action="snapshot" data-id="${esc(fund.id)}" data-name="${esc(fund.name || '')}">
           <i data-lucide="camera" style="width:14px;height:14px;"></i> 輸入本月快照
         </button>
-        <button type="button" class="btn btn-sm btn-ghost" data-action="edit-fund" data-id="${fund.id}">
+        <button type="button" class="btn btn-sm btn-ghost" data-action="edit-fund" data-id="${esc(fund.id)}">
           <i data-lucide="pencil" style="width:14px;height:14px;"></i> 編輯
         </button>
-        <button type="button" class="btn btn-sm btn-danger" data-action="delete-fund" data-id="${fund.id}">
+        <button type="button" class="btn btn-sm btn-danger" data-action="delete-fund" data-id="${esc(fund.id)}">
           <i data-lucide="trash-2" style="width:14px;height:14px;"></i> 刪除
         </button>
       </div>
@@ -184,16 +205,7 @@ function _cardHtml({ fund, policyName, pct }, isInsurance) {
 /* ============================================
    快照輸入 Modal
    ============================================ */
-document.addEventListener('click', async (e) => {
-  const btn = e.target.closest('button[data-action="snapshot"]');
-  if (!btn) return;
-  const fundId = btn.dataset.id;
-  const fundName = btn.dataset.name || '';
-  await _openSnapshotModal(fundId, fundName);
-});
-
 async function _openSnapshotModal(fundId, fundName) {
-  const { getFundSnapshotsOnce } = await import('../core/db.js');
   document.getElementById(SNAP_MODAL_ID)?.remove();
 
   const overlay = document.createElement('div');
@@ -237,12 +249,12 @@ async function _openSnapshotModal(fundId, fundName) {
         await saveFundSnapshot(fundId, sy, sm, { shares, nav });
         showToast(`✅ 已儲存 ${sy}-${sm} 快照`, 'success');
         closeModal(SNAP_MODAL_ID);
+        overlay.remove();
       } catch (err) { showToast('儲存失敗：' + err.message, 'error'); }
     },
-    onCancel: () => closeModal(SNAP_MODAL_ID),
+    onCancel: () => { closeModal(SNAP_MODAL_ID); overlay.remove(); },
   });
 
-  /* 即時計算現值 + 載入既有快照 */
   const sharesEl = document.getElementById('snap-shares');
   const navEl = document.getElementById('snap-nav');
   const valueEl = document.getElementById('snap-value');
@@ -299,6 +311,6 @@ function _buildStats(funds) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/portfolio.js
-   Version: v103.0.21
-   Batch: B23
+   Version: v103.0.22
+   Batch: B25-2
    ═══════════════════════════════════════════ */

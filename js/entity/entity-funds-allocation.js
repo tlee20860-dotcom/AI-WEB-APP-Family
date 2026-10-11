@@ -1,10 +1,21 @@
-// entity-funds-allocation.js — 保單關聯基金編輯（v103.0.21）
+// entity-funds-allocation.js — 保單關聯基金編輯（v103.0.22）
+// v103.0.22（B25-2）：
+//   ✅ R1 修正：選擇基金 Modal 走 ui/modal（openModal + closeModal）
+//   ✅ 支援 defaultYear / defaultMonth（從保單起始年月）
+//   ✅ 總和更新改用 data-role 穩定選擇器
+//   ✅ 所有 button 加 type="button"
+// ============================================
 import { esc } from '../lib/dom.js';
 import { showToast } from '../ui/toast.js';
-import { openConfirm } from '../ui/modal.js';
+import { openModal, closeModal } from '../ui/modal.js';
 import { getFundsOnce } from '../core/db.js';
 
-export function renderFundsAllocationField(root, initialAlloc, policyType) {
+const SELECT_MODAL_ID = 'efa-select-fund-modal';
+
+export function renderFundsAllocationField(root, initialAlloc, policyType, opts = {}) {
+  const defaultYear = opts.defaultYear || new Date().getFullYear();
+  const defaultMonth = opts.defaultMonth || '01';
+
   let alloc = Array.isArray(initialAlloc) ? initialAlloc.map((a) => ({ ...a })) : [];
   let fundsList = [];
 
@@ -23,7 +34,7 @@ export function renderFundsAllocationField(root, initialAlloc, policyType) {
         ${!isFundIns ? '<div class="banner mb-12" style="margin:0;">ℹ️ 只有「基金保險」才需設定關聯基金</div>' : ''}
         <div id="efa-list" style="margin-bottom:12px;"></div>
         <div class="flex flex-between items-center" style="margin-bottom:8px;">
-          <span style="font-size:12px;color:var(--text-muted);">比例總和：<span class="${totalClass}" style="font-weight:700;">${total}%</span></span>
+          <span style="font-size:12px;color:var(--text-muted);">比例總和：<span data-role="total" class="${totalClass}" style="font-weight:700;">${total}%</span></span>
           <button type="button" class="btn btn-sm btn-ghost" data-action="add-alloc">
             <i data-lucide="plus" style="width:14px;height:14px;"></i> 新增基金
           </button>
@@ -62,7 +73,7 @@ export function renderFundsAllocationField(root, initialAlloc, policyType) {
     const i = Number(row.dataset.index);
     alloc[i].pct = Number(pctInput.value) || 0;
     const total = alloc.reduce((s, a) => s + (Number(a.pct) || 0), 0);
-    const totalEl = root.querySelector('.glass-card > .flex-between span span');
+    const totalEl = root.querySelector('[data-role="total"]');
     if (totalEl) {
       totalEl.textContent = `${total}%`;
       totalEl.className = Math.abs(total - 100) < 0.01 ? 'text-emerald' : 'text-orange';
@@ -74,7 +85,7 @@ export function renderFundsAllocationField(root, initialAlloc, policyType) {
     const btn = e.target.closest('button[data-action]');
     if (!btn) return;
     if (btn.dataset.action === 'add-alloc') {
-      await _addAlloc();
+      await _openSelectFundModal();
     } else if (btn.dataset.action === 'del-alloc') {
       const row = btn.closest('[data-index]');
       const i = Number(row.dataset.index);
@@ -83,7 +94,7 @@ export function renderFundsAllocationField(root, initialAlloc, policyType) {
     }
   });
 
-  const _addAlloc = async () => {
+  const _openSelectFundModal = async () => {
     if (fundsList.length === 0) {
       showToast('尚無基金，請先至基金頁新增', 'warning', 4000);
       return;
@@ -95,9 +106,11 @@ export function renderFundsAllocationField(root, initialAlloc, policyType) {
       return;
     }
 
+    document.getElementById(SELECT_MODAL_ID)?.remove();
+
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
-    overlay.style.zIndex = '1100';
+    overlay.id = SELECT_MODAL_ID;
     overlay.innerHTML = `
       <div class="modal" style="max-width:400px;">
         <h2 class="modal-title">選擇基金</h2>
@@ -118,27 +131,42 @@ export function renderFundsAllocationField(root, initialAlloc, policyType) {
 
     overlay.addEventListener('click', (e) => {
       if (e.target === overlay || e.target.closest('button[data-action="close"]')) {
+        closeModal(SELECT_MODAL_ID);
         overlay.remove();
         return;
       }
       const fundBtn = e.target.closest('button[data-fund-id]');
       if (fundBtn) {
-        alloc.push({ fundId: fundBtn.dataset.fundId, pct: 0, fromYear: new Date().getFullYear(), fromMonth: '01' });
+        alloc.push({
+          fundId: fundBtn.dataset.fundId,
+          pct: 0,
+          fromYear: defaultYear,
+          fromMonth: defaultMonth,
+        });
+        closeModal(SELECT_MODAL_ID);
         overlay.remove();
         paint();
       }
     });
+
+    openModal(SELECT_MODAL_ID);
+    if (window.lucide) window.lucide.createIcons();
   };
 
   paint();
   loadFunds();
 
-  return () => alloc.map((a) => ({ fundId: a.fundId, pct: Number(a.pct) || 0, fromYear: a.fromYear || new Date().getFullYear(), fromMonth: a.fromMonth || '01' }));
+  return () => alloc.map((a) => ({
+    fundId: a.fundId,
+    pct: Number(a.pct) || 0,
+    fromYear: a.fromYear || defaultYear,
+    fromMonth: a.fromMonth || defaultMonth,
+  }));
 }
 
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/entity/entity-funds-allocation.js
-   Version: v103.0.21
-   Batch: B23
+   Version: v103.0.22
+   Batch: B25-2
    ═══════════════════════════════════════════ */

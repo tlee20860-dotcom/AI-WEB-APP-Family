@@ -1,7 +1,10 @@
 // ============================================
-// modal.js — Modal 開關 + 確認框（v103.0.0）
+// modal.js — Modal 開關 + 確認框（v103.0.22）
 // 位置：js/ui/modal.js
 // ============================================
+// v103.0.22（B25-2）：
+//   ✅ openModal 自動呼叫 bindModalEscClose（首次）
+//   ✅ 補 END OF FILE
 // v103.0.0 重構：
 //   ✅ 從 js/shared/modal.js 移入 js/ui/
 //   ✅ 逸出改用 lib/dom.js 的 esc()
@@ -20,9 +23,6 @@ const _stack = [];
    開關
    ============================================ */
 
-/**
- * 開啟 Modal
- */
 export function openModal(target, options = {}) {
   const { pushToStack = true } = options;
   const modal = _resolveElement(target);
@@ -34,11 +34,11 @@ export function openModal(target, options = {}) {
   if (pushToStack && !_stack.includes(modal)) {
     _stack.push(modal);
   }
+
+  /* 🆕 v103.0.22：首次開啟時自動綁定 ESC */
+  bindModalEscClose();
 }
 
-/**
- * 關閉 Modal
- */
 export function closeModal(target) {
   const modal = _resolveElement(target);
   if (!modal) return;
@@ -53,9 +53,6 @@ export function closeModal(target) {
   }
 }
 
-/**
- * 關閉所有 Modal
- */
 export function closeAllModals() {
   document.querySelectorAll('.modal-overlay.active').forEach((m) => {
     m.classList.remove('active');
@@ -64,9 +61,6 @@ export function closeAllModals() {
   document.body.style.overflow = '';
 }
 
-/**
- * 取得堆疊最上層 Modal
- */
 export function getTopModal() {
   return _stack.length > 0 ? _stack[_stack.length - 1] : null;
 }
@@ -113,17 +107,11 @@ export function bindModals(configs = []) {
 }
 
 /* ============================================
-   便捷：確認對話框
+   確認對話框
    ============================================ */
 
 let _confirmResolve = null;
 
-/**
- * 顯示確認對話框
- * @param {string} message
- * @param {Object} [options]
- * @returns {Promise<boolean>}
- */
 export function openConfirm(message, options = {}) {
   const {
     title = '確認',
@@ -213,3 +201,10 @@ function _resolveElement(target) {
   if (target instanceof HTMLElement) return target;
   return null;
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: js/ui/modal.js
+   Version: v103.0.22
+   Batch: B25-2
+   ═══════════════════════════════════════════ */

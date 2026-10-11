@@ -1,4 +1,7 @@
-// entity-modal.js — 通用實體編輯 Modal（v103.0.21）
+// entity-modal.js — 通用實體編輯 Modal（v103.0.22）
+// v103.0.22（B25-2）：
+//   ✅ 傳 defaultYear / defaultMonth 給 funds-allocation 欄位
+// ============================================
 import { buildForm } from '../ui/form-builder.js';
 import { openModal, closeModal } from '../ui/modal.js';
 import { showToast } from '../ui/toast.js';
@@ -10,6 +13,7 @@ import { esc } from '../lib/dom.js';
 const MODAL_ID = 'entity-modal-root';
 const FORM_ROOT_ID = 'entity-modal-form-root';
 const TITLE_ID = 'entity-modal-title';
+const ALLOC_ROOT_ID = 'em-funds-allocation-root';
 
 export async function openEntityModal(options) {
   const { entity, mode = 'add', id = null, initialData = null, allRows = [], onSuccess, onCancel } = options;
@@ -29,7 +33,7 @@ export async function openEntityModal(options) {
 
   const fields = def.fields.map((f) => {
     if (f.type === 'funds-allocation') {
-      return { type: 'custom', id: f.id, html: `<div class="field"><label class="field-label">${esc(f.label || '')}</label><div id="em-funds-allocation-root"></div>${f.hint ? `<div class="glass-card-hint" style="margin-top:4px;">${esc(f.hint)}</div>` : ''}</div>` };
+      return { type: 'custom', id: f.id, html: `<div class="field"><label class="field-label">${esc(f.label || '')}</label><div id="${ALLOC_ROOT_ID}"></div>${f.hint ? `<div class="glass-card-hint" style="margin-top:4px;">${esc(f.hint)}</div>` : ''}</div>` };
     }
     return f;
   });
@@ -44,7 +48,7 @@ export async function openEntityModal(options) {
     initialData: initData,
     beforeSubmit: (data) => {
       if (def.fields.some((f) => f.type === 'funds-allocation')) {
-        const allocRoot = document.getElementById('em-funds-allocation-root');
+        const allocRoot = document.getElementById(ALLOC_ROOT_ID);
         if (allocRoot && allocRoot.__getValue) data.fundsAllocation = allocRoot.__getValue();
       }
       if (def.validate) { const err = def.validate(data, allRows, id); if (err) return err; }
@@ -77,9 +81,17 @@ export async function openEntityModal(options) {
 
   /* 基金分配欄位 */
   if (def.fields.some((f) => f.type === 'funds-allocation')) {
-    const allocRoot = document.getElementById('em-funds-allocation-root');
+    const allocRoot = document.getElementById(ALLOC_ROOT_ID);
     if (allocRoot) {
-      allocRoot.__getValue = renderFundsAllocationField(allocRoot, initData?.fundsAllocation || [], initData?.type || 'normal');
+      allocRoot.__getValue = renderFundsAllocationField(
+        allocRoot,
+        initData?.fundsAllocation || [],
+        initData?.type || 'normal',
+        {
+          defaultYear: initData?.firstStartYear || new Date().getFullYear(),
+          defaultMonth: initData?.firstStartMonth || '01',
+        }
+      );
     }
   }
 
@@ -114,6 +126,6 @@ function _ensureModal() {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/entity/entity-modal.js
-   Version: v103.0.21
-   Batch: B23
+   Version: v103.0.22
+   Batch: B25-2
    ═══════════════════════════════════════════ */
