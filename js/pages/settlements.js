@@ -1,11 +1,12 @@
-// settlements.js — 結算清單（v103.0.23）
+// settlements.js — 結算清單（v103.0.24）
+// v103.0.24（B25-3d）：
+//   ✅ P21 修正：hideCompleted 移出 filters（不再被 applyFilters 誤當過濾條件）
 // v103.0.23（B25-3c）：
-//   ✅ 保險扣款：加期間判斷（供滿 / 未開始的月份不再列出）
-//   ✅ 加「隱藏已供滿保單」開關（預設開啟）
-//   ✅ month='all' 時只列出有 payment 記錄的月份
+//   ✅ 保險扣款：加期間判斷
+//   ✅ 加「隱藏已供滿保單」開關
 // v103.0.22（B25-3b）：
 //   ✅ D2(a)：保險扣款「確認扣款 / 取消扣款」接線
-//   ✅ 個人支出編輯改 mode: 'settle'（anchor 0.19）
+//   ✅ 個人支出編輯改 mode: 'settle'
 // ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
@@ -39,7 +40,8 @@ export default {
   title: '結算清單',
   data: {},
   state: {
-    filters: { year: '', month: '', source: '', hideCompleted: true },
+    filters: { year: '', month: '', source: '' },
+    hideCompleted: true,
     sortMode: 'pending-first',
     view: 'table',
   },
@@ -52,10 +54,9 @@ export default {
     let _statsApi = null, _tableApi = null, _cardApi = null;
     let _filterInstance = null, _sortH = null, _monthlyUnsub = null, _toggle = null;
 
-    /* 🆕 v103.0.23：讀取隱藏偏好（持久化） */
     try {
       const saved = localStorage.getItem(HIDE_COMPLETED_KEY);
-      ctx.state.filters.hideCompleted = saved === null ? true : saved === 'true';
+      ctx.state.hideCompleted = saved === null ? true : saved === 'true';
     } catch (e) { /* noop */ }
 
     const _recompute = () => {
@@ -69,7 +70,6 @@ export default {
       render();
     };
 
-    /* 🆕 v103.0.23：期間判斷（SSOT 用 getPeriodInfo） */
     const _isInPolicyPeriod = (p, y, m) => {
       const info = getPeriodInfo(p, y, m);
       if (!info) return false;
@@ -81,14 +81,14 @@ export default {
       const { year, month } = AppState.getYearMonth();
       const y = String(year);
       const m = month === 'all' ? null : String(month);
-      const hideCompleted = ctx.state.filters.hideCompleted === true;
+      /* 🆕 v103.0.24：從 state 讀（不再從 filters 讀） */
+      const hideCompleted = ctx.state.hideCompleted === true;
 
       try {
         const policies = await getInsurancePoliciesOnce();
         const list = [];
 
         for (const p of policies) {
-          /* 🆕 已供滿過濾（使用者可選） */
           if (hideCompleted && p.isCompleted) continue;
 
           let payments = {};
@@ -96,7 +96,6 @@ export default {
 
           const holder = p.policyHolderId || p.memberId || '';
 
-          /* 🆕 month='all'：只列出該年有 payment 記錄的月份 */
           if (!m) {
             const yearPayments = payments?.[y] || {};
             for (const mm of Object.keys(yearPayments)) {
@@ -119,10 +118,8 @@ export default {
             continue;
           }
 
-          /* 單月模式 */
           const payment = payments?.[y]?.[m];
           if (payment) {
-            /* 🆕 有 payment 記錄 → 一律顯示（歷史紀錄） */
             list.push({
               policyId: p.id,
               policyName: p.name || '（未命名保單）',
@@ -139,7 +136,6 @@ export default {
             continue;
           }
 
-          /* 🆕 無 payment → 檢查期間（供滿 / 未開始皆跳過） */
           if (!_isInPolicyPeriod(p, y, m)) continue;
 
           const amount = estimateMonthlyAmount(p, y, m) || 0;
@@ -294,7 +290,7 @@ export default {
           </select>
         </div>
         <div class="filter-group" style="flex-direction:row;align-items:center;gap:8px;min-width:auto;">
-          <input type="checkbox" id="settle-hide-completed" style="width:auto;cursor:pointer;" ${ctx.state.filters.hideCompleted ? 'checked' : ''}>
+          <input type="checkbox" id="settle-hide-completed" style="width:auto;cursor:pointer;" ${ctx.state.hideCompleted ? 'checked' : ''}>
           <label for="settle-hide-completed" class="field-label" style="margin:0;cursor:pointer;">隱藏已供滿</label>
         </div>
       `,
@@ -304,13 +300,13 @@ export default {
       },
     });
 
-    /* 🆕 v103.0.23：綁定隱藏已供滿 checkbox */
     const hideCb = document.getElementById('settle-hide-completed');
     const onHideChange = () => {
       const val = hideCb?.checked === true;
-      ctx.state.filters.hideCompleted = val;
+      /* 🆕 v103.0.24：寫入 state.hideCompleted（非 filters） */
+      ctx.state.hideCompleted = val;
       try { localStorage.setItem(HIDE_COMPLETED_KEY, String(val)); } catch (e) {}
-      reload();  /* 需重新載入 insurance rows */
+      reload();
     };
     hideCb?.addEventListener('change', onHideChange);
 
@@ -459,6 +455,6 @@ async function _openBankPickerModal(row) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/settlements.js
-   Version: v103.0.23
-   Batch: B25-3c
+   Version: v103.0.24
+   Batch: B25-3d
    ═══════════════════════════════════════════ */
