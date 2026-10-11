@@ -1,13 +1,26 @@
-// settlements.js — 結算清單（v103.0.20）
+// settlements.js — 結算清單（v103.0.22）
+// v103.0.22（B25-3b）：
+//   ✅ D2(a)：保險扣款「確認扣款 / 取消扣款」接線
+//   ✅ 個人支出編輯改 mode: 'settle'（anchor 0.19）
+//   ✅ 載入 insuranceRows（來自 policies + payments）
+//   ✅ H8：狀態顯示改走 status-registry
+// ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
 import { mergeSettlementData } from '../lib/merge.js';
 import { applyFilters, applySort } from '../lib/filter-sort.js';
-import { listenAllMemberExpenses, removeExpense } from '../core/db.js';
+import {
+  listenAllMemberExpenses,
+  removeExpense,
+  getInsurancePoliciesOnce,
+  getInsurancePaymentsOnce,
+} from '../core/db.js';
+import { api } from '../core/api.js';
+import { estimateMonthlyAmount } from '../lib/insurance.js';
 import { resolveName } from '../config/entity-registry.js';
 import { AppState } from '../core/state.js';
 import { showToast } from '../ui/toast.js';
-import { openConfirm } from '../ui/modal.js';
+import { openConfirm, openModal, closeModal } from '../ui/modal.js';
 import { openExpenseModal } from '../lib/expense-modal.js';
 import { renderPageFilter } from '../shared/page-filter.js';
 import { renderStatsCards } from '../shared/stats-cards.js';
@@ -15,6 +28,8 @@ import { renderDataTable } from '../shared/data-table.js';
 import { renderDataCard } from '../shared/data-card.js';
 import { initViewToggle } from '../ui/view-toggle.js';
 import { RESERVED_IDS } from '../config/constants.js';
+
+const INS_MODAL_ID = 'settle-insurance-modal';
 
 export default {
   title: '結算清單',
@@ -25,16 +40,62 @@ export default {
 
   customMount: (ctx) => {
     let _rows = [], _filtered = [];
+    let _memberExpenses = [], _insuranceRows = [];
     let _statsApi = null, _tableApi = null, _cardApi = null;
     let _filterInstance = null, _sortH = null, _monthlyUnsub = null, _toggle = null;
 
-    const reload = () => {
+    const _recompute = () => {
+      const { year, month } = AppState.getYearMonth();
+      _rows = mergeSettlementData({
+        memberExpenses: _memberExpenses,
+        insuranceRows: _insuranceRows,
+        year: String(year),
+        month,
+      });
+      render();
+    };
+
+    const _loadInsuranceRows = async () => {
+      const { year, month } = AppState.getYearMonth();
+      try {
+        const policies = await getInsurancePoliciesOnce();
+        const list = [];
+        for (const p of policies) {
+          let payments = {};
+          try { payments = await getInsurancePaymentsOnce(p.id); } catch (e) {}
+          const payment = payments?.[year]?.[month];
+          const holder = p.policyHolderId || p.memberId || '';
+          const amount = payment?.amount || estimateMonthlyAmount(p, year, month) || 0;
+          list.push({
+            policyId: p.id,
+            policyName: p.name || '（未命名保單）',
+            policyHolderId: holder,
+            memberId: p.memberId || '',
+            status: payment?.status || '',
+            amount,
+            date: payment?.date || '',
+            bankId: payment?.bankId || '',
+            txnId: payment?.txnId || '',
+            paymentMode: p.paymentMode || 'direct',
+            advanceHolderId: p.advanceHolderId || '',
+          });
+        }
+        _insuranceRows = list;
+      } catch (e) {
+        console.error('[settlements] 載入保險資料失敗：', e);
+        _insuranceRows = [];
+      }
+    };
+
+    const reload = async () => {
       const { year, month } = AppState.getYearMonth();
       if (_monthlyUnsub) { try { _monthlyUnsub(); } catch (e) {} }
       _monthlyUnsub = listenAllMemberExpenses(String(year), month, (memberExpenses) => {
-        _rows = mergeSettlementData({ memberExpenses, insuranceRows: [], year: String(year), month });
-        render();
+        _memberExpenses = memberExpenses;
+        _recompute();
       });
+      await _loadInsuranceRows();
+      _recompute();
     };
 
     const render = () => {
@@ -79,24 +140,36 @@ export default {
       status: (v, r) => `<span class="badge ${r.isDone ? 'badge-success' : 'badge-pending'}">${esc(v)}</span>`,
     };
 
+    /* ============================================
+       Actions（依 anchor 0.19 / 0.21）
+       - 保險：確認扣款 / 取消扣款
+       - 個人：結算（mode:'settle'）/ 刪除
+       ============================================ */
     const _hooks = (canInput) => ({
-      customActions: canInput ? (row) => [
-        { label: '編輯', icon: 'pencil', className: 'btn-ghost', action: 'edit', onClick: () => {
-          if (row.source === 'insurance') { showToast('保險請至「保險清單表」編輯', 'info', 3000); window.location.href = 'insurance.html'; return; }
-          openExpenseModal({
-            row: { id: row._ref?.expenseId, year: row.year, month: row.month, memberId: row.memberId, name: row.name, amount: row.amount, date: row.date, categoryId: row.categoryId, itemId: row.itemId, paymentMethodId: row.paymentMethodId, bankId: row.bankId, status: row.isDone ? 'done' : 'pending' },
-            onSuccess: reload,
-          });
-        }},
-        { label: row.source === 'insurance' ? '取消扣款' : '刪除', icon: 'trash-2', className: 'btn-danger', action: 'del', onClick: async () => {
-          const ok = await openConfirm(`確定要刪除「${row.name}」嗎？`, { okText: '刪除', okClass: 'btn-danger' });
-          if (!ok) return;
-          try {
-            if (row.source === 'personal' && row._ref) await removeExpense(row.year, row.month, row._ref.memberId, row._ref.expenseId);
-            showToast('✅ 已刪除', 'success'); reload();
-          } catch (e) { showToast('刪除失敗：' + e.message, 'error'); }
-        }},
-      ] : () => [],
+      customActions: canInput ? (row) => {
+        if (row.source === 'insurance') {
+          return row.isDone
+            ? [{ label: '取消扣款', icon: 'rotate-ccw', className: 'btn-ghost', action: 'ins-unsync', onClick: () => _onInsuranceUnsync(row, reload) }]
+            : [{ label: '確認扣款', icon: 'check', className: 'btn-primary', action: 'ins-sync', onClick: () => _onInsuranceSync(row, reload) }];
+        }
+        return [
+          { label: '結算', icon: 'check-circle', className: 'btn-ghost', action: 'settle', onClick: () => {
+            openExpenseModal({
+              row: { id: row._ref?.expenseId, year: row.year, month: row.month, memberId: row.memberId, status: row.isDone ? 'done' : 'pending', paymentMethodId: row.paymentMethodId || '', bankId: row.bankId || '' },
+              mode: 'settle',
+              onSuccess: reload,
+            });
+          }},
+          { label: '刪除', icon: 'trash-2', className: 'btn-danger', action: 'del', onClick: async () => {
+            const ok = await openConfirm(`確定要刪除「${row.name}」嗎？`, { okText: '刪除', okClass: 'btn-danger' });
+            if (!ok) return;
+            try {
+              if (row._ref) await removeExpense(row.year, row.month, row._ref.memberId, row._ref.expenseId);
+              showToast('✅ 已刪除', 'success'); reload();
+            } catch (e) { showToast('刪除失敗：' + e.message, 'error'); }
+          }},
+        ];
+      } : () => [],
     });
 
     const _paintList = () => {
@@ -173,9 +246,126 @@ export default {
   },
 };
 
+/* ============================================
+   保險扣款：確認 / 取消
+   ============================================ */
+async function _onInsuranceSync(row, onSuccess) {
+  const ok = await _openBankPickerModal(row);
+  if (!ok) return;
+
+  try {
+    await api.insuranceSync({
+      policyId: row._ref?.policyId,
+      memberId: row._ref?.memberId || row.memberId,
+      policyName: row.name,
+      monthlyAverage: row.amount,
+      year: row.year,
+      month: row.month,
+      bankId: ok.bankId || '',
+      txnId: '',
+      paymentMode: row.paymentMode || 'direct',
+      advanceHolderId: row.advanceHolderId || '',
+    });
+    showToast('✅ 已確認扣款（連動支出 / 基金 / 代墊）', 'success');
+    if (typeof onSuccess === 'function') onSuccess();
+  } catch (err) {
+    showToast('確認扣款失敗：' + err.message, 'error');
+  }
+}
+
+async function _onInsuranceUnsync(row, onSuccess) {
+  const ok = await openConfirm(
+    `⚠️ 確定要取消「${row.name}」本月的扣款嗎？\n\n將同步撤銷：\n• 支出紀錄\n• 基金累積供款\n• 代墊扣減`,
+    { title: '取消扣款', okText: '取消扣款', okClass: 'btn-danger' }
+  );
+  if (!ok) return;
+
+  try {
+    await api.insuranceUnsync({
+      policyId: row._ref?.policyId,
+      memberId: row._ref?.memberId || row.memberId,
+      year: row.year,
+      month: row.month,
+      amount: row.amount,
+      paymentMode: row.paymentMode || 'direct',
+      advanceHolderId: row.advanceHolderId || '',
+    });
+    showToast('✅ 已取消扣款', 'success');
+    if (typeof onSuccess === 'function') onSuccess();
+  } catch (err) {
+    showToast('取消扣款失敗：' + err.message, 'error');
+  }
+}
+
+/**
+ * 銀行選擇 Modal（回傳 { bankId } 或 null）
+ */
+async function _openBankPickerModal(row) {
+  document.getElementById(INS_MODAL_ID)?.remove();
+
+  let banks = [];
+  try {
+    const { getBankAccountsOnce } = await import('../core/db.js');
+    banks = await getBankAccountsOnce();
+  } catch (e) { banks = []; }
+
+  return new Promise((resolve) => {
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = INS_MODAL_ID;
+    overlay.innerHTML = `
+      <div class="modal" style="max-width:440px;">
+        <h2 class="modal-title">確認扣款 — ${esc(row.name)}</h2>
+        <div class="glass-card" style="padding:12px;background:rgba(8,11,17,0.4);margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;">
+            <span class="text-muted">金額</span>
+            <span class="mono text-cyan" style="font-weight:700;">${formatHKD(row.amount)}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-top:6px;">
+            <span class="text-muted">所屬年月</span>
+            <span class="mono">${esc(row.year)}-${esc(row.month)}</span>
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label">出帳銀行（可選）</label>
+          <select class="select" id="${INS_MODAL_ID}-bank">
+            <option value="">— 不指定 —</option>
+            ${banks.map((b) => `<option value="${esc(b.id)}">${esc(b.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="modal-actions" style="margin-top:16px;">
+          <button type="button" class="btn btn-ghost" data-action="cancel">取消</button>
+          <button type="button" class="btn btn-primary" data-action="ok"><i data-lucide="check" style="width:14px;height:14px;"></i> 確認扣款</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const close = (result) => {
+      closeModal(INS_MODAL_ID);
+      overlay.remove();
+      resolve(result);
+    };
+
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) { close(null); return; }
+      const btn = e.target.closest('button[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'cancel') { close(null); return; }
+      if (btn.dataset.action === 'ok') {
+        const sel = document.getElementById(`${INS_MODAL_ID}-bank`);
+        close({ bankId: sel?.value || '' });
+      }
+    });
+
+    openModal(INS_MODAL_ID);
+    if (window.lucide) window.lucide.createIcons();
+  });
+}
+
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/settlements.js
-   Version: v103.0.20
-   Batch: B22
+   Version: v103.0.22
+   Batch: B25-3b
    ═══════════════════════════════════════════ */
