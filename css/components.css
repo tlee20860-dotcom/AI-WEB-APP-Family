@@ -1,12 +1,11 @@
 /* ============================================
    components.css — 卡片、按鈕、表格、Modal、表單
    -------------------------------------------------
+   v103.0.30（B26-3.3）：
+     ✅ 修正手機版 page-header 換行問題
+        - 移除 flex-direction: column（改回 flex-wrap 自然換行）
    v103.0.29（B26-3.2）：
-     ✅ 加 .page-header flex 定義（標題 + header actions）
-     ✅ 加 .page-header-actions-group
-   v103.0.28（B26-3.1）：
-     ✅ 移除 .page-controls .year-switcher 舊樣式
-     ✅ 加 .page-controls-period-group（改用 .btn btn-sm）
+     ✅ 加 .page-header flex 定義 + .page-header-actions-group
    ============================================ */
 
 /* ================= GlassCard ================= */
@@ -56,7 +55,7 @@
 }
 
 /* ============================================
-   🆕 Page Header（B26-3.2）
+   Page Header（標題 + header actions）
    ============================================ */
 .page-header {
   display: flex;
@@ -81,14 +80,10 @@
   flex-shrink: 0;
 }
 
+/* 🆕 v103.0.30：手機不強制 column；靠 flex-wrap 自然換行 */
 @media (max-width: 640px) {
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
   .page-header-actions-group {
-    width: 100%;
-    justify-content: flex-end;
+    gap: 6px;
   }
 }
 
@@ -1520,6 +1515,6 @@
 /* ═══════════════════════════════════════════
    END OF FILE
    File: css/components.css
-   Version: v103.0.29
-   Batch: B26-3.2
+   Version: v103.0.30
+   Batch: B26-3.3
    ═══════════════════════════════════════════ */
