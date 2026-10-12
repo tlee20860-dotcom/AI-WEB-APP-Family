@@ -1,10 +1,10 @@
 // ============================================
-// _config.js — Firebase REST 設定（v103.0.44）
+// _config.js — Firebase REST 設定（v103.0.45）
 // 位置：functions/api/_config.js
 // ============================================
-// v103.0.44（B30-5）：
-//   ✅ 支援 initConfig(env) 從 CF Pages context.env 讀 DB_TARGET
-//   ✅ 動態選 DB URL + API Key
+// v103.0.45（B30-5）：
+//   ✅ 保留 FIREBASE_DB_URL / FIREBASE_API_KEY 的 let 匯出（相容舊引用）
+//   ✅ initConfig(env) 動態更新
 // ============================================
 
 /* ============================================
@@ -21,47 +21,40 @@ const _DB_CONFIGS = {
   },
 };
 
-let _dbUrl    = _DB_CONFIGS.old.url;
-let _apiKey   = _DB_CONFIGS.old.apiKey;
-let _initialized = false;
+/* ⚠️ 用 export let（live binding），讓舊引用自動更新 */
+export let FIREBASE_DB_URL  = _DB_CONFIGS.old.url;
+export let FIREBASE_API_KEY = _DB_CONFIGS.old.apiKey;
 
-/**
- * 初始化設定（每個 request 開頭呼叫）
- * @param {object} env - CF Pages context.env
- */
+export const SUPERADMIN_EMAIL = 'superadmin@familyfin.local';
+export const IDENTITY_TOOLKIT_URL = 'https://identitytoolkit.googleapis.com/v1';
+
+/* ============================================
+   initConfig（每個 request 開頭呼叫）
+   ============================================ */
 export function initConfig(env) {
   const target = (env && env.DB_TARGET) || 'old';
   const cfg = _DB_CONFIGS[target] || _DB_CONFIGS.old;
-  _dbUrl  = cfg.url;
-  _apiKey = cfg.apiKey;
-  _initialized = true;
+  FIREBASE_DB_URL  = cfg.url;
+  FIREBASE_API_KEY = cfg.apiKey;
 }
 
-/* ============================================
-   對外唯讀取值（給 _helpers.js 等使用）
-   ============================================ */
-export function getDbUrl()  { return _dbUrl; }
-export function getApiKey() { return _apiKey; }
-
-/* ============================================
-   靜態常數
-   ============================================ */
-export const SUPERADMIN_EMAIL = 'superadmin@familyfin.local';
-export const IDENTITY_TOOLKIT_URL = 'https://identitytoolkit.googleapis.com/v1';
+/* 輔助取值（給 _helpers.js 用） */
+export function getApiKey() { return FIREBASE_API_KEY; }
+export function getDbUrl()  { return FIREBASE_DB_URL; }
 
 /* ============================================
    REST 基本操作
    ============================================ */
 
 export async function dbGet(path, token = '') {
-  const url = `${_dbUrl}/${path}.json${token ? `?auth=${token}` : ''}`;
+  const url = `${FIREBASE_DB_URL}/${path}.json${token ? `?auth=${token}` : ''}`;
   const res = await fetch(url);
   if (!res.ok) return null;
   return res.json();
 }
 
 export async function dbPut(path, data, token = '') {
-  const url = `${_dbUrl}/${path}.json${token ? `?auth=${token}` : ''}`;
+  const url = `${FIREBASE_DB_URL}/${path}.json${token ? `?auth=${token}` : ''}`;
   const res = await fetch(url, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -71,7 +64,7 @@ export async function dbPut(path, data, token = '') {
 }
 
 export async function dbPatch(path, data, token = '') {
-  const url = `${_dbUrl}/${path}.json${token ? `?auth=${token}` : ''}`;
+  const url = `${FIREBASE_DB_URL}/${path}.json${token ? `?auth=${token}` : ''}`;
   const res = await fetch(url, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -81,7 +74,7 @@ export async function dbPatch(path, data, token = '') {
 }
 
 export async function dbPush(path, data, token = '') {
-  const url = `${_dbUrl}/${path}.json${token ? `?auth=${token}` : ''}`;
+  const url = `${FIREBASE_DB_URL}/${path}.json${token ? `?auth=${token}` : ''}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -93,7 +86,7 @@ export async function dbPush(path, data, token = '') {
 }
 
 export async function dbDelete(path, token = '') {
-  const url = `${_dbUrl}/${path}.json${token ? `?auth=${token}` : ''}`;
+  const url = `${FIREBASE_DB_URL}/${path}.json${token ? `?auth=${token}` : ''}`;
   const res = await fetch(url, { method: 'DELETE' });
   return res.ok;
 }
@@ -104,7 +97,7 @@ export async function dbDelete(path, token = '') {
 
 export async function dbSignUp(email, password) {
   try {
-    const url = `${IDENTITY_TOOLKIT_URL}/accounts:signUp?key=${_apiKey}`;
+    const url = `${IDENTITY_TOOLKIT_URL}/accounts:signUp?key=${FIREBASE_API_KEY}`;
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -144,6 +137,6 @@ export function jsonResponse(data, status = 200) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: functions/api/_config.js
-   Version: v103.0.44
+   Version: v103.0.45
    Batch: B30-5
    ═══════════════════════════════════════════ */
