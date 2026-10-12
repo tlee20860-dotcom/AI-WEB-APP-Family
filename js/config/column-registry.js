@@ -1,126 +1,177 @@
-// column-registry.js — 表格欄位 SSOT（v103.0.21）
+// column-registry.js — 表格欄位 SSOT（v103.0.34）
+// v103.0.34（B29-1b）：
+//   ✅ 加 sortable / filterable / filterOptions 屬性
+//   ✅ 加 settlements / insurancePolicies / bankAccounts / bankTransactions / recentExpense
+//   ✅ 從各頁 JS 搬入
+// ============================================
 import { formatHKD, formatNumber } from '../lib/format.js';
 import { esc as escapeHtml } from '../lib/dom.js';
 import { resolveName } from './entity-registry.js';
 import { BANK_TXN_TYPE_LABELS, BANK_TXN_CATEGORY_LABELS, BANK_TXN_CATEGORY_BADGES, BANK_ACCOUNT_TYPE_LABELS, RESERVED_IDS } from './constants.js';
 import { badgeClass as statusBadgeClass, label as statusLabel } from './status-registry.js';
 
+/* ============================================
+   COLUMNS 定義
+   - sortable: 是否可排序
+   - filterable: 是否可篩選
+   - filterOptions: 篩選選項
+   ============================================ */
 export const COLUMNS = {
   members: [
-    { id: 'name', label: '名稱', defaultVisible: true, defaultWidth: 160 },
-    { id: 'role', label: '角色', defaultVisible: true, defaultWidth: 120 },
-    { id: 'order', label: '排序', defaultVisible: true, defaultWidth: 80, type: 'number' },
+    { id: 'name', label: '名稱', defaultVisible: true, defaultWidth: 160, sortable: true },
+    { id: 'role', label: '角色', defaultVisible: true, defaultWidth: 120, sortable: true, filterable: true },
+    { id: 'order', label: '排序', defaultVisible: true, defaultWidth: 80, type: 'number', sortable: true },
   ],
   banks: [
-    { id: 'name', label: '名稱', defaultVisible: true, defaultWidth: 160 },
-    { id: 'order', label: '排序', defaultVisible: true, defaultWidth: 80, type: 'number' },
+    { id: 'name', label: '名稱', defaultVisible: true, defaultWidth: 160, sortable: true },
+    { id: 'order', label: '排序', defaultVisible: true, defaultWidth: 80, type: 'number', sortable: true },
   ],
   bankAccounts: [
-    { id: 'order', label: '排序', defaultVisible: true, defaultWidth: 60 },
-    { id: 'name', label: '名稱', defaultVisible: true, defaultWidth: 160 },
-    { id: 'type', label: '類型', defaultVisible: true, defaultWidth: 100 },
-    { id: 'initialBalance', label: '初始餘額', defaultVisible: true, defaultWidth: 130, type: 'number' },
+    { id: 'order', label: '排序', defaultVisible: true, defaultWidth: 60, sortable: true },
+    { id: 'name', label: '名稱', defaultVisible: true, defaultWidth: 160, sortable: true },
+    { id: 'type', label: '類型', defaultVisible: true, defaultWidth: 100, sortable: true, filterable: true, filterOptions: [
+      { value: 'family', label: '家庭帳號' },
+      { value: 'personal', label: '個人帳號' },
+    ]},
+    { id: 'initialBalance', label: '初始餘額', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
     { id: 'initialYM', label: '初始年月', defaultVisible: true, defaultWidth: 110 },
   ],
   categories: [
-    { id: 'name', label: '名稱', defaultVisible: true, defaultWidth: 200 },
-    { id: 'order', label: '排序', defaultVisible: true, defaultWidth: 80, type: 'number' },
+    { id: 'name', label: '名稱', defaultVisible: true, defaultWidth: 200, sortable: true },
+    { id: 'order', label: '排序', defaultVisible: true, defaultWidth: 80, type: 'number', sortable: true },
   ],
   items: [
-    { id: 'name', label: '名稱', defaultVisible: true, defaultWidth: 200 },
-    { id: 'categoryId', label: '所屬類別', defaultVisible: true, defaultWidth: 140 },
+    { id: 'name', label: '名稱', defaultVisible: true, defaultWidth: 200, sortable: true },
+    { id: 'categoryId', label: '所屬類別', defaultVisible: true, defaultWidth: 140, sortable: true, filterable: true },
   ],
   payments: [
-    { id: 'name', label: '名稱', defaultVisible: true, defaultWidth: 160 },
-    { id: 'order', label: '排序', defaultVisible: true, defaultWidth: 80, type: 'number' },
+    { id: 'name', label: '名稱', defaultVisible: true, defaultWidth: 160, sortable: true },
+    { id: 'order', label: '排序', defaultVisible: true, defaultWidth: 80, type: 'number', sortable: true },
   ],
   statuses: [
-    { id: 'name', label: '名稱', defaultVisible: true, defaultWidth: 140 },
-    { id: 'category', label: '所屬類別', defaultVisible: true, defaultWidth: 110 },
-    { id: 'isDone', label: '已完成', defaultVisible: true, defaultWidth: 90 },
-    { id: 'order', label: '排序', defaultVisible: true, defaultWidth: 70, type: 'number' },
+    { id: 'name', label: '名稱', defaultVisible: true, defaultWidth: 140, sortable: true },
+    { id: 'category', label: '所屬類別', defaultVisible: true, defaultWidth: 110, sortable: true, filterable: true },
+    { id: 'isDone', label: '已完成', defaultVisible: true, defaultWidth: 90, sortable: true },
+    { id: 'order', label: '排序', defaultVisible: true, defaultWidth: 70, type: 'number', sortable: true },
   ],
-  companies: [{ id: 'name', label: '名稱', defaultVisible: true, defaultWidth: 160 }],
+  companies: [
+    { id: 'name', label: '名稱', defaultVisible: true, defaultWidth: 160, sortable: true },
+  ],
   funds: [
-    { id: 'name', label: '基金名稱', defaultVisible: true, defaultWidth: 200 },
-    { id: 'typeLabel', label: '類型', defaultVisible: true, defaultWidth: 100 },
-    { id: 'cost', label: '投入成本', defaultVisible: true, defaultWidth: 130, type: 'number' },
-    { id: 'currentValue', label: '現時價值', defaultVisible: true, defaultWidth: 130, type: 'number' },
-    { id: 'pnl', label: '盈虧', defaultVisible: true, defaultWidth: 130, type: 'number' },
-    { id: 'units', label: '單位數', defaultVisible: true, defaultWidth: 100, type: 'number' },
+    { id: 'name', label: '基金名稱', defaultVisible: true, defaultWidth: 200, sortable: true },
+    { id: 'typeLabel', label: '類型', defaultVisible: true, defaultWidth: 100, sortable: true, filterable: true, filterOptions: [
+      { value: 'insurance', label: '保險' },
+      { value: 'standalone', label: '獨立' },
+    ]},
+    { id: 'cost', label: '投入成本', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
+    { id: 'currentValue', label: '現時價值', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
+    { id: 'pnl', label: '盈虧', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
+    { id: 'units', label: '單位數', defaultVisible: true, defaultWidth: 100, type: 'number', sortable: true },
     { id: 'note', label: '備註', defaultVisible: false, defaultWidth: 180 },
   ],
   fundSnapshots: [
-    { id: 'yearMonth', label: '年月', defaultVisible: true, defaultWidth: 90 },
-    { id: 'shares', label: '股數', defaultVisible: true, defaultWidth: 100, type: 'number' },
-    { id: 'nav', label: '股價', defaultVisible: true, defaultWidth: 100, type: 'number' },
-    { id: 'value', label: '現值', defaultVisible: true, defaultWidth: 110, type: 'number' },
-    { id: 'cumulativeCost', label: '累積供款', defaultVisible: true, defaultWidth: 110, type: 'number' },
-    { id: 'pnl', label: '盈虧', defaultVisible: true, defaultWidth: 110, type: 'number' },
+    { id: 'yearMonth', label: '年月', defaultVisible: true, defaultWidth: 90, sortable: true },
+    { id: 'shares', label: '股數', defaultVisible: true, defaultWidth: 100, type: 'number', sortable: true },
+    { id: 'nav', label: '股價', defaultVisible: true, defaultWidth: 100, type: 'number', sortable: true },
+    { id: 'value', label: '現值', defaultVisible: true, defaultWidth: 110, type: 'number', sortable: true },
+    { id: 'cumulativeCost', label: '累積供款', defaultVisible: true, defaultWidth: 110, type: 'number', sortable: true },
+    { id: 'pnl', label: '盈虧', defaultVisible: true, defaultWidth: 110, type: 'number', sortable: true },
   ],
   insurance: [
-    { id: 'name', label: '保單名稱', defaultVisible: true, defaultWidth: 200 },
-    { id: 'company', label: '保險公司', defaultVisible: true, defaultWidth: 120 },
-    { id: 'policyHolder', label: '持有人', defaultVisible: true, defaultWidth: 100 },
-    { id: 'member', label: '受保人', defaultVisible: true, defaultWidth: 100 },
-    { id: 'startDate', label: '開始日期', defaultVisible: true, defaultWidth: 110 },
-    { id: 'annualPremium', label: '本期年繳', defaultVisible: true, defaultWidth: 120, type: 'number' },
-    { id: 'totalPremium', label: '保單總供款', defaultVisible: true, defaultWidth: 130, type: 'number' },
-    { id: 'paidTotal', label: '已供款總額', defaultVisible: true, defaultWidth: 130, type: 'number' },
-    { id: 'progress', label: '進度', defaultVisible: true, defaultWidth: 140 },
+    { id: 'name', label: '保單名稱', defaultVisible: true, defaultWidth: 200, sortable: true },
+    { id: 'company', label: '保險公司', defaultVisible: true, defaultWidth: 120, sortable: true, filterable: true },
+    { id: 'policyHolder', label: '持有人', defaultVisible: true, defaultWidth: 100, sortable: true, filterable: true },
+    { id: 'member', label: '受保人', defaultVisible: true, defaultWidth: 100, sortable: true, filterable: true },
+    { id: 'startDate', label: '開始日期', defaultVisible: true, defaultWidth: 110, sortable: true },
+    { id: 'annualPremium', label: '本期年繳', defaultVisible: true, defaultWidth: 120, type: 'number', sortable: true },
+    { id: 'totalPremium', label: '保單總供款', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
+    { id: 'paidTotal', label: '已供款總額', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
+    { id: 'progress', label: '進度', defaultVisible: true, defaultWidth: 140, sortable: true },
+  ],
+  insurancePolicies: [
+    { id: 'name', label: '保單名稱', defaultVisible: true, defaultWidth: 200, sortable: true },
+    { id: 'company', label: '保險公司', defaultVisible: true, defaultWidth: 120, sortable: true, filterable: true },
+    { id: 'holderName', label: '持有人', defaultVisible: true, defaultWidth: 100, sortable: true, filterable: true },
+    { id: 'insuredName', label: '受保人', defaultVisible: true, defaultWidth: 100, sortable: true, filterable: true },
+    { id: 'annualPremium', label: '本期年繳', defaultVisible: true, defaultWidth: 120, type: 'number', sortable: true },
+    { id: 'totalPremium', label: '保單總供款', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
+    { id: 'progressText', label: '進度', defaultVisible: true, defaultWidth: 160, sortable: true },
   ],
   settlements: [
-    { id: 'source', label: '來源', defaultVisible: true, defaultWidth: 90 },
-    { id: 'yearMonth', label: '年月', defaultVisible: true, defaultWidth: 90 },
-    { id: 'member', label: '成員', defaultVisible: true, defaultWidth: 90 },
-    { id: 'name', label: '項目名稱', defaultVisible: true, defaultWidth: 200 },
-    { id: 'amount', label: '金額', defaultVisible: true, defaultWidth: 110, type: 'number' },
-    { id: 'date', label: '日期', defaultVisible: true, defaultWidth: 100 },
-    { id: 'status', label: '狀態', defaultVisible: true, defaultWidth: 140 },
+    { id: 'source', label: '來源', defaultVisible: true, defaultWidth: 90, sortable: true, filterable: true, filterOptions: [
+      { value: 'personal', label: '🏷 個人支出' },
+      { value: 'insurance', label: '🛡 保險扣款' },
+    ]},
+    { id: 'yearMonth', label: '年月', defaultVisible: true, defaultWidth: 90, sortable: true },
+    { id: 'member', label: '成員', defaultVisible: true, defaultWidth: 90, sortable: true, filterable: true },
+    { id: 'name', label: '項目名稱', defaultVisible: true, defaultWidth: 200, sortable: true },
+    { id: 'amount', label: '金額', defaultVisible: true, defaultWidth: 110, type: 'number', sortable: true },
+    { id: 'date', label: '日期', defaultVisible: true, defaultWidth: 100, sortable: true },
+    { id: 'status', label: '狀態', defaultVisible: true, defaultWidth: 140, sortable: true, filterable: true },
   ],
   bankTransactions: [
-    { id: 'date', label: '日期', defaultVisible: true, defaultWidth: 110 },
-    { id: 'bankName', label: '銀行', defaultVisible: true, defaultWidth: 100 },
-    { id: 'typeLabel', label: '類型', defaultVisible: true, defaultWidth: 90 },
-    { id: 'catLabel', label: '分類', defaultVisible: true, defaultWidth: 100 },
-    { id: 'memberName', label: '成員', defaultVisible: true, defaultWidth: 100 },
-    { id: 'amount', label: '金額', defaultVisible: true, defaultWidth: 120, type: 'number' },
+    { id: 'date', label: '日期', defaultVisible: true, defaultWidth: 110, sortable: true },
+    { id: 'bankName', label: '銀行', defaultVisible: true, defaultWidth: 100, sortable: true, filterable: true },
+    { id: 'typeLabel', label: '類型', defaultVisible: true, defaultWidth: 90, sortable: true, filterable: true, filterOptions: [
+      { value: 'in', label: '入帳' },
+      { value: 'out', label: '出帳' },
+      { value: 'transfer', label: '內部轉帳' },
+    ]},
+    { id: 'catLabel', label: '分類', defaultVisible: true, defaultWidth: 100, sortable: true, filterable: true, filterOptions: [
+      { value: 'contribution', label: '家用轉入' },
+      { value: 'expense', label: '支出' },
+      { value: 'insurance', label: '保險' },
+      { value: 'reimbursement', label: '代墊報銷' },
+      { value: 'manual', label: '手動' },
+    ]},
+    { id: 'memberName', label: '成員', defaultVisible: true, defaultWidth: 100, sortable: true, filterable: true },
+    { id: 'amount', label: '金額', defaultVisible: true, defaultWidth: 120, type: 'number', sortable: true },
     { id: 'note', label: '備註', defaultVisible: true, defaultWidth: 180 },
   ],
-  dashboardAnnual: [
-    { id: 'year', label: '年度', defaultVisible: true, defaultWidth: 100 },
-    { id: 'totalIncome', label: '家庭收入', defaultVisible: true, defaultWidth: 130, type: 'number' },
-    { id: 'totalExpense', label: '總支出', defaultVisible: true, defaultWidth: 130, type: 'number' },
-    { id: 'insurance', label: '保險平攤', defaultVisible: true, defaultWidth: 130, type: 'number' },
-    { id: 'net', label: '淨餘額', defaultVisible: true, defaultWidth: 130, type: 'number' },
-    { id: 'avg', label: '每月平均', defaultVisible: true, defaultWidth: 130, type: 'number' },
-  ],
-  annualSummary: [
-    { id: 'name', label: '成員', defaultVisible: true, defaultWidth: 100 },
-    { id: 'income', label: '家用轉入', defaultVisible: true, defaultWidth: 120, type: 'number' },
-    { id: 'personalIncome', label: '個人收入', defaultVisible: true, defaultWidth: 120, type: 'number' },
-    { id: 'expense', label: '總支出', defaultVisible: true, defaultWidth: 120, type: 'number' },
-    { id: 'net', label: '淨結餘', defaultVisible: true, defaultWidth: 130, type: 'number' },
-  ],
-  annualMonthly: [
-    { id: 'date', label: '日期', defaultVisible: true, defaultWidth: 110 },
-    { id: 'memberName', label: '成員', defaultVisible: true, defaultWidth: 100 },
-    { id: 'categoryName', label: '類別', defaultVisible: true, defaultWidth: 100 },
-    { id: 'itemName', label: '項目', defaultVisible: true, defaultWidth: 120 },
-    { id: 'name', label: '名稱', defaultVisible: true, defaultWidth: 180 },
-    { id: 'amount', label: '金額', defaultVisible: true, defaultWidth: 110, type: 'number' },
-    { id: 'status', label: '狀態', defaultVisible: true, defaultWidth: 120 },
+  recentExpense: [
+    { id: 'date', label: '日期', defaultVisible: true, defaultWidth: 100, sortable: true },
+    { id: 'memberName', label: '成員', defaultVisible: true, defaultWidth: 100, sortable: true, filterable: true },
+    { id: 'name', label: '項目名稱', defaultVisible: true, defaultWidth: 200, sortable: true },
+    { id: 'amount', label: '金額', defaultVisible: true, defaultWidth: 110, type: 'number', sortable: true },
+    { id: 'status', label: '狀態', defaultVisible: true, defaultWidth: 120, sortable: true, filterable: true },
   ],
   memberReport: [
-    { id: 'name', label: '成員', defaultVisible: true, defaultWidth: 140 },
-    { id: 'income', label: '家用轉入', defaultVisible: true, defaultWidth: 140, type: 'number' },
-    { id: 'personalIncome', label: '個人收入', defaultVisible: true, defaultWidth: 130, type: 'number' },
-    { id: 'expense', label: '支出', defaultVisible: true, defaultWidth: 140, type: 'number' },
-    { id: 'insurance', label: '保險', defaultVisible: true, defaultWidth: 140, type: 'number' },
-    { id: 'net', label: '淨額', defaultVisible: true, defaultWidth: 140, type: 'number' },
+    { id: 'name', label: '成員', defaultVisible: true, defaultWidth: 140, sortable: true },
+    { id: 'income', label: '家用轉入', defaultVisible: true, defaultWidth: 140, type: 'number', sortable: true },
+    { id: 'personalIncome', label: '個人收入', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
+    { id: 'expense', label: '支出', defaultVisible: true, defaultWidth: 140, type: 'number', sortable: true },
+    { id: 'insurance', label: '保險', defaultVisible: true, defaultWidth: 140, type: 'number', sortable: true },
+    { id: 'net', label: '淨額', defaultVisible: true, defaultWidth: 140, type: 'number', sortable: true },
+  ],
+  dashboardAnnual: [
+    { id: 'year', label: '年度', defaultVisible: true, defaultWidth: 100, sortable: true },
+    { id: 'totalIncome', label: '家庭收入', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
+    { id: 'totalExpense', label: '總支出', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
+    { id: 'insurance', label: '保險平攤', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
+    { id: 'net', label: '淨餘額', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
+    { id: 'avg', label: '每月平均', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
+  ],
+  annualSummary: [
+    { id: 'name', label: '成員', defaultVisible: true, defaultWidth: 100, sortable: true },
+    { id: 'income', label: '家用轉入', defaultVisible: true, defaultWidth: 120, type: 'number', sortable: true },
+    { id: 'personalIncome', label: '個人收入', defaultVisible: true, defaultWidth: 120, type: 'number', sortable: true },
+    { id: 'expense', label: '總支出', defaultVisible: true, defaultWidth: 120, type: 'number', sortable: true },
+    { id: 'net', label: '淨結餘', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
+  ],
+  annualMonthly: [
+    { id: 'date', label: '日期', defaultVisible: true, defaultWidth: 110, sortable: true },
+    { id: 'memberName', label: '成員', defaultVisible: true, defaultWidth: 100, sortable: true, filterable: true },
+    { id: 'categoryName', label: '類別', defaultVisible: true, defaultWidth: 100, sortable: true, filterable: true },
+    { id: 'itemName', label: '項目', defaultVisible: true, defaultWidth: 120, sortable: true },
+    { id: 'name', label: '名稱', defaultVisible: true, defaultWidth: 180, sortable: true },
+    { id: 'amount', label: '金額', defaultVisible: true, defaultWidth: 110, type: 'number', sortable: true },
+    { id: 'status', label: '狀態', defaultVisible: true, defaultWidth: 120, sortable: true, filterable: true },
   ],
 };
 
+/* ============================================
+   RESOLVERS
+   ============================================ */
 export const RESOLVERS = {
   members: {
     role: (v) => escapeHtml(String(v || '—')),
@@ -191,6 +242,21 @@ export const RESOLVERS = {
       return `<div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);margin-bottom:3px;">${d} / ${t} 期 (${p}%)</div><div class="progress" style="height:5px;"><div class="progress-bar" style="width:${p}%;"></div></div>`;
     },
   },
+  insurancePolicies: {
+    name: (v) => escapeHtml(v || '（未命名）'),
+    company: (v) => escapeHtml(v || '—'),
+    holderName: (_, r) => escapeHtml(resolveName('members', r.policyHolderId || r.memberId) || '—'),
+    insuredName: (_, r) => escapeHtml(resolveName('members', r.memberId) || '—'),
+    annualPremium: (v) => `<span class="mono text-cyan">${formatHKD(v)}</span>`,
+    totalPremium: (v) => `<span class="mono text-magenta">${formatHKD(v)}</span>`,
+    progressText: (_, r) => {
+      if (r.type === 'fund_insurance') return '<span class="text-muted">基金保險</span>';
+      const d = r.completedPeriods || 0;
+      const t = r.totalPolicyPeriods || 0;
+      const p = t > 0 ? Math.min(100, Math.round((d / t) * 100)) : 0;
+      return `<div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">${d} / ${t} 期 (${p}%)</div><div class="progress" style="height:5px;"><div class="progress-bar" style="width:${p}%;"></div></div>`;
+    },
+  },
   settlements: {
     source: (_, r) => {
       const m = { personal: { cls: 'badge-info', label: r.memberId === 'shared' ? '🏠 家庭' : '🏷 個人' }, insurance: { cls: 'badge-success', label: '🛡 保險' } };
@@ -212,6 +278,21 @@ export const RESOLVERS = {
     memberName: (v) => v ? escapeHtml(resolveName('members', v) || v) : '—',
     amount: (v, r) => `<span class="mono ${r.type === 'in' ? 'text-emerald' : 'text-red'}">${r.type === 'in' ? '+' : '-'}${formatHKD(v)}</span>`,
     note: (v) => escapeHtml(v || '—'),
+  },
+  recentExpense: {
+    date: (v) => escapeHtml(v || '—'),
+    memberName: (_, r) => r.memberId === RESERVED_IDS.SHARED_MEMBER ? '🏠 家庭共用' : escapeHtml(resolveName('members', r.memberId) || r.memberId || '—'),
+    name: (v) => escapeHtml(v || '（未命名）'),
+    amount: (v) => formatHKD(v),
+    status: (v) => `<span class="badge ${v === 'done' ? 'badge-success' : 'badge-pending'}">${escapeHtml(v || '—')}</span>`,
+  },
+  memberReport: {
+    name: (v, r) => escapeHtml(v) + (r.isShared ? ' <span class="badge badge-muted" style="font-size:10px;">🏠</span>' : ''),
+    income: (_, r) => r.isShared ? '<span class="text-muted">—</span>' : `<span class="text-emerald">${formatHKD(r.income)}</span>`,
+    personalIncome: (_, r) => (r.isShared || r.personalIncome === 0) ? '<span class="text-muted">—</span>' : `<span class="text-cyan">${formatHKD(r.personalIncome)}</span>`,
+    expense: (_, r) => `<span class="text-red">${formatHKD(r.expense)}</span>`,
+    insurance: (_, r) => r.insurance === 0 ? '<span class="text-muted">—</span>' : `<span class="text-magenta">${formatHKD(r.insurance)}</span>`,
+    net: (_, r) => r.isShared ? '<span class="text-muted">—</span>' : `<span class="${r.net >= 0 ? 'text-emerald' : 'text-red'}">${formatHKD(r.net)}</span>`,
   },
   dashboardAnnual: {
     year: (v, r) => `${v} 年${r.isCurrent ? ' <span class="badge badge-info" style="font-size:10px;">今年</span>' : ''}`,
@@ -237,27 +318,29 @@ export const RESOLVERS = {
     amount: (v) => `<span class="mono text-red">${formatHKD(v)}</span>`,
     status: (v) => `<span class="badge ${v && v.startsWith('已') ? 'badge-success' : 'badge-pending'}">${escapeHtml(v || '—')}</span>`,
   },
-  memberReport: {
-    name: (v, r) => escapeHtml(v) + (r.isShared ? ' <span class="badge badge-muted" style="font-size:10px;">🏠</span>' : ''),
-    income: (_, r) => r.isShared ? '<span class="text-muted">—</span>' : `<span class="text-emerald">${formatHKD(r.income)}</span>`,
-    personalIncome: (_, r) => (r.isShared || r.personalIncome === 0) ? '<span class="text-muted">—</span>' : `<span class="text-cyan">${formatHKD(r.personalIncome)}</span>`,
-    expense: (_, r) => `<span class="text-red">${formatHKD(r.expense)}</span>`,
-    insurance: (_, r) => r.insurance === 0 ? '<span class="text-muted">—</span>' : `<span class="text-magenta">${formatHKD(r.insurance)}</span>`,
-    net: (_, r) => r.isShared ? '<span class="text-muted">—</span>' : `<span class="${r.net >= 0 ? 'text-emerald' : 'text-red'}">${formatHKD(r.net)}</span>`,
-  },
 };
 
+/* ============================================
+   對外 API
+   ============================================ */
 export function getColumns(key) {
   const c = COLUMNS[key];
   if (!c) { console.warn(`[column-registry] 未知 key：${key}`); return []; }
   return c.map((x) => ({ ...x }));
 }
-export function getResolvers(key) { const r = RESOLVERS[key]; return r ? { ...r } : {}; }
-export function getColumnsWith(key, ex = []) { return [...getColumns(key), ...ex]; }
+
+export function getResolvers(key) {
+  const r = RESOLVERS[key];
+  return r ? { ...r } : {};
+}
+
+export function getColumnsWith(key, ex = []) {
+  return [...getColumns(key), ...ex];
+}
 
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/config/column-registry.js
-   Version: v103.0.21
-   Batch: B23
+   Version: v103.0.34
+   Batch: B29-1b
    ═══════════════════════════════════════════ */

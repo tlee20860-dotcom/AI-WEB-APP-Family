@@ -1,19 +1,21 @@
 // ============================================
-// page-controls.js — 統一控制列渲染（v103.0.33）
+// page-controls.js — 統一控制列渲染（v103.0.34）
 // 位置：js/lib/page-controls.js
 // ============================================
+// v103.0.34（B29-1a）：
+//   ✅ 強制 viewToggle / sort 在 body（忽略 position: 'header'）
+//   ✅ year + month 都在左側（月靠年）
 // v103.0.33（B26-8）：
-//   ✅ year / month 改 select（下拉清單）
-//   ✅ 內部直接讀寫 AppState（各頁不需傳值）
-//   ✅ month 支援 includeAll 參數（預設 false）
-// v103.0.29（B26-3.2）：
-//   ✅ 加 headerContainerId + position: 'header'
+//   ✅ year / month 改 select；內部讀寫 AppState
 // ============================================
 
 import { esc } from './dom.js';
 import { STORAGE_PREFIXES } from '../config/constants.js';
 import { AppState } from '../core/state.js';
 import { getYearList } from '../config/app-config.js';
+
+/* 🆕 v103.0.34：強制在 body 的 type（不接受 position: 'header'） */
+const _FORCE_BODY_TYPES = ['viewToggle', 'sort'];
 
 export function renderPageControls(config) {
   const { containerId, headerContainerId, items = [] } = config || {};
@@ -35,8 +37,13 @@ export function renderPageControls(config) {
   const paint = () => {
     if (_destroyed) return;
 
-    const headerItems = items.filter((it) => it.position === 'header');
-    const bodyItems = items.filter((it) => it.position !== 'header');
+    /* 🆕 v103.0.34：header items 排除強制 body 的 type */
+    const headerItems = items.filter((it) =>
+      it.position === 'header' && !_FORCE_BODY_TYPES.includes(it.type)
+    );
+    const bodyItems = items.filter((it) =>
+      it.position !== 'header' || _FORCE_BODY_TYPES.includes(it.type)
+    );
 
     /* 渲染 header */
     if (headerRoot) {
@@ -71,11 +78,14 @@ export function renderPageControls(config) {
       `);
     }
 
+    /* 🆕 v103.0.34：year + month 都在左側 */
     if (yearItem || monthItem) {
       parts.push(`
         <div class="page-controls-row page-controls-period">
-          <div class="page-controls-left">${yearItem ? _renderYearSelect(yearItem) : ''}</div>
-          <div class="page-controls-right">${monthItem ? _renderMonthSelect(monthItem) : ''}</div>
+          <div class="page-controls-left">
+            ${yearItem ? _renderYearSelect(yearItem) : ''}
+            ${monthItem ? _renderMonthSelect(monthItem) : ''}
+          </div>
         </div>
       `);
     }
@@ -212,10 +222,7 @@ function _renderCustom(item) {
 }
 
 /* ============================================
-   🆕 v103.0.33：年 / 月 下拉清單
-   -------------------------------------------------
-   - 內部讀 AppState（各頁不需傳值）
-   - 變更時寫 AppState
+   年 / 月 下拉清單
    ============================================ */
 function _renderYearSelect(item) {
   const { __pcId } = item;
@@ -319,7 +326,6 @@ function _bindAll(container, items) {
       return;
     }
 
-    /* 🆕 v103.0.33：年 select 變更 → 寫 AppState */
     const yearSel = e.target.closest('[data-pc-year]');
     if (yearSel) {
       const y = yearSel.value;
@@ -330,7 +336,6 @@ function _bindAll(container, items) {
       return;
     }
 
-    /* 🆕 v103.0.33：月 select 變更 → 寫 AppState */
     const monthSel = e.target.closest('[data-pc-month]');
     if (monthSel) {
       const m = monthSel.value;
@@ -350,6 +355,6 @@ function _bindAll(container, items) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/lib/page-controls.js
-   Version: v103.0.33
-   Batch: B26-8
+   Version: v103.0.34
+   Batch: B29-1a
    ═══════════════════════════════════════════ */

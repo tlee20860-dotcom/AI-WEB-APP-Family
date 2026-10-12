@@ -1,13 +1,13 @@
 /* ============================================
    components.css — 卡片、按鈕、表格、Modal、表單
    -------------------------------------------------
+   v103.0.34（B29-4b）：
+     ✅ 加 .page-banner（banner 統一位置）
+     ✅ 加 dt-* 表頭排序 / 篩選樣式
    v103.0.33（B26-8）：
-     ✅ 移除 .page-controls-period-group（年月改下拉）
-     ✅ 加 .page-controls-row.page-controls-period .select
+     ✅ 移除 .page-controls-period-group；加 period select
    v103.0.30（B26-3.3）：
      ✅ 修正手機版 page-header 換行
-   v103.0.29（B26-3.2）：
-     ✅ 加 .page-header flex + .page-header-actions-group
    ============================================ */
 
 /* ================= GlassCard ================= */
@@ -54,6 +54,13 @@
   font-size: 12px;
   color: var(--text-muted);
   margin-top: 6px;
+}
+
+/* ============================================
+   🆕 v103.0.34：Page Banner（標題上方提示）
+   ============================================ */
+.page-banner {
+  margin-bottom: 16px;
 }
 
 /* ============================================
@@ -214,6 +221,102 @@
 .data-table .num {
   font-family: var(--font-mono);
   text-align: right;
+}
+
+/* ============================================
+   🆕 v103.0.34：表頭排序 / 篩選
+   ============================================ */
+.dt-th-sortable {
+  position: relative;
+  user-select: none;
+}
+
+.dt-th-label {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.dt-sort-btn,
+.dt-filter-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-left: 4px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  vertical-align: middle;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.dt-sort-btn:hover,
+.dt-filter-btn:hover {
+  background: rgba(0, 240, 255, 0.12);
+  color: var(--neon-cyan);
+}
+
+.dt-sort-btn.active {
+  color: var(--neon-cyan);
+  background: rgba(0, 240, 255, 0.15);
+}
+
+.dt-filter-btn.active {
+  color: var(--neon-magenta);
+  background: rgba(217, 70, 239, 0.15);
+}
+
+/* 篩選面板 */
+.dt-filter-overlay {
+  /* position 由 JS 動態設定 */
+}
+
+.dt-filter-panel {
+  background: rgba(15, 23, 42, 0.98);
+  border: 1px solid var(--glass-border-hover);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  min-width: 200px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  animation: dtFilterIn 0.15s ease-out;
+}
+
+@keyframes dtFilterIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.dt-filter-panel-title {
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.dt-filter-panel-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+/* 手機版 */
+@media (max-width: 640px) {
+  .dt-sort-btn,
+  .dt-filter-btn {
+    width: 18px;
+    height: 18px;
+    margin-left: 2px;
+  }
+  .dt-filter-panel {
+    min-width: 160px;
+  }
 }
 
 /* ================= 進度條 ================= */
@@ -530,7 +633,7 @@
   width: 100%;
 }
 
-/* 🆕 v103.0.33：年月下拉（年左、月右） */
+/* v103.0.34：年月下拉（年 + 月 同排左側） */
 .page-controls-row.page-controls-period .select {
   padding: 6px 10px;
   font-size: 13px;
@@ -1495,6 +1598,6 @@
 /* ═══════════════════════════════════════════
    END OF FILE
    File: css/components.css
-   Version: v103.0.33
-   Batch: B26-8
+   Version: v103.0.34
+   Batch: B29-4b
    ═══════════════════════════════════════════ */

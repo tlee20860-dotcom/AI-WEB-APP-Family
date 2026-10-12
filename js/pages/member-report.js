@@ -1,12 +1,11 @@
-// member-report.js — 成員收支明細（v103.0.27）
-// v103.0.27（B26-3）：
-//   ✅ 改用 page-controls 渲染（viewToggle + year + month）
-//   ✅ 移除 header 內 view toggle
+// member-report.js — 成員收支明細（v103.0.34）
+// v103.0.34（B29-2b）：
+//   ✅ columns / resolvers 改用 column-registry（memberReport）
 // ============================================
 import { formatHKD } from '../lib/format.js';
-import { esc } from '../lib/dom.js';
 import { AppState } from '../core/state.js';
 import { RESERVED_IDS, STORAGE_PREFIXES } from '../config/constants.js';
+import { getColumns, getResolvers } from '../config/column-registry.js';
 import { renderDataTable } from '../shared/data-table.js';
 import { renderDataCard } from '../shared/data-card.js';
 import { renderPageControls } from '../lib/page-controls.js';
@@ -44,24 +43,6 @@ export default {
       el.textContent = `${year} 年 · ${memberCount} 位成員`;
     };
 
-    const _columns = [
-      { id: 'name', label: '成員', defaultVisible: true },
-      { id: 'income', label: '家用轉入', defaultVisible: true, type: 'number' },
-      { id: 'personalIncome', label: '個人收入', defaultVisible: true, type: 'number' },
-      { id: 'expense', label: '支出', defaultVisible: true, type: 'number' },
-      { id: 'insurance', label: '保險', defaultVisible: true, type: 'number' },
-      { id: 'net', label: '淨額', defaultVisible: true, type: 'number' },
-    ];
-
-    const _resolvers = {
-      name: (v, r) => esc(v) + (r.isShared ? ' <span class="badge badge-muted" style="font-size:10px;">🏠</span>' : ''),
-      income: (_, r) => r.isShared ? '<span class="text-muted">—</span>' : `<span class="text-emerald">${formatHKD(r.income)}</span>`,
-      personalIncome: (_, r) => (r.isShared || r.personalIncome === 0) ? '<span class="text-muted">—</span>' : `<span class="text-cyan">${formatHKD(r.personalIncome)}</span>`,
-      expense: (_, r) => `<span class="text-red">${formatHKD(r.expense)}</span>`,
-      insurance: (_, r) => r.insurance === 0 ? '<span class="text-muted">—</span>' : `<span class="text-magenta">${formatHKD(r.insurance)}</span>`,
-      net: (_, r) => r.isShared ? '<span class="text-muted">—</span>' : `<span class="${r.net >= 0 ? 'text-emerald' : 'text-red'}">${formatHKD(r.net)}</span>`,
-    };
-
     const paint = () => {
       const root = document.getElementById('member-list-root');
       if (!root) return;
@@ -69,13 +50,15 @@ export default {
       if (_cardApi) { try { _cardApi.destroy(); } catch (e) {} _cardApi = null; }
 
       const rows = ctx.derived.rows || [];
+      const columns = getColumns('memberReport');
+      const resolvers = getResolvers('memberReport');
 
       if (_view === 'card') {
         _cardApi = renderDataCard({
           container: root,
           entityKey: '__member_report__',
           rows,
-          options: { gridClass: 'grid grid-3', columns: _columns, resolvers: _resolvers },
+          options: { gridClass: 'grid grid-3', columns, resolvers },
         });
       } else {
         _tableApi = renderDataTable({
@@ -83,32 +66,24 @@ export default {
           entityKey: '__member_report__',
           rows,
           tableId: 'member-report-table',
-          options: { columns: _columns, resolvers: _resolvers, storageKey: 'member-report-table' },
+          options: { columns, resolvers, storageKey: 'member-report-table' },
         });
       }
     };
 
-    /* 🆕 v103.0.27：page-controls */
+    /* v103.0.34：viewToggle 不再 position: 'header' */
     _controls = renderPageControls({
       containerId: 'page-controls-root',
+      headerContainerId: 'page-header-actions',
       items: [
         {
           type: 'viewToggle',
-          align: 'right',
           storageKey: 'member-report-view',
           defaultView: 'table',
           onChange: (v) => { _view = v; paint(); },
         },
-        {
-          type: 'year',
-          year: AppState.year,
-          onChange: (y) => AppState.setYearMonth(y, AppState.month === 'all' ? '01' : AppState.month),
-        },
-        {
-          type: 'month',
-          month: AppState.month === 'all' ? '01' : AppState.month,
-          onChange: (m) => AppState.setYearMonth(AppState.year, m),
-        },
+        { type: 'year' },
+        { type: 'month' },
       ],
     });
 
@@ -180,6 +155,6 @@ function _buildStats(rows, year) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/member-report.js
-   Version: v103.0.27
-   Batch: B26-3
+   Version: v103.0.34
+   Batch: B29-2b
    ═══════════════════════════════════════════ */

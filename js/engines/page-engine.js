@@ -1,15 +1,19 @@
 // ============================================
-// page-engine.js — 頁面引擎（v103.0.17）
+// page-engine.js — 頁面引擎（v103.0.34）
 // 位置：js/engines/page-engine.js
 // ============================================
-// v103.0.17 修正：
+// v103.0.34（B29-5c）：
+//   ✅ 應用頁面 metadata（title / subtitleStatic 使用者可編輯）
+//   ✅ subtitleStatic 用 data-prefix + CSS ::before（不干擾動態段）
+// v103.0.17（B18.1）：
 //   ✅ 新增 ctx.onDataChange(fn) 統一通知機制
-//   ✅ 廢除猴子補丁（不再覆寫 ctx.invalidate）
 // ============================================
 
 import { subscribe, makeReactive, getNestedValue } from './data-engine.js';
 import { mountBlock, collectBlockDeps } from './render-engine.js';
 import { AppState } from '../core/state.js';
+import { listenPageMetadata } from '../core/db.js';
+import { getPageKeyFromUrl, getDefaultMetadata } from '../config/page-metadata-registry.js';
 
 /* ============================================
    錯誤橫幅
@@ -45,10 +49,10 @@ export async function createPage(schema) {
     _unsubs: [], _blockInstances: [], _dependents: {}, _stateUnsubs: [],
     _dataChangeCallbacks: [],
     _customMountInstance: null,
+    _metaUnsub: null,
     invalidate: (key) => _onKeyChange(ctx, schema, key),
     setState: (keyPath, value) => _setState(ctx, keyPath, value),
 
-    /* 🆕 統一資料變更通知（取代猴子補丁） */
     onDataChange: (fn) => {
       if (typeof fn !== 'function') return () => {};
       ctx._dataChangeCallbacks.push(fn);
@@ -62,6 +66,9 @@ export async function createPage(schema) {
     ctx.state = makeReactive({ ...(schema.state || {}) }, (keyPath) => _onStateChange(ctx, schema, keyPath));
   } catch (err) { _showError('makeReactive 失敗：' + err.message); }
 
+  /* 🆕 v103.0.34：應用頁面 metadata */
+  _applyPageMetadata(ctx);
+
   _buildDependencyGraph(ctx, schema);
   _subscribeAllData(ctx, schema);
   _bindAppStateEvents(ctx, schema);
@@ -74,6 +81,46 @@ export async function createPage(schema) {
   }
 
   return { ctx, destroy: () => _destroy(ctx), ready: Promise.resolve() };
+}
+
+/* ============================================
+   🆕 v103.0.34：應用頁面 metadata
+   -------------------------------------------------
+   - 從 URL 取 pageKey
+   - 預設套 registry；訂閱 Firebase 套自訂
+   - subtitleStatic 存 data-prefix（CSS ::before 顯示）
+   ============================================ */
+function _applyPageMetadata(ctx) {
+  const pageKey = getPageKeyFromUrl();
+  const defaultMeta = getDefaultMetadata(pageKey);
+
+  const titleEl = document.querySelector('.page-title');
+  const subtitleEl = document.querySelector('.page-subtitle');
+
+  /* 立即套預設（避免 FOUC） */
+  if (titleEl && defaultMeta.title) titleEl.textContent = defaultMeta.title;
+  if (subtitleEl && defaultMeta.subtitleStatic) subtitleEl.dataset.prefix = defaultMeta.subtitleStatic;
+
+  try {
+    const unsub = listenPageMetadata((all) => {
+      const custom = (all && all[pageKey]) || {};
+      const title = (custom.title != null && custom.title !== '')
+        ? custom.title
+        : defaultMeta.title;
+      const subStatic = (custom.subtitleStatic != null)
+        ? custom.subtitleStatic
+        : (defaultMeta.subtitleStatic || '');
+
+      if (titleEl) titleEl.textContent = title;
+      if (subtitleEl) {
+        if (subStatic) subtitleEl.dataset.prefix = subStatic;
+        else subtitleEl.removeAttribute('data-prefix');
+      }
+    });
+    ctx._metaUnsub = unsub;
+  } catch (err) {
+    console.warn('[page-engine] 載入頁面 metadata 失敗：', err);
+  }
 }
 
 /* ============================================
@@ -273,6 +320,7 @@ function _destroy(ctx) {
   if (ctx._customMountInstance?.destroy) {
     try { ctx._customMountInstance.destroy(); } catch (e) {}
   }
+  if (ctx._metaUnsub) { try { ctx._metaUnsub(); } catch (e) {} ctx._metaUnsub = null; }
   ctx._blockInstances.forEach(({ instance }) => {
     try { instance.destroy?.(); } catch (e) {}
   });
@@ -286,3 +334,10 @@ function _destroy(ctx) {
   ctx.derived = {};
   ctx._dependents = {};
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: js/engines/page-engine.js
+   Version: v103.0.34
+   Batch: B29-5c
+   ═══════════════════════════════════════════ */

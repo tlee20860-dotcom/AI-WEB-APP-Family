@@ -1,6 +1,8 @@
-// db.js — Firebase RTDB 讀寫封裝（v103.0.22）
+// db.js — Firebase RTDB 讀寫封裝（v103.0.34）
+// v103.0.34（B29-5b）：
+//   ✅ 加 listenPageMetadata / savePageMetadata
 // v103.0.22（B25-4）：
-//   ✅ 新增 getBanksOnce / getInsuranceCompaniesOnce（供 entity-helpers 靜態調用）
+//   ✅ 加 getBanksOnce / getInsuranceCompaniesOnce
 // ============================================
 import { db } from '../config/firebase-config.js';
 import { AppState } from './state.js';
@@ -421,6 +423,14 @@ export async function saveYearRange(d) {
 export function listenUIConstants(cb, err) { return listen('settings/ui_constants', (s) => cb(s.val() || {}), err); }
 export async function saveUIConstants(d) { await set(familyRef('settings/ui_constants'), d || {}); }
 
+/* ============ 🆕 v103.0.34：頁面 metadata ============ */
+export function listenPageMetadata(cb, err) {
+  return listen('settings/page_metadata', (s) => cb(s.val() || {}), err);
+}
+export async function savePageMetadata(data) {
+  await set(familyRef('settings/page_metadata'), data || {});
+}
+
 /* ============ 平台預設 ============ */
 function platformPath(resource) {
   const c = PLATFORM_RESOURCES[resource];
@@ -795,6 +805,6 @@ export async function saveSidebarOrder(order) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/core/db.js
-   Version: v103.0.22
-   Batch: B25-4
+   Version: v103.0.34
+   Batch: B29-5b
    ═══════════════════════════════════════════ */

@@ -1,11 +1,11 @@
 // ============================================
-// settings.js — 系統設定（v103.0.32 Page Schema）
+// settings.js — 系統設定（v103.0.34 Page Schema）
 // 位置：js/pages/settings.js
 // ============================================
+// v103.0.34（B29-5d）：
+//   ✅ 個人化 Tab 加「頁面標題」卡（可編輯 title / subtitleStatic）
 // v103.0.32（B26-5）：
-//   ✅ 遷移卡加「家庭選擇器」（superadmin 可選任一家庭）
-// v103.0.22（B25-6）：
-//   ✅ 危險區域加「一次性遷移舊資料」按鈕
+//   ✅ 遷移卡加家庭選擇器
 // ============================================
 
 import { initTabPanel } from '../ui/tab-panel.js';
@@ -18,6 +18,8 @@ import { STORAGE_KEYS, ENTITY_KEYS } from '../config/constants.js';
 import { showToast } from '../ui/toast.js';
 import { openConfirm } from '../ui/modal.js';
 import { esc } from '../lib/dom.js';
+import { listPages, getDefaultMetadata } from '../config/page-metadata-registry.js';
+import { listenPageMetadata, savePageMetadata } from '../core/db.js';
 
 export default {
   title: '系統設定',
@@ -41,6 +43,8 @@ export default {
     ctx._debugCleanup = null;
     ctx._personalCleanup = null;
     ctx._migrateCleanup = null;
+    ctx._pageMetaCleanup = null;
+    ctx._pageMetaUnsub = null;
 
     const tabPanel = initTabPanel({
       containerId: 'settings-tabs',
@@ -76,6 +80,8 @@ export default {
         if (ctx._personalCleanup) { try { ctx._personalCleanup(); } catch (e) {} ctx._personalCleanup = null; }
         if (ctx._debugCleanup) { try { ctx._debugCleanup(); } catch (e) {} ctx._debugCleanup = null; }
         if (ctx._migrateCleanup) { try { ctx._migrateCleanup(); } catch (e) {} ctx._migrateCleanup = null; }
+        if (ctx._pageMetaCleanup) { try { ctx._pageMetaCleanup(); } catch (e) {} ctx._pageMetaCleanup = null; }
+        if (ctx._pageMetaUnsub) { try { ctx._pageMetaUnsub(); } catch (e) {} ctx._pageMetaUnsub = null; }
       },
     };
   },
@@ -137,6 +143,8 @@ function _initPersonalTab(ctx) {
 
   _injectDebugCard(ctx);
   _injectMigrateCard(ctx);
+  /* 🆕 v103.0.34：頁面標題卡 */
+  _injectPageMetadataCard(ctx);
 
   ctx._personalCleanup = () => {
     if (logoutBtn) logoutBtn.removeEventListener('click', onLogout);
@@ -276,7 +284,7 @@ function _bindDebugButtons(ctx) {
 }
 
 /* ============================================
-   🆕 v103.0.32：遷移卡片（superadmin only，含家庭選擇器）
+   一次性遷移卡（superadmin）
    ============================================ */
 function _injectMigrateCard(ctx) {
   if (!AppState.isSuperAdmin) return;
@@ -319,7 +327,6 @@ function _injectMigrateCard(ctx) {
   const btn = document.getElementById('settings-migrate-btn');
   const statusEl = document.getElementById('settings-migrate-status');
 
-  /* 🆕 v103.0.32：載入家庭清單 */
   const _loadFamilies = async () => {
     try {
       const data = await api.adminListFamilies();
@@ -387,9 +394,163 @@ function _injectMigrateCard(ctx) {
   };
 }
 
+/* ============================================
+   🆕 v103.0.34：頁面標題卡（B29-5d）
+   ============================================ */
+function _injectPageMetadataCard(ctx) {
+  const grid = document.querySelector('#settings-panel-personal .settings-personal-grid');
+  if (!grid) return;
+  if (document.getElementById('settings-page-meta-card')) return;
+
+  const pages = listPages();
+
+  const card = document.createElement('div');
+  card.className = 'glass-card';
+  card.id = 'settings-page-meta-card';
+  card.style.gridColumn = '1 / -1';
+  card.innerHTML = `
+    <div class="glass-card-title" style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+      <i data-lucide="type" style="width:16px;height:16px;color:var(--neon-cyan);"></i>
+      <span>頁面標題</span>
+    </div>
+    <p class="glass-card-hint mb-12">
+      可自訂每個頁面的標題與副標題（副標題會加在動態資訊之前）。
+    </p>
+
+    <div class="field" style="margin-bottom:12px;">
+      <label class="field-label">選擇頁面</label>
+      <select class="select" id="settings-page-meta-page" style="max-width:400px;">
+        ${pages.map((p) => `<option value="${esc(p.key)}">${esc(p.title)}</option>`).join('')}
+      </select>
+    </div>
+
+    <div class="field" style="margin-bottom:12px;">
+      <label class="field-label">頁面標題</label>
+      <input class="input" type="text" id="settings-page-meta-title" maxlength="40" placeholder="輸入標題" style="max-width:400px;">
+    </div>
+
+    <div class="field" style="margin-bottom:12px;">
+      <label class="field-label">副標題（靜態段）</label>
+      <input class="input" type="text" id="settings-page-meta-sub" maxlength="60" placeholder="留空 = 使用預設" style="max-width:400px;">
+      <div class="glass-card-hint" style="margin-top:4px;">
+        💡 此段會加在動態資訊（如年月）之前
+      </div>
+    </div>
+
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <button type="button" class="btn btn-primary" id="settings-page-meta-save">
+        <i data-lucide="check" style="width:14px;height:14px;"></i> 儲存
+      </button>
+      <button type="button" class="btn btn-ghost" id="settings-page-meta-reset">
+        <i data-lucide="rotate-ccw" style="width:14px;height:14px;"></i> 恢復預設
+      </button>
+    </div>
+
+    <div id="settings-page-meta-status" style="margin-top:12px; font-size:12px; color:var(--text-muted);"></div>
+  `;
+  grid.appendChild(card);
+
+  if (window.lucide) window.lucide.createIcons();
+
+  const pageSel = document.getElementById('settings-page-meta-page');
+  const titleInput = document.getElementById('settings-page-meta-title');
+  const subInput = document.getElementById('settings-page-meta-sub');
+  const saveBtn = document.getElementById('settings-page-meta-save');
+  const resetBtn = document.getElementById('settings-page-meta-reset');
+  const statusEl = document.getElementById('settings-page-meta-status');
+
+  let _allMeta = {};
+
+  /* 載入 + 訂閱 */
+  const _applyFormFromMeta = (pageKey) => {
+    const custom = _allMeta[pageKey] || {};
+    const def = getDefaultMetadata(pageKey);
+    titleInput.value = (custom.title != null && custom.title !== '') ? custom.title : def.title;
+    subInput.value = (custom.subtitleStatic != null) ? custom.subtitleStatic : (def.subtitleStatic || '');
+  };
+
+  const _load = async () => {
+    try {
+      const { get } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js');
+      const { familyRef } = await import('../core/db.js');
+      const snap = await get(familyRef('settings/page_metadata'));
+      _allMeta = snap.val() || {};
+      _applyFormFromMeta(pageSel.value);
+    } catch (err) {
+      console.warn('[settings] 載入頁面 metadata 失敗：', err);
+      _applyFormFromMeta(pageSel.value);
+    }
+  };
+
+  const onPageChange = () => _applyFormFromMeta(pageSel.value);
+  pageSel.addEventListener('change', onPageChange);
+
+  const onSave = async () => {
+    const pageKey = pageSel.value;
+    if (!pageKey) return;
+
+    const title = titleInput.value.trim();
+    const subtitleStatic = subInput.value;
+
+    if (!title) {
+      showToast('標題不可為空', 'warning');
+      return;
+    }
+
+    if (saveBtn) saveBtn.disabled = true;
+    if (statusEl) statusEl.textContent = '儲存中…';
+
+    try {
+      const next = { ..._allMeta };
+      next[pageKey] = { title, subtitleStatic };
+      await savePageMetadata(next);
+      _allMeta = next;
+      if (statusEl) statusEl.textContent = '✅ 已儲存';
+      showToast('✅ 已儲存頁面標題', 'success');
+    } catch (err) {
+      if (statusEl) statusEl.textContent = '❌ 儲存失敗：' + err.message;
+      showToast('儲存失敗：' + err.message, 'error');
+    } finally {
+      if (saveBtn) saveBtn.disabled = false;
+    }
+  };
+
+  const onReset = async () => {
+    const pageKey = pageSel.value;
+    if (!pageKey) return;
+
+    const ok = await openConfirm('確定要恢復此頁面的預設標題嗎？', { title: '恢復預設', okText: '恢復', okClass: 'btn-danger' });
+    if (!ok) return;
+
+    try {
+      const next = { ..._allMeta };
+      delete next[pageKey];
+      await savePageMetadata(next);
+      _allMeta = next;
+      _applyFormFromMeta(pageKey);
+      if (statusEl) statusEl.textContent = '✅ 已恢復預設';
+      showToast('✅ 已恢復預設', 'success');
+    } catch (err) {
+      if (statusEl) statusEl.textContent = '❌ 恢復失敗：' + err.message;
+      showToast('恢復失敗：' + err.message, 'error');
+    }
+  };
+
+  if (saveBtn) saveBtn.addEventListener('click', onSave);
+  if (resetBtn) resetBtn.addEventListener('click', onReset);
+
+  _load();
+
+  ctx._pageMetaCleanup = () => {
+    pageSel.removeEventListener('change', onPageChange);
+    if (saveBtn) saveBtn.removeEventListener('click', onSave);
+    if (resetBtn) resetBtn.removeEventListener('click', onReset);
+  };
+}
+
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/settings.js
-   Version: v103.0.32
-   Batch: B26-5
+   Version: v103.0.34
+   Batch: B29-5d
    ═══════════════════════════════════════════ */

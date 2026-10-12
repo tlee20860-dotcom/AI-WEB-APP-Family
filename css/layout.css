@@ -1,8 +1,10 @@
 /* ============================================
-   layout.css — App Shell 版型（v103.0.19）
+   layout.css — App Shell 版型（v103.0.34）
    -------------------------------------------------
+   v103.0.34（B29-5d）：
+     ✅ 加 .page-subtitle[data-prefix]::before（顯示使用者自訂靜態段）
    v103.0.19 修正：
-     ✅ .sidebar-nav 加 min-height: 0（修正側欄無法滾到底）
+     ✅ .sidebar-nav 加 min-height: 0
    ============================================ */
 
 .app-shell {
@@ -265,6 +267,11 @@
   color: var(--text-muted);
 }
 
+/* 🆕 v103.0.34：使用者自訂副標題靜態段（B29-5d） */
+.page-subtitle[data-prefix]::before {
+  content: attr(data-prefix);
+}
+
 .grid { display: grid; gap: 16px; }
 .grid-2 { grid-template-columns: repeat(2, 1fr); }
 .grid-3 { grid-template-columns: repeat(3, 1fr); }
@@ -337,6 +344,6 @@
 /* ═══════════════════════════════════════════
    END OF FILE
    File: css/layout.css
-   Version: v103.0.19
-   Batch: B20
+   Version: v103.0.34
+   Batch: B29-5d
    ═══════════════════════════════════════════ */

@@ -1,4 +1,9 @@
-// input-center.js — 綜合輸入中心（v103.0.20）
+// input-center.js — 綜合輸入中心（v103.0.34）
+// v103.0.34（B29-4a）：
+//   ✅ 刪除支出 Tab 內 banner
+// v103.0.34（B29-3）：
+//   ✅ columns / resolvers 改用 column-registry
+// ============================================
 import { initTabPanel } from '../ui/tab-panel.js';
 import { initEntityListPage } from '../shared/entity-list-page.js';
 import { renderDataTable } from '../shared/data-table.js';
@@ -10,11 +15,9 @@ import { openConfirm } from '../ui/modal.js';
 import { showToast } from '../ui/toast.js';
 import { initViewToggle } from '../ui/view-toggle.js';
 import { listenAllExpenses, removeExpense } from '../core/db.js';
-import { resolveName } from '../config/entity-registry.js';
+import { getColumns, getResolvers } from '../config/column-registry.js';
 import { AppState } from '../core/state.js';
-import { ENTITY_KEYS, RESERVED_IDS } from '../config/constants.js';
-import { esc } from '../lib/dom.js';
-import { formatHKD } from '../lib/format.js';
+import { ENTITY_KEYS } from '../config/constants.js';
 
 export default {
   title: '綜合輸入中心',
@@ -48,9 +51,9 @@ export default {
       } else if (key === 'bank') {
         inst[key] = initEntityListPage({ entity: ENTITY_KEYS.BANK, containerId: tabDef.panelId, options: { defaultView: 'table', showViewToggle: true, storageKey: 'ic-bank-view' } });
       } else if (key === 'expense') {
+        /* 🆕 v103.0.34：移除 banner */
         panelEl.innerHTML = `
           <div class="flex flex-between items-center mb-16 flex-wrap gap-12">
-            <div class="banner" style="margin:0;flex:1;min-width:200px;">ℹ️ 以下為最近 50 筆支出。</div>
             <div id="ic-expense-view-toggle"></div>
           </div>
           <div id="ic-expense-table-root"></div>
@@ -93,22 +96,6 @@ export default {
       });
     };
 
-    const _columns = [
-      { id: 'date', label: '日期', defaultVisible: true },
-      { id: 'memberName', label: '成員', defaultVisible: true },
-      { id: 'name', label: '項目名稱', defaultVisible: true },
-      { id: 'amount', label: '金額', defaultVisible: true, type: 'number' },
-      { id: 'status', label: '狀態', defaultVisible: true },
-    ];
-
-    const _resolvers = {
-      date: (v) => esc(v || '—'),
-      memberName: (_, r) => r.memberId === RESERVED_IDS.SHARED_MEMBER ? '🏠 家庭共用' : esc(resolveName('members', r.memberId) || r.memberId || '—'),
-      name: (v) => esc(v || '（未命名）'),
-      amount: (v) => formatHKD(v),
-      status: (v) => `<span class="badge ${v === 'done' ? 'badge-success' : 'badge-pending'}">${esc(v || '—')}</span>`,
-    };
-
     const _hooks = (canInput) => ({
       customActions: canInput ? (row) => [
         { label: '編輯', icon: 'pencil', className: 'btn-ghost', action: 'edit', onClick: () => openExpenseModal({ row, onSuccess: _loadExpenses }) },
@@ -131,13 +118,15 @@ export default {
         return;
       }
       const canInput = AppState.getCanInput();
+      const columns = getColumns('recentExpense');
+      const resolvers = getResolvers('recentExpense');
 
       if (ctx.state.expenseView === 'card') {
         _expCardApi = renderDataCard({
           container: root,
           entityKey: '__recent_expense__',
           rows: _expRows,
-          options: { gridClass: 'grid grid-3', columns: _columns, resolvers: _resolvers },
+          options: { gridClass: 'grid grid-3', columns, resolvers },
           hooks: _hooks(canInput),
         });
       } else {
@@ -146,7 +135,7 @@ export default {
           entityKey: '__recent_expense__',
           rows: _expRows,
           tableId: 'ic-recent-expense-table',
-          options: { columns: _columns, resolvers: _resolvers, storageKey: 'ic-recent-expense-table' },
+          options: { columns, resolvers, storageKey: 'ic-recent-expense-table' },
           hooks: _hooks(canInput),
         });
       }
@@ -190,6 +179,6 @@ export default {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/input-center.js
-   Version: v103.0.20
-   Batch: B22
+   Version: v103.0.34
+   Batch: B29-4a
    ═══════════════════════════════════════════ */

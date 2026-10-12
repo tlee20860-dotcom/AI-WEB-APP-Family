@@ -1,14 +1,13 @@
-// insurance.js — 保險清單表（v103.0.27）
-// v103.0.27（B26-3）：
-//   ✅ 改用 page-controls 渲染（add + viewToggle + year + month）
-//   ✅ 移除 header 內按鈕
-//   ✅ 支援年 / 月切換（取代 navbar 年月選擇器）
+// insurance.js — 保險清單表（v103.0.34）
+// v103.0.34（B29-2b）：
+//   ✅ columns / resolvers 改用 column-registry（insurancePolicies）
 // ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
 import { computeEnrichedPolicies, calcProgress, getPolicyHolderId } from '../lib/insurance.js';
 import { getInsurancePaymentsOnce } from '../core/db.js';
 import { resolveName } from '../config/entity-registry.js';
+import { getColumns, getResolvers } from '../config/column-registry.js';
 import { AppState } from '../core/state.js';
 import { openEntityModal } from '../entity/entity-modal.js';
 import { deleteEntity } from '../entity/entity-helpers.js';
@@ -38,7 +37,6 @@ export default {
     let _lastIds = '';
     let _view = 'card';
 
-    /* 讀取上次儲存的 view */
     try {
       const saved = localStorage.getItem(`${STORAGE_PREFIXES.VIEW}insurance-view`);
       if (saved === 'card' || saved === 'table') _view = saved;
@@ -74,32 +72,6 @@ export default {
       _paintActive(enriched.filter((p) => !p._isCompleted), policies.length);
       syncSubtitle();
       if (window.lucide) window.lucide.createIcons();
-    };
-
-    const _columns = [
-      { id: 'name', label: '保單名稱', defaultVisible: true },
-      { id: 'company', label: '保險公司', defaultVisible: true },
-      { id: 'holderName', label: '持有人', defaultVisible: true },
-      { id: 'insuredName', label: '受保人', defaultVisible: true },
-      { id: 'annualPremium', label: '本期年繳', defaultVisible: true, type: 'number' },
-      { id: 'totalPremium', label: '保單總供款', defaultVisible: true, type: 'number' },
-      { id: 'progressText', label: '進度', defaultVisible: true },
-    ];
-
-    const _resolvers = {
-      name: (v) => esc(v || '（未命名）'),
-      company: (v) => esc(v || '—'),
-      holderName: (_, r) => esc(resolveName('members', getPolicyHolderId(r)) || '—'),
-      insuredName: (_, r) => esc(resolveName('members', r.memberId) || '—'),
-      annualPremium: (v) => `<span class="mono text-cyan">${formatHKD(v)}</span>`,
-      totalPremium: (v) => `<span class="mono text-magenta">${formatHKD(v)}</span>`,
-      progressText: (_, r) => {
-        if (r.type === 'fund_insurance') return '<span class="text-muted">基金保險</span>';
-        const done = r.completedPeriods || 0;
-        const total = r.totalPolicyPeriods || 0;
-        const pct = calcProgress(r);
-        return `<div style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);">${done} / ${total} 期 (${pct}%)</div><div class="progress" style="height:5px;"><div class="progress-bar" style="width:${pct}%;"></div></div>`;
-      },
     };
 
     const _hooks = (canInput) => ({
@@ -147,12 +119,14 @@ export default {
           return;
         }
         const canInput = AppState.getCanInput();
+        const columns = getColumns('insurancePolicies');
+        const resolvers = getResolvers('insurancePolicies');
         _tableApi = renderDataTable({
           container: tableEl,
           entityKey: ENTITY_KEYS.POLICY,
           rows: active,
           tableId: 'insurance-table',
-          options: { columns: _columns, resolvers: _resolvers, storageKey: 'insurance-table' },
+          options: { columns, resolvers, storageKey: 'insurance-table' },
           hooks: _hooks(canInput),
         });
       } else {
@@ -224,9 +198,10 @@ export default {
     };
     if (headerEl) headerEl.addEventListener('click', _toggleHandler);
 
-    /* 🆕 v103.0.27：page-controls */
+    /* v103.0.34：viewToggle 不再 position: 'header'（page-controls 強制 body） */
     _controls = renderPageControls({
       containerId: 'page-controls-root',
+      headerContainerId: 'page-header-actions',
       items: [
         {
           type: 'add',
@@ -235,25 +210,15 @@ export default {
         },
         {
           type: 'viewToggle',
-          align: 'right',
           storageKey: 'insurance-view',
           defaultView: 'card',
           onChange: (v) => { _view = v; render(); },
         },
-        {
-          type: 'year',
-          year: AppState.year,
-          onChange: (y) => AppState.setYearMonth(y, AppState.month === 'all' ? '01' : AppState.month),
-        },
-        {
-          type: 'month',
-          month: AppState.month === 'all' ? '01' : AppState.month,
-          onChange: (m) => AppState.setYearMonth(AppState.year, m),
-        },
+        { type: 'year' },
+        { type: 'month' },
       ],
     });
 
-    /* 空狀態內的新增按鈕（保留） */
     const addFirstBtn = document.getElementById('add-first-policy-btn');
     const onAddFirst = () => openEntityModal({ entity: ENTITY_KEYS.POLICY, mode: 'add' });
     if (addFirstBtn) addFirstBtn.addEventListener('click', onAddFirst);
@@ -304,6 +269,6 @@ export default {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/insurance.js
-   Version: v103.0.27
-   Batch: B26-3
+   Version: v103.0.34
+   Batch: B29-2b
    ═══════════════════════════════════════════ */

@@ -1,17 +1,17 @@
-// finance-overview.js — 銀行交易（v103.0.27）
+// finance-overview.js — 銀行交易（v103.0.34）
+// v103.0.34（B29-3）：
+//   ✅ columns / resolvers 改用 column-registry
 // v103.0.27（B26-3）：
-//   ✅ 改用 page-controls 渲染（viewToggle + year + month）
-//   ✅ 移除 header 內 view toggle
-//   ✅ 支援年 / 月切換
+//   ✅ 改用 page-controls
 // ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
 import { calcTotalBankBalance, calcBankBalance } from '../lib/bank.js';
+import { getColumns, getResolvers } from '../config/column-registry.js';
 import { renderDataTable } from '../shared/data-table.js';
 import { renderDataCard } from '../shared/data-card.js';
 import { renderStatsCards } from '../shared/stats-cards.js';
 import { renderPageControls } from '../lib/page-controls.js';
-import { resolveName } from '../config/entity-registry.js';
 import { AppState } from '../core/state.js';
 import { STORAGE_PREFIXES } from '../config/constants.js';
 
@@ -80,42 +80,6 @@ export default {
       else _paintTxns(ctx);
     };
 
-    const _bankColumns = [
-      { id: 'name', label: '名稱', defaultVisible: true },
-      { id: 'type', label: '類型', defaultVisible: true },
-      { id: 'initialBalance', label: '初始餘額', defaultVisible: true, type: 'number' },
-      { id: 'balance', label: '當前餘額', defaultVisible: true, type: 'number' },
-      { id: 'txnCount', label: '交易筆數', defaultVisible: true, type: 'number' },
-    ];
-
-    const _bankResolvers = {
-      name: (v) => esc(v || '—'),
-      type: (v) => v === 'personal' ? '👤 個人' : '🏠 家庭',
-      initialBalance: (v) => formatHKD(v),
-      balance: (v) => `<span class="mono ${v >= 0 ? 'text-emerald' : 'text-red'}">${formatHKD(v)}</span>`,
-      txnCount: (v) => `<span class="mono">${v || 0}</span>`,
-    };
-
-    const _txnColumns = [
-      { id: 'date', label: '日期', defaultVisible: true },
-      { id: 'bankName', label: '銀行', defaultVisible: true },
-      { id: 'typeLabel', label: '類型', defaultVisible: true },
-      { id: 'categoryLabel', label: '分類', defaultVisible: true },
-      { id: 'memberName', label: '成員', defaultVisible: true },
-      { id: 'amount', label: '金額', defaultVisible: true, type: 'number' },
-      { id: 'note', label: '備註', defaultVisible: true },
-    ];
-
-    const _txnResolvers = {
-      date: (v) => esc(v || '—'),
-      bankName: (v) => esc(v || '—'),
-      typeLabel: (v) => `<span class="badge ${v === 'in' ? 'badge-success' : (v === 'transfer' ? 'badge-info' : 'badge-pending')}">${{in:'入帳',out:'出帳',transfer:'內部轉帳'}[v] || v || '—'}</span>`,
-      categoryLabel: (v) => `<span class="badge badge-info">${esc(v || '未分類')}</span>`,
-      memberName: (v) => v === 'shared' ? '🏠 家庭共用' : esc(resolveName('members', v) || v || '—'),
-      amount: (v, r) => `<span class="mono ${r.type === 'in' ? 'text-emerald' : 'text-red'}">${formatHKD(v)}</span>`,
-      note: (v) => esc(v || '—'),
-    };
-
     const _paintBanks = (ctx) => {
       const root = document.getElementById('finance-banks-root');
       if (!root) return;
@@ -133,12 +97,14 @@ export default {
         return;
       }
       root.__lastHtml = '';
+      const columns = getColumns('bankAccounts');
+      const resolvers = getResolvers('bankAccounts');
       if (_view === 'card') {
         renderDataCard({
           container: root,
           entityKey: '__bank_account__',
           rows,
-          options: { gridClass: 'grid grid-3', columns: _bankColumns, resolvers: _bankResolvers },
+          options: { gridClass: 'grid grid-3', columns, resolvers },
         });
       } else {
         renderDataTable({
@@ -146,7 +112,7 @@ export default {
           entityKey: '__bank_account__',
           rows,
           tableId: 'finance-banks-table',
-          options: { columns: _bankColumns, resolvers: _bankResolvers, storageKey: 'finance-banks-table' },
+          options: { columns, resolvers, storageKey: 'finance-banks-table' },
         });
       }
     };
@@ -162,12 +128,14 @@ export default {
         return;
       }
       root.__lastHtml = '';
+      const columns = getColumns('bankTransactions');
+      const resolvers = getResolvers('bankTransactions');
       if (_view === 'card') {
         renderDataCard({
           container: root,
           entityKey: '__bank_txn__',
           rows,
-          options: { gridClass: 'grid grid-3', columns: _txnColumns, resolvers: _txnResolvers },
+          options: { gridClass: 'grid grid-3', columns, resolvers },
         });
       } else {
         renderDataTable({
@@ -175,7 +143,7 @@ export default {
           entityKey: '__bank_txn__',
           rows,
           tableId: 'finance-txn-table',
-          options: { columns: _txnColumns, resolvers: _txnResolvers, storageKey: 'finance-txn-table' },
+          options: { columns, resolvers, storageKey: 'finance-txn-table' },
         });
       }
     };
@@ -201,27 +169,19 @@ export default {
       filterRoot.addEventListener('change', _filterH);
     }
 
-    /* 🆕 v103.0.27：page-controls */
+    /* v103.0.34：viewToggle 不再 position: 'header' */
     _controls = renderPageControls({
       containerId: 'page-controls-root',
+      headerContainerId: 'page-header-actions',
       items: [
         {
           type: 'viewToggle',
-          align: 'right',
           storageKey: 'finance-overview-view',
           defaultView: 'table',
           onChange: (v) => { _view = v; render(); },
         },
-        {
-          type: 'year',
-          year: AppState.year,
-          onChange: (y) => AppState.setYearMonth(y, AppState.month === 'all' ? '01' : AppState.month),
-        },
-        {
-          type: 'month',
-          month: AppState.month === 'all' ? '01' : AppState.month,
-          onChange: (m) => AppState.setYearMonth(AppState.year, m),
-        },
+        { type: 'year' },
+        { type: 'month' },
       ],
     });
 
@@ -297,6 +257,6 @@ function _filterTxns(txns, filters, year, month) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/finance-overview.js
-   Version: v103.0.27
-   Batch: B26-3
+   Version: v103.0.34
+   Batch: B29-3
    ═══════════════════════════════════════════ */

@@ -1,17 +1,14 @@
-// settlements.js — 結算清單（v103.0.33）
-// v103.0.33（B26-8）：
-//   ✅ month item 加 includeAll: true（月份含「全部」）
-// v103.0.29（B26-3.2）：
-//   ✅ viewToggle + sort 移到 page-header 右側
-// v103.0.27（B26-3）：
-//   ✅ 改用 page-controls
-// v103.0.25（B26-2）：
-//   ✅ P22 修正：reload 開頭同步 filters.year/month
+// settlements.js — 結算清單（v103.0.34）
+// v103.0.34（B29-2a）：
+//   ✅ columns / resolvers 改用 column-registry
+//   ✅ 移除 sort item（表頭已支援排序）
+//   ✅ 移除 source filter（表頭已支援篩選）
+//   ✅ 移除 state.sortMode
 // ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
 import { mergeSettlementData } from '../lib/merge.js';
-import { applyFilters, applySort } from '../lib/filter-sort.js';
+import { applyFilters } from '../lib/filter-sort.js';
 import {
   listenAllMemberExpenses,
   removeExpense,
@@ -22,6 +19,7 @@ import {
 import { api } from '../core/api.js';
 import { estimateMonthlyAmount, getPeriodInfo } from '../lib/insurance.js';
 import { resolveName } from '../config/entity-registry.js';
+import { getColumns, getResolvers } from '../config/column-registry.js';
 import { AppState } from '../core/state.js';
 import { showToast } from '../ui/toast.js';
 import { openConfirm, openModal, closeModal } from '../ui/modal.js';
@@ -41,7 +39,6 @@ export default {
   state: {
     filters: { year: '', month: '', source: '' },
     hideCompleted: true,
-    sortMode: 'pending-first',
     view: 'table',
   },
   derived: {},
@@ -185,7 +182,7 @@ export default {
     };
 
     const render = () => {
-      _filtered = applySort(applyFilters(_rows, ctx.state.filters), ctx.state.sortMode);
+      _filtered = applyFilters(_rows, ctx.state.filters);
       _paintStats();
       _paintList();
     };
@@ -205,25 +202,6 @@ export default {
         ],
         columns: 3,
       });
-    };
-
-    const _columns = [
-      { id: 'source', label: '來源', defaultVisible: true },
-      { id: 'yearMonth', label: '年月', defaultVisible: true },
-      { id: 'member', label: '成員', defaultVisible: true },
-      { id: 'name', label: '項目名稱', defaultVisible: true },
-      { id: 'amount', label: '金額', defaultVisible: true, type: 'number' },
-      { id: 'date', label: '日期', defaultVisible: true },
-      { id: 'status', label: '狀態', defaultVisible: true },
-    ];
-
-    const _resolvers = {
-      source: (_, r) => r.source === 'insurance' ? '<span class="badge badge-success">🛡 保險</span>' : '<span class="badge badge-info">🏷 個人</span>',
-      yearMonth: (_, r) => `${esc(r.year)}-${esc(r.month)}`,
-      member: (_, r) => r.memberId === RESERVED_IDS.SHARED_MEMBER ? '🏠 家庭共用' : esc(resolveName('members', r.memberId) || r.memberId || '—'),
-      name: (_, r) => esc(r.name),
-      amount: (v) => formatHKD(v),
-      status: (v, r) => `<span class="badge ${r.isDone ? 'badge-success' : 'badge-pending'}">${esc(v)}</span>`,
     };
 
     const _hooks = (canInput) => ({
@@ -265,13 +243,15 @@ export default {
       }
 
       const canInput = AppState.getCanInput();
+      const columns = getColumns('settlements');
+      const resolvers = getResolvers('settlements');
 
       if (_view === 'card') {
         _cardApi = renderDataCard({
           container: root,
           entityKey: '__settlement__',
           rows: _filtered,
-          options: { gridClass: 'grid grid-3', columns: _columns, resolvers: _resolvers },
+          options: { gridClass: 'grid grid-3', columns, resolvers },
           hooks: _hooks(canInput),
         });
       } else {
@@ -280,7 +260,7 @@ export default {
           entityKey: '__settlement__',
           rows: _filtered,
           tableId: 'settlement-table',
-          options: { columns: _columns, resolvers: _resolvers, storageKey: 'settlement-table' },
+          options: { columns, resolvers, storageKey: 'settlement-table' },
           hooks: _hooks(canInput),
         });
       }
@@ -291,48 +271,23 @@ export default {
     ctx.state.filters.year = String(year);
     ctx.state.filters.month = month === 'all' ? '' : String(month);
 
-    /* 🆕 v103.0.33：month 加 includeAll: true */
+    /* v103.0.34：移除 sort / source filter（改由表頭） */
     _controls = renderPageControls({
       containerId: 'page-controls-root',
       headerContainerId: 'page-header-actions',
       items: [
         {
           type: 'viewToggle',
-          position: 'header',
           storageKey: 'settlement-view',
           defaultView: 'table',
           onChange: (v) => { _view = v; _paintList(); },
         },
-        {
-          type: 'sort',
-          position: 'header',
-          value: ctx.state.sortMode,
-          options: [
-            { value: 'pending-first', label: '未處理置頂' },
-            { value: 'date-desc', label: '日期（新→舊）' },
-            { value: 'date-asc', label: '日期（舊→新）' },
-            { value: 'amount-desc', label: '金額（大→小）' },
-          ],
-          onChange: (v) => { ctx.state.sortMode = v; render(); },
-        },
         { type: 'year' },
-        {
-          type: 'month',
-          /* 🆕 v103.0.33：加「全部」選項 */
-          includeAll: true,
-        },
+        { type: 'month', includeAll: true },
         {
           type: 'filter',
           render: () => `
             <div class="page-filter-bar">
-              <div class="filter-group">
-                <label class="field-label">來源</label>
-                <select class="select" data-settle-filter="source">
-                  <option value="" ${ctx.state.filters.source === '' ? 'selected' : ''}>全部</option>
-                  <option value="personal" ${ctx.state.filters.source === 'personal' ? 'selected' : ''}>🏷 個人支出</option>
-                  <option value="insurance" ${ctx.state.filters.source === 'insurance' ? 'selected' : ''}>🛡 保險扣款</option>
-                </select>
-              </div>
               <div class="filter-group" style="flex-direction:row;align-items:center;gap:8px;min-width:auto;">
                 <input type="checkbox" id="settle-hide-completed" style="width:auto;cursor:pointer;" ${ctx.state.hideCompleted ? 'checked' : ''}>
                 <label for="settle-hide-completed" class="field-label" style="margin:0;cursor:pointer;">隱藏已供滿</label>
@@ -344,12 +299,6 @@ export default {
     });
 
     const onFilterChange = (e) => {
-      const sel = e.target.closest('[data-settle-filter="source"]');
-      if (sel) {
-        ctx.state.filters.source = sel.value;
-        render();
-        return;
-      }
       const cb = e.target.closest('#settle-hide-completed');
       if (cb) {
         ctx.state.hideCompleted = cb.checked;
@@ -497,6 +446,6 @@ async function _openBankPickerModal(row) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/settlements.js
-   Version: v103.0.33
-   Batch: B26-8
+   Version: v103.0.34
+   Batch: B29-2a
    ═══════════════════════════════════════════ */
