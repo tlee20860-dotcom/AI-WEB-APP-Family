@@ -1,7 +1,10 @@
 // ============================================
-// constants.js — 全站常數集中管理（v103.0.31）
+// constants.js — 全站常數集中管理（v103.0.38）
 // 位置：js/config/constants.js
 // ============================================
+// v103.0.38（B30-2）：
+//   ✅ [關鍵] 加 DB_TARGET 解析（old / new）
+//   ✅ 所有 STORAGE / SESSION key 加 DB 前綴，避免切 DB 混用
 // v103.0.31（B26-4）：
 //   ✅ SIDEBAR_GROUPS 加 roles 標記
 //   ✅ 加「平台管理」群組（僅 superadmin 可見）
@@ -10,47 +13,75 @@
 // ============================================
 
 /* ============================================
-   0. 版本號
+   0. DB 目標（決定 storage 前綴 + Firebase 連線）
+   --------------------------------------------
+   優先序：
+   1. URL 參數 ?db=old / ?db=new（會寫入 localStorage）
+   2. localStorage 記憶
+   3. 預設 'old'
    ============================================ */
-export const APP_VERSION = 'v103.0.31';
+const DB_TARGET_KEY = 'fin_db_target';   /* 此 key 本身不加 DB 前綴 */
+
+function _resolveDbTarget() {
+  if (typeof window === 'undefined') return 'old';
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const fromUrl = params.get('db');
+    if (fromUrl === 'old' || fromUrl === 'new') {
+      localStorage.setItem(DB_TARGET_KEY, fromUrl);
+      return fromUrl;
+    }
+    const saved = localStorage.getItem(DB_TARGET_KEY);
+    if (saved === 'old' || saved === 'new') return saved;
+  } catch (e) { /* noop */ }
+  return 'old';
+}
+
+export const DB_TARGET = _resolveDbTarget();
+const _P = `fin_${DB_TARGET}_`;   /* 所有 storage key 的共同前綴 */
+
+/* ============================================
+   0.1 版本號
+   ============================================ */
+export const APP_VERSION = 'v103.0.38';
 export const SW_VERSION = 'family-fin-v141';
 
 /* ============================================
-   1. localStorage Keys
+   1. localStorage Keys（依 DB 隔離）
    ============================================ */
 export const STORAGE_KEYS = {
-  YEAR: 'fin_year',
-  MONTH: 'fin_month',
-  FAMILY_ID: 'fin_family_id',
-  FAMILY_NAME: 'fin_family_name',
+  YEAR: `${_P}year`,
+  MONTH: `${_P}month`,
+  FAMILY_ID: `${_P}family_id`,
+  FAMILY_NAME: `${_P}family_name`,
 
-  SIDEBAR_ORDER: 'fin_sidebar_order',
-  SIDEBAR_COLLAPSED: 'fin_ui_sidebar_collapsed',
-  SIDEBAR_GROUPS: 'fin_ui_sidebar_groups',
-  MEMBERS_GROUP_OPEN: 'fin_ui_members_group_open',
+  SIDEBAR_ORDER: `${_P}ui_sidebar_order`,
+  SIDEBAR_COLLAPSED: `${_P}ui_sidebar_collapsed`,
+  SIDEBAR_GROUPS: `${_P}ui_sidebar_groups`,
+  MEMBERS_GROUP_OPEN: `${_P}ui_members_group_open`,
 
-  STATS_MODE: 'fin_ui_stats_mode',
+  STATS_MODE: `${_P}ui_stats_mode`,
 
-  UI_PREFIX: 'fin_ui_',
+  UI_PREFIX: `${_P}ui_`,
 };
 
 export const STORAGE_PREFIXES = {
-  UI: 'fin_ui_',
-  COLUMN_SETTINGS: 'fin_ui_columns_',
-  COLLAPSE: 'fin_ui_collapse_',
-  VIEW: 'fin_ui_view_',
-  AUTH_CONTEXT: 'fin_auth_context_',
-  APP_CONFIG: 'fin_app_config_cache_',
-  BANK_CACHE: 'fin_bank_cache_',
+  UI: `${_P}ui_`,
+  COLUMN_SETTINGS: `${_P}ui_columns_`,
+  COLLAPSE: `${_P}ui_collapse_`,
+  VIEW: `${_P}ui_view_`,
+  AUTH_CONTEXT: `${_P}auth_context_`,
+  APP_CONFIG: `${_P}app_config_cache_`,
+  BANK_CACHE: `${_P}bank_cache_`,
 };
 
 /* ============================================
-   2. sessionStorage Keys
+   2. sessionStorage Keys（依 DB 隔離）
    ============================================ */
 export const SESSION_KEYS = {
-  AUTH_CONTEXT_PREFIX: 'fin_auth_context_',
-  APP_CONFIG_PREFIX: 'fin_app_config_cache_',
-  BANK_CACHE_PREFIX: 'fin_bank_cache_',
+  AUTH_CONTEXT_PREFIX: `${_P}auth_context_`,
+  APP_CONFIG_PREFIX: `${_P}app_config_cache_`,
+  BANK_CACHE_PREFIX: `${_P}bank_cache_`,
 };
 
 export const AUTH_CONTEXT_TTL_MS = 5 * 60 * 1000;
@@ -238,9 +269,9 @@ export function getPolicyEffectiveMemberId(policy) {
 }
 
 /* ============================================
-   15. 表格欄位設定前綴
+   15. 表格欄位設定前綴（依 DB 隔離）
    ============================================ */
-export const COLUMN_SETTINGS_PREFIX = 'fin_ui_columns_';
+export const COLUMN_SETTINGS_PREFIX = `${_P}ui_columns_`;
 
 export function buildColumnSettingsKey(tableId) {
   return `${COLUMN_SETTINGS_PREFIX}${tableId}`;
@@ -359,10 +390,6 @@ export const DEFAULT_PAYMENTS = [
 
 /* ============================================
    19. 側邊欄分類群組（依角色過濾）
-   -------------------------------------------------
-   roles 決定該群組對哪些角色可見
-   - superadmin：只看到「平台管理」+「系統」
-   - owner / member：看到所有家庭頁面
    ============================================ */
 const _ROLES_FAMILY = ['owner', 'member'];
 const _ROLES_ALL    = ['owner', 'member', 'superadmin'];
@@ -454,11 +481,6 @@ export const SIDEBAR_GROUPS = [
   },
 ];
 
-/**
- * 依角色過濾側邊欄群組
- * @param {string} role - AppState.getRole()
- * @returns {Array}
- */
 export function getSidebarGroupsByRole(role) {
   if (!role) return SIDEBAR_GROUPS.filter((g) => (g.roles || []).includes('owner'));
   return SIDEBAR_GROUPS.filter((g) => (g.roles || []).includes(role));
@@ -506,6 +528,6 @@ export const STATUS_CATEGORIES = {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/config/constants.js
-   Version: v103.0.31
-   Batch: B26-4
+   Version: v103.0.38
+   Batch: B30-2
    ═══════════════════════════════════════════ */
