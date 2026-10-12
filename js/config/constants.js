@@ -18,12 +18,12 @@
    優先序：
    1. URL 參數 ?db=old / ?db=new（會寫入 localStorage）
    2. localStorage 記憶
-   3. 預設 'old'
+   3. 預設 'new'
    ============================================ */
 const DB_TARGET_KEY = 'fin_db_target';   /* 此 key 本身不加 DB 前綴 */
 
 function _resolveDbTarget() {
-  if (typeof window === 'undefined') return 'old';
+  if (typeof window === 'undefined') return 'new';
   try {
     const params = new URLSearchParams(window.location.search);
     const fromUrl = params.get('db');
