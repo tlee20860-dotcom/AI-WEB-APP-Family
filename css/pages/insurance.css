@@ -1,9 +1,10 @@
 /* ============================================
-   insurance.css — 保險頁面專屬樣式（v101.10.0）
+   insurance.css — 保險頁面專屬樣式（v103.0.39）
    ============================================
+   v103.0.39（B30-3-2）：
+     ✅ 硬編碼 / 霓虹色改走變數
    v101.10.0 修正：
      ✅ [P3-5] .policy-card::before 圓角統一
-         - --radius-lg → --radius-sm
    ============================================ */
 
 /* ============================================
@@ -21,46 +22,40 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-magenta));
+  background: linear-gradient(90deg, var(--accent-sky), var(--accent-warm));
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   opacity: 0;
   transition: opacity 0.3s ease;
 }
 
-.policy-card:hover::before {
-  opacity: 1;
-}
+.policy-card:hover::before { opacity: 1; }
 
 .policy-card:hover {
   transform: translateY(-2px);
   border-color: var(--glass-border-hover);
 }
 
-/* 已供滿卡片：綠色頂邊 */
+/* 已供滿卡片：綠頂邊 */
 .completed-body .policy-card::before {
-  background: linear-gradient(90deg, var(--neon-emerald), var(--neon-cyan));
+  background: linear-gradient(90deg, var(--accent-fresh), var(--accent-sky));
   opacity: 0.6;
 }
 
 /* ============================================
-   2. 進度條顏色多樣化（依百分比自動變色）
+   2. 進度條
    ============================================ */
 .policy-progress .progress-bar {
-  background: linear-gradient(90deg, var(--neon-cyan), var(--neon-magenta));
+  background: linear-gradient(90deg, var(--accent-sky), var(--accent-warm));
 }
 
-/* 100% 完成：全綠 */
 .policy-progress .progress-bar[style*="width:100%"] {
-  background: linear-gradient(90deg, var(--neon-emerald), #34D399);
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.6);
+  background: linear-gradient(90deg, var(--accent-fresh), #34D399);
 }
 
 /* ============================================
    3. 已供滿區塊裝飾
    ============================================ */
-.completed-section .completed-header {
-  position: relative;
-}
+.completed-section .completed-header { position: relative; }
 
 .completed-section .completed-header::after {
   content: "";
@@ -69,20 +64,15 @@
   left: 0;
   width: 60px;
   height: 2px;
-  background: var(--neon-emerald);
+  background: var(--accent-fresh);
   border-radius: 1px;
 }
 
-.completed-body .policy-card {
-  filter: grayscale(15%);
-}
-
-.completed-body .policy-card:hover {
-  filter: grayscale(0%);
-}
+.completed-body .policy-card { filter: grayscale(15%); }
+.completed-body .policy-card:hover { filter: grayscale(0%); }
 
 /* ============================================
-   4. 保單統計卡 hover
+   4. 保單統計卡
    ============================================ */
 #grand-total-premium,
 #active-policy-count,
@@ -90,28 +80,20 @@
   transition: all 0.3s ease;
 }
 
-.glass-card:hover #grand-total-premium {
-  text-shadow: 0 0 20px rgba(0, 240, 255, 0.6);
-}
-
-.glass-card:hover #active-policy-count {
-  text-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
-}
-
 /* ============================================
-   5. 表格模式 hover 強調
+   5. 表格模式 hover
    ============================================ */
 .policy-table tbody tr:hover td {
-  background: rgba(0, 240, 255, 0.05);
-  border-bottom-color: rgba(0, 240, 255, 0.15);
+  background: var(--hover-bg-strong);
+  border-bottom-color: var(--divider-strong);
 }
 
 .policy-table tbody tr.insurance-table-detail-row:hover td {
-  background: rgba(0, 240, 255, 0.02);
+  background: var(--hover-bg);
 }
 
 /* ============================================
-   6. 展開按鈕微調
+   6. 展開按鈕
    ============================================ */
 .insurance-expand-btn {
   transition: all 0.25s ease;
@@ -120,27 +102,23 @@
 
 .insurance-expand-btn:hover {
   border-color: var(--glass-border);
-  background: rgba(0, 240, 255, 0.04);
+  background: var(--hover-bg);
 }
 
-.insurance-expand-btn span {
-  font-weight: 500;
-}
+.insurance-expand-btn span { font-weight: 500; }
 
 /* ============================================
-   7. 年度區塊 header 強調
+   7. 年度區塊 header
    ============================================ */
 .insurance-year-block {
   transition: border-color 0.2s ease;
 }
 
 .insurance-year-block:hover {
-  border-color: rgba(0, 240, 255, 0.15);
+  border-color: var(--glass-border-hover);
 }
 
-.insurance-year-header {
-  position: relative;
-}
+.insurance-year-header { position: relative; }
 
 .insurance-year-header::before {
   content: "";
@@ -150,55 +128,42 @@
   transform: translateY(-50%);
   width: 3px;
   height: 60%;
-  background: var(--neon-cyan);
+  background: var(--primary);
   opacity: 0.5;
   border-radius: 0 2px 2px 0;
   transition: opacity 0.2s ease;
 }
 
-.insurance-year-header:hover::before {
-  opacity: 1;
-}
+.insurance-year-header:hover::before { opacity: 1; }
 
 /* ============================================
-   8. 每月扣款列 hover
+   8. 每月扣款列
    ============================================ */
 .insurance-month-row {
   transition: background 0.15s ease;
   border-radius: var(--radius-sm);
 }
 
-.insurance-month-row:hover {
-  background: rgba(0, 240, 255, 0.03);
-}
+.insurance-month-row:hover { background: var(--hover-bg); }
 
 /* ============================================
    9. 空狀態插圖
    ============================================ */
 #insurance-empty-state .empty-state i {
-  color: var(--neon-cyan);
-  filter: drop-shadow(0 0 12px rgba(0, 240, 255, 0.4));
+  color: var(--primary);
 }
 
 /* ============================================
-   10. 手機版進度條加粗
+   10. 手機版
    ============================================ */
 @media (max-width: 640px) {
-  .policy-progress .progress {
-    height: 6px;
-  }
-
-  .policy-card:hover {
-    transform: none;
-  }
-
-  .policy-card::before {
-    opacity: 0.4;
-  }
+  .policy-progress .progress { height: 6px; }
+  .policy-card:hover { transform: none; }
+  .policy-card::before { opacity: 0.4; }
 }
 
 /* ============================================
-   11. 列印友善（供日後擴充）
+   11. 列印友善
    ============================================ */
 @media print {
   .policy-card,
@@ -209,13 +174,18 @@
     border: 1px solid #ccc !important;
     box-shadow: none !important;
   }
-
   .policy-progress .progress-bar {
-    background: #10B981 !important;
+    background: #52B788 !important;
   }
-
   .insurance-expand-btn,
   .btn {
     display: none !important;
   }
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: css/pages/insurance.css
+   Version: v103.0.39
+   Batch: B30-3-2
+   ═══════════════════════════════════════════ */

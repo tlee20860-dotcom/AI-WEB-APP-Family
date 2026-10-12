@@ -1,10 +1,11 @@
 /* ============================================
-   layout.css — App Shell 版型（v103.0.34）
+   layout.css — App Shell 版型（v103.0.39）
    -------------------------------------------------
+   v103.0.39（B30-3-2）：
+     ✅ 硬編碼深色改走變數
+     ✅ page-title 移除霓虹陰影
    v103.0.34（B29-5d）：
-     ✅ 加 .page-subtitle[data-prefix]::before（顯示使用者自訂靜態段）
-   v103.0.19 修正：
-     ✅ .sidebar-nav 加 min-height: 0
+     ✅ .page-subtitle[data-prefix]::before
    ============================================ */
 
 .app-shell {
@@ -18,7 +19,7 @@
 .sidebar {
   width: 260px;
   flex-shrink: 0;
-  background: rgba(8, 11, 17, 0.85);
+  background: var(--sidebar-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-right: 1px solid var(--glass-border);
@@ -41,8 +42,7 @@
   font-family: var(--font-mono);
   font-weight: 700;
   font-size: 16px;
-  color: var(--neon-cyan);
-  text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+  color: var(--primary);
   white-space: nowrap;
   letter-spacing: 1px;
 }
@@ -70,16 +70,15 @@
 }
 
 .nav-item:hover {
-  background: rgba(0, 240, 255, 0.05);
-  color: var(--neon-cyan);
+  background: var(--hover-bg);
+  color: var(--primary);
   text-decoration: none;
 }
 
 .nav-item.active {
-  color: var(--neon-cyan);
-  background: rgba(0, 240, 255, 0.08);
-  border-left-color: var(--neon-cyan);
-  box-shadow: inset 0 0 20px rgba(0, 240, 255, 0.05);
+  color: var(--primary);
+  background: var(--hover-bg-strong);
+  border-left-color: var(--primary);
 }
 
 .nav-item .nav-icon {
@@ -94,9 +93,7 @@
   white-space: nowrap;
 }
 
-.nav-group {
-  margin-bottom: 4px;
-}
+.nav-group { margin-bottom: 4px; }
 
 .nav-group-title {
   display: flex;
@@ -114,9 +111,7 @@
   transition: color var(--transition);
 }
 
-.nav-group-title:hover {
-  color: var(--neon-cyan);
-}
+.nav-group-title:hover { color: var(--primary); }
 
 .nav-group-title .nav-group-label {
   display: flex;
@@ -142,17 +137,11 @@
   transition: transform 0.25s ease, color var(--transition);
 }
 
-.nav-group-title:hover .nav-group-arrow {
-  color: var(--neon-cyan);
-}
+.nav-group-title:hover .nav-group-arrow { color: var(--primary); }
 
-.nav-group-title.open .nav-group-arrow {
-  transform: rotate(180deg);
-}
+.nav-group-title.open .nav-group-arrow { transform: rotate(180deg); }
 
-.nav-sub-group {
-  margin: 2px 0;
-}
+.nav-sub-group { margin: 2px 0; }
 
 .nav-sub-title {
   padding-left: 32px;
@@ -165,9 +154,7 @@
   font-size: 13px;
 }
 
-.sidebar.collapsed {
-  width: 64px;
-}
+.sidebar.collapsed { width: 64px; }
 
 .sidebar.collapsed .sidebar-logo,
 .sidebar.collapsed .nav-label,
@@ -183,7 +170,7 @@
 }
 
 .sidebar.collapsed .nav-item.active {
-  border-left: 3px solid var(--neon-cyan);
+  border-left: 3px solid var(--primary);
 }
 
 /* ================= Main Area ================= */
@@ -201,7 +188,7 @@
   align-items: center;
   gap: 16px;
   padding: 0 24px;
-  background: rgba(8, 11, 17, 0.7);
+  background: var(--navbar-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--glass-border);
@@ -228,7 +215,7 @@
 .hamburger {
   background: transparent;
   border: 1px solid var(--glass-border);
-  color: var(--neon-cyan);
+  color: var(--primary);
   width: 38px;
   height: 38px;
   border-radius: var(--radius-sm);
@@ -241,7 +228,7 @@
 
 .hamburger:hover {
   border-color: var(--glass-border-hover);
-  box-shadow: var(--glass-shadow-hover);
+  box-shadow: var(--shadow-sm);
 }
 
 .content {
@@ -257,8 +244,7 @@
 .page-title {
   font-size: 24px;
   font-weight: 700;
-  color: var(--neon-cyan);
-  text-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+  color: var(--primary);
   margin-bottom: 4px;
 }
 
@@ -267,7 +253,6 @@
   color: var(--text-muted);
 }
 
-/* 🆕 v103.0.34：使用者自訂副標題靜態段（B29-5d） */
 .page-subtitle[data-prefix]::before {
   content: attr(data-prefix);
 }
@@ -296,13 +281,9 @@
     overflow: hidden !important;
     transition: left 0.3s ease !important;
   }
-  .sidebar.mobile-open {
-    left: 0 !important;
-  }
+  .sidebar.mobile-open { left: 0 !important; }
 
-  .sidebar.collapsed {
-    width: 260px !important;
-  }
+  .sidebar.collapsed { width: 260px !important; }
   .sidebar.collapsed .sidebar-logo,
   .sidebar.collapsed .nav-label,
   .sidebar.collapsed .nav-group-title,
@@ -324,13 +305,11 @@
     left: 260px;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.6);
+    background: var(--overlay-bg);
     z-index: 10000 !important;
     cursor: pointer;
   }
-  .sidebar-backdrop.active {
-    display: block;
-  }
+  .sidebar-backdrop.active { display: block; }
 
   .navbar {
     padding: 0 12px;
@@ -344,6 +323,6 @@
 /* ═══════════════════════════════════════════
    END OF FILE
    File: css/layout.css
-   Version: v103.0.34
-   Batch: B29-5d
+   Version: v103.0.39
+   Batch: B30-3-2
    ═══════════════════════════════════════════ */
