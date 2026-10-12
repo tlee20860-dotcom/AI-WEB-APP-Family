@@ -1,12 +1,11 @@
 // ============================================
-// page-engine.js — 頁面引擎（v103.0.34）
+// page-engine.js — 頁面引擎（v103.0.36）
 // 位置：js/engines/page-engine.js
 // ============================================
+// v103.0.36（B29-8）：
+//   ✅ _applyPageMetadata 清空 subtitleEl.textContent（避免硬編碼殘留）
 // v103.0.34（B29-5c）：
-//   ✅ 應用頁面 metadata（title / subtitleStatic 使用者可編輯）
-//   ✅ subtitleStatic 用 data-prefix + CSS ::before（不干擾動態段）
-// v103.0.17（B18.1）：
-//   ✅ 新增 ctx.onDataChange(fn) 統一通知機制
+//   ✅ 應用頁面 metadata（title / subtitleStatic）
 // ============================================
 
 import { subscribe, makeReactive, getNestedValue } from './data-engine.js';
@@ -66,7 +65,6 @@ export async function createPage(schema) {
     ctx.state = makeReactive({ ...(schema.state || {}) }, (keyPath) => _onStateChange(ctx, schema, keyPath));
   } catch (err) { _showError('makeReactive 失敗：' + err.message); }
 
-  /* 🆕 v103.0.34：應用頁面 metadata */
   _applyPageMetadata(ctx);
 
   _buildDependencyGraph(ctx, schema);
@@ -84,10 +82,11 @@ export async function createPage(schema) {
 }
 
 /* ============================================
-   🆕 v103.0.34：應用頁面 metadata
+   應用頁面 metadata
    -------------------------------------------------
    - 從 URL 取 pageKey
-   - 預設套 registry；訂閱 Firebase 套自訂
+   - 清空 HTML 硬編碼；套 registry 預設
+   - 訂閱 Firebase 套自訂
    - subtitleStatic 存 data-prefix（CSS ::before 顯示）
    ============================================ */
 function _applyPageMetadata(ctx) {
@@ -97,9 +96,13 @@ function _applyPageMetadata(ctx) {
   const titleEl = document.querySelector('.page-title');
   const subtitleEl = document.querySelector('.page-subtitle');
 
-  /* 立即套預設（避免 FOUC） */
+  /* 立即清空 + 套預設（避免 FOUC） */
   if (titleEl && defaultMeta.title) titleEl.textContent = defaultMeta.title;
-  if (subtitleEl && defaultMeta.subtitleStatic) subtitleEl.dataset.prefix = defaultMeta.subtitleStatic;
+  if (subtitleEl) {
+    subtitleEl.textContent = '';
+    if (defaultMeta.subtitleStatic) subtitleEl.dataset.prefix = defaultMeta.subtitleStatic;
+    else subtitleEl.removeAttribute('data-prefix');
+  }
 
   try {
     const unsub = listenPageMetadata((all) => {
@@ -113,6 +116,7 @@ function _applyPageMetadata(ctx) {
 
       if (titleEl) titleEl.textContent = title;
       if (subtitleEl) {
+        subtitleEl.textContent = '';
         if (subStatic) subtitleEl.dataset.prefix = subStatic;
         else subtitleEl.removeAttribute('data-prefix');
       }
@@ -338,6 +342,6 @@ function _destroy(ctx) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/engines/page-engine.js
-   Version: v103.0.34
-   Batch: B29-5c
+   Version: v103.0.36
+   Batch: B29-8
    ═══════════════════════════════════════════ */
