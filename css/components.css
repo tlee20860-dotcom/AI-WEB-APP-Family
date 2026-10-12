@@ -1,24 +1,27 @@
 /* ============================================
    components.css — 卡片、按鈕、表格、Modal、表單
    -------------------------------------------------
+   v103.0.41（B30-3d）：
+     ✅ 主要按鈕改實色填充（藍底白字 / 紅底白字）
+     ✅ 卡片加色條（左側 4px）
+     ✅ Modal 標題加色條
+     ✅ Tab 選中改實色
+     ✅ Badge 改實色
+     ✅ 表格 header 加深
    v103.0.39（B30-3-2）：
-     ✅ 所有硬編碼顏色改走 theme.css 變數
-     ✅ 支援亮色 / 深色主題切換
-   v103.0.34（B29-4b）：
-     ✅ 加 .page-banner / dt-* 表頭排序
+     ✅ 硬編碼改走變數
    ============================================ */
 
 /* ================= GlassCard ================= */
 .glass-card {
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   padding: 20px;
   transition: all var(--transition);
   position: relative;
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 .glass-card:hover {
@@ -95,8 +98,8 @@
   font-weight: 500;
   border-radius: var(--radius-sm);
   border: 1px solid var(--glass-border);
-  background: var(--hover-bg);
-  color: var(--primary);
+  background: var(--glass-bg);
+  color: var(--text-primary);
   transition: all var(--transition);
   white-space: nowrap;
   font-family: inherit;
@@ -104,29 +107,50 @@
 }
 
 .btn:hover {
-  background: var(--hover-bg-strong);
+  background: var(--hover-bg);
   border-color: var(--glass-border-hover);
   box-shadow: var(--shadow-sm);
 }
 
+/* 🆕 主要按鈕：實色藍底白字 */
 .btn-primary {
-  background: var(--hover-bg-strong);
-  border-color: var(--glass-border-hover);
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #FFFFFF;
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+.btn-primary:hover {
+  background: var(--primary-dark);
+  border-color: var(--primary-dark);
+  box-shadow: var(--shadow-md);
 }
 
-.btn-magenta {
-  background: rgba(232, 93, 58, 0.1);
-  border-color: rgba(232, 93, 58, 0.4);
-  color: var(--danger);
-}
-.btn-magenta:hover { background: rgba(232, 93, 58, 0.2); }
-
+/* 危險按鈕：實色紅底白字 */
 .btn-danger {
-  background: rgba(232, 93, 58, 0.1);
-  border-color: rgba(232, 93, 58, 0.4);
-  color: var(--danger);
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #FFFFFF;
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
 }
-.btn-danger:hover { background: rgba(232, 93, 58, 0.2); }
+.btn-danger:hover {
+  background: var(--danger-dark);
+  border-color: var(--danger-dark);
+  box-shadow: var(--shadow-md);
+}
+
+/* Magenta：橙底白字 */
+.btn-magenta {
+  background: var(--accent-warm);
+  border-color: var(--accent-warm);
+  color: #FFFFFF;
+  font-weight: 600;
+}
+.btn-magenta:hover {
+  background: #EA580C;
+  border-color: #EA580C;
+}
 
 .btn-ghost {
   background: transparent;
@@ -163,7 +187,7 @@
 .input:focus, .select:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(30, 78, 140, 0.1);
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.15);
 }
 
 .input::placeholder { color: var(--text-muted); }
@@ -176,6 +200,7 @@
   color: var(--text-secondary);
   margin-bottom: 6px;
   letter-spacing: 0.3px;
+  font-weight: 500;
 }
 
 /* ================= 通用表格 ================= */
@@ -189,11 +214,11 @@
   text-align: left;
   padding: 12px 14px;
   font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
+  font-weight: 700;
+  color: var(--text-secondary);
   letter-spacing: 1px;
   text-transform: uppercase;
-  border-bottom: 1px solid var(--divider-strong);
+  border-bottom: 2px solid var(--divider-strong);
   background: var(--hover-bg);
 }
 
@@ -247,20 +272,18 @@
 }
 
 .dt-sort-btn.active {
-  color: var(--primary);
-  background: var(--hover-bg-strong);
+  color: #FFFFFF;
+  background: var(--primary);
 }
 
 .dt-filter-btn.active {
-  color: var(--danger);
-  background: rgba(232, 93, 58, 0.15);
+  color: #FFFFFF;
+  background: var(--accent-warm);
 }
-
-.dt-filter-overlay { /* position 由 JS 動態設定 */ }
 
 .dt-filter-panel {
   background: var(--filter-panel-bg);
-  border: 1px solid var(--glass-border-hover);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
   padding: 12px;
   min-width: 200px;
@@ -300,7 +323,7 @@
 /* ================= 進度條 ================= */
 .progress {
   height: 8px;
-  background: var(--hover-bg);
+  background: var(--divider);
   border-radius: 4px;
   overflow: hidden;
   position: relative;
@@ -308,12 +331,12 @@
 
 .progress-bar {
   height: 100%;
-  background: linear-gradient(90deg, var(--accent-sky), var(--accent-warm));
+  background: linear-gradient(90deg, var(--accent-sky), var(--primary));
   border-radius: 4px;
   transition: width 0.5s ease;
 }
 
-/* ================= Badge ================= */
+/* ================= Badge（實色） ================= */
 .badge {
   display: inline-block;
   padding: 3px 9px;
@@ -321,14 +344,14 @@
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.5px;
-  border: 1px solid currentColor;
+  color: #FFFFFF;
 }
 
-.badge-success { color: var(--accent-fresh); background: rgba(82, 183, 136, 0.1); }
-.badge-pending { color: var(--accent-warm);  background: rgba(255, 159, 67, 0.1); }
-.badge-info    { color: var(--accent-sky);   background: rgba(74, 144, 226, 0.1); }
-.badge-magenta { color: var(--danger);       background: rgba(232, 93, 58, 0.1); }
-.badge-muted   { color: var(--text-muted);   background: var(--hover-bg); }
+.badge-success { background: var(--accent-fresh); }
+.badge-pending { background: var(--accent-warm); }
+.badge-info    { background: var(--accent-sky); }
+.badge-magenta { background: var(--danger); }
+.badge-muted   { background: var(--text-muted); }
 
 /* ================= 空狀態 / 橫幅 ================= */
 .empty-state {
@@ -346,24 +369,28 @@
   font-size: 13px;
   margin-bottom: 16px;
   color: var(--text-secondary);
+  border-left: 4px solid var(--primary);
 }
 
 .banner-magenta {
-  border-color: rgba(232, 93, 58, 0.3);
-  background: rgba(232, 93, 58, 0.06);
+  border-color: rgba(220, 38, 38, 0.3);
+  background: rgba(220, 38, 38, 0.06);
   color: var(--danger);
+  border-left-color: var(--danger);
 }
 
 .banner-success {
-  border-color: rgba(82, 183, 136, 0.3);
-  background: rgba(82, 183, 136, 0.06);
+  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.06);
   color: var(--accent-fresh);
+  border-left-color: var(--accent-fresh);
 }
 
 .banner-error {
-  border-color: rgba(232, 93, 58, 0.3);
-  background: rgba(232, 93, 58, 0.06);
+  border-color: rgba(220, 38, 38, 0.3);
+  background: rgba(220, 38, 38, 0.06);
   color: var(--danger);
+  border-left-color: var(--danger);
 }
 
 /* ================= Modal ================= */
@@ -385,7 +412,7 @@
   width: 100%;
   max-width: 440px;
   background: var(--modal-bg);
-  border: 1px solid var(--glass-border-hover);
+  border: 1px solid var(--glass-border);
   border-radius: var(--radius-md);
   padding: 24px;
   box-shadow: var(--shadow-lg);
@@ -397,11 +424,15 @@
   to   { opacity: 1; transform: translateY(0) scale(1); }
 }
 
+/* 🆕 Modal 標題加左色條 */
 .modal-title {
   font-size: 18px;
   font-weight: 700;
-  color: var(--primary);
+  color: var(--text-primary);
   margin-bottom: 16px;
+  padding-left: 12px;
+  border-left: 4px solid var(--primary);
+  line-height: 1.3;
 }
 
 .modal-actions {
@@ -438,7 +469,7 @@
   gap: 10px;
   font-size: 14px;
   font-weight: 600;
-  color: var(--primary);
+  color: var(--text-primary);
 }
 
 .collapsible-card .collapsible-arrow {
@@ -523,7 +554,7 @@
   display: inline-flex;
   gap: 4px;
   padding: 3px;
-  background: var(--glass-bg);
+  background: var(--divider);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
 }
@@ -532,6 +563,11 @@
   padding: 5px 12px;
   font-size: 12px;
   border: none;
+}
+
+.view-toggle-group .btn.active {
+  background: var(--primary);
+  color: #FFFFFF;
 }
 
 /* ================= Page Controls ================= */
@@ -606,7 +642,7 @@
 .policy-name {
   font-size: 16px;
   font-weight: 700;
-  color: var(--primary);
+  color: var(--text-primary);
   line-height: 1.3;
 }
 
@@ -685,11 +721,11 @@
   padding: 12px 8px;
   text-align: left;
   font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
+  font-weight: 700;
+  color: var(--text-secondary);
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  border-bottom: 1px solid var(--divider-strong);
+  border-bottom: 2px solid var(--divider-strong);
   background: var(--hover-bg);
   white-space: nowrap;
   overflow: hidden;
@@ -789,7 +825,7 @@
 .ins-year-title {
   font-size: 13px;
   font-weight: 600;
-  color: var(--primary);
+  color: var(--text-primary);
 }
 
 .ins-year-right {
@@ -859,8 +895,8 @@
 
 /* ================= 已供滿保單區塊 ================= */
 .completed-section {
-  border-color: rgba(82, 183, 136, 0.3) !important;
-  background: rgba(82, 183, 136, 0.03) !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+  background: rgba(16, 185, 129, 0.04) !important;
 }
 .completed-header {
   display: flex;
@@ -877,7 +913,7 @@
 .completed-body {
   margin-top: 16px;
   padding-top: 16px;
-  border-top: 1px dashed rgba(82, 183, 136, 0.2);
+  border-top: 1px dashed rgba(16, 185, 129, 0.2);
 }
 .completed-body .policy-card { opacity: 0.85; }
 
@@ -896,10 +932,10 @@
   padding: 10px 10px;
   text-align: left;
   font-size: 11px;
-  font-weight: 600;
-  color: var(--text-muted);
+  font-weight: 700;
+  color: var(--text-secondary);
   letter-spacing: 0.5px;
-  border-bottom: 1px solid var(--divider-strong);
+  border-bottom: 2px solid var(--divider-strong);
   background: var(--hover-bg);
   white-space: nowrap;
 }
@@ -932,7 +968,7 @@
   display: flex;
   gap: 4px;
   padding: 4px;
-  background: var(--glass-bg);
+  background: var(--divider);
   border: 1px solid var(--glass-border);
   border-radius: var(--radius-sm);
   overflow-x: auto;
@@ -966,8 +1002,8 @@
 }
 
 .tab-bar .tab-btn.active {
-  background: var(--hover-bg-strong);
-  color: var(--primary);
+  background: var(--primary);
+  color: #FFFFFF;
   font-weight: 700;
 }
 
@@ -1080,7 +1116,7 @@
   .data-card-primary {
     font-size: 15px;
     font-weight: 700;
-    color: var(--primary);
+    color: var(--text-primary);
     margin-bottom: 10px;
     line-height: 1.35;
   }
@@ -1121,7 +1157,7 @@
 .data-card-primary {
   font-size: 15px;
   font-weight: 700;
-  color: var(--primary);
+  color: var(--text-primary);
   margin-bottom: 10px;
   line-height: 1.35;
 }
@@ -1252,12 +1288,11 @@
 /* ================= 統計卡 — 整合卡 ================= */
 .stats-integrated {
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   padding: 0;
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
 }
 
 .stats-integrated-grid {
@@ -1397,6 +1432,6 @@
 /* ═══════════════════════════════════════════
    END OF FILE
    File: css/components.css
-   Version: v103.0.39
-   Batch: B30-3-2
+   Version: v103.0.41
+   Batch: B30-3d
    ═══════════════════════════════════════════ */

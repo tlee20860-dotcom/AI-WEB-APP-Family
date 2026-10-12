@@ -1,10 +1,10 @@
 /* ============================================
-   theme.css — 家庭暖陽主題（Tailwind 色板 v103.0.40）
+   theme.css — 家庭暖陽主題（Tailwind 色板 v103.0.41）
    ============================================
+   v103.0.41（B30-3d）：
+     ✅ 背景加深至 slate-200，與白卡對比明顯
    v103.0.40（B30-3c）：
-     ✅ 色值改用 Tailwind 官方色板，對比已驗證
-     ✅ 亮色層次分明（slate 灰底 + 白卡 + 深藍字）
-     ✅ 深色保留（slate-900 系列）
+     ✅ 色值改用 Tailwind 官方色板
    ============================================ */
 
 /* ============================================
@@ -12,33 +12,30 @@
    ============================================ */
 :root,
 [data-theme="light"] {
-  /* 背景 */
-  --bg-deep:  #F1F5F9;   /* slate-100 */
-  --bg-navy:  #E2E8F0;   /* slate-200 */
+  --bg-deep:  #E2E8F0;   /* slate-200（加深） */
+  --bg-navy:  #CBD5E1;   /* slate-300 */
   --bg-panel: #FFFFFF;
 
-  /* 主色票 */
   --primary:      #1D4ED8;   /* blue-700 */
+  --primary-dark: #1E40AF;   /* blue-800 */
   --accent-warm:  #F97316;   /* orange-500 */
   --accent-fresh: #10B981;   /* emerald-500 */
   --accent-sky:   #3B82F6;   /* blue-500 */
-  --danger:       #EF4444;   /* red-500 */
+  --danger:       #DC2626;   /* red-600 */
+  --danger-dark:  #B91C1C;   /* red-700 */
 
-  /* 舊變數名（向後相容） */
   --neon-cyan:    #3B82F6;
-  --neon-magenta: #EF4444;
+  --neon-magenta: #DC2626;
   --neon-emerald: #10B981;
-  --neon-red:     #EF4444;
+  --neon-red:     #DC2626;
   --neon-orange:  #F97316;
 
-  /* 玻璃卡片（實心白 + 清楚邊框 + 陰影） */
   --glass-bg:           #FFFFFF;
   --glass-border:       #CBD5E1;              /* slate-300 */
   --glass-border-hover: #94A3B8;              /* slate-400 */
-  --glass-shadow-hover: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --glass-shadow-hover: 0 4px 12px rgba(15, 23, 42, 0.10);
   --glass-blur:         0px;
 
-  /* 結構色 */
   --input-bg:        #FFFFFF;
   --modal-bg:        #FFFFFF;
   --overlay-bg:      rgba(15, 23, 42, 0.5);
@@ -46,35 +43,28 @@
   --navbar-bg:       #FFFFFF;
   --filter-panel-bg: #FFFFFF;
 
-  /* 互動色 */
   --hover-bg:        #F1F5F9;              /* slate-100 */
   --hover-bg-strong: #E2E8F0;              /* slate-200 */
 
-  /* 分隔線 */
   --divider:        #E2E8F0;               /* slate-200 */
   --divider-strong: #CBD5E1;               /* slate-300 */
 
-  /* 陰影（Tailwind 風格） */
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
-  --shadow-md: 0 4px 6px rgba(15, 23, 42, 0.08);
-  --shadow-lg: 0 10px 15px rgba(15, 23, 42, 0.10);
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.08);
+  --shadow-md: 0 4px 6px rgba(15, 23, 42, 0.10);
+  --shadow-lg: 0 10px 15px rgba(15, 23, 42, 0.12);
 
-  /* 文字 */
   --text-primary:   #1E293B;   /* slate-800 */
   --text-secondary: #475569;   /* slate-600 */
   --text-muted:     #64748B;   /* slate-500 */
 
-  /* 圓角 */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
 
-  /* 字體 */
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI",
                "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", "Consolas", "Menlo", monospace;
 
-  /* 動畫 */
   --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -82,15 +72,17 @@
    深色主題 — [data-theme="dark"]
    ============================================ */
 [data-theme="dark"] {
-  --bg-deep:  #0F172A;   /* slate-900 */
-  --bg-navy:  #1E293B;   /* slate-800 */
+  --bg-deep:  #0F172A;
+  --bg-navy:  #1E293B;
   --bg-panel: #1E293B;
 
-  --primary:      #60A5FA;   /* blue-400 */
-  --accent-warm:  #FBBF24;   /* amber-400 */
-  --accent-fresh: #34D399;   /* emerald-400 */
+  --primary:      #60A5FA;
+  --primary-dark: #3B82F6;
+  --accent-warm:  #FBBF24;
+  --accent-fresh: #34D399;
   --accent-sky:   #60A5FA;
-  --danger:       #F87171;   /* red-400 */
+  --danger:       #F87171;
+  --danger-dark:  #EF4444;
 
   --neon-cyan:    #60A5FA;
   --neon-magenta: #F87171;
@@ -98,9 +90,9 @@
   --neon-red:     #F87171;
   --neon-orange:  #FBBF24;
 
-  --glass-bg:           #1E293B;              /* slate-800 */
-  --glass-border:       #334155;              /* slate-700 */
-  --glass-border-hover: #475569;              /* slate-600 */
+  --glass-bg:           #1E293B;
+  --glass-border:       #334155;
+  --glass-border-hover: #475569;
   --glass-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.4);
   --glass-blur:         0px;
 
@@ -111,8 +103,8 @@
   --navbar-bg:       #0F172A;
   --filter-panel-bg: #1E293B;
 
-  --hover-bg:        #334155;              /* slate-700 */
-  --hover-bg-strong: #475569;              /* slate-600 */
+  --hover-bg:        #334155;
+  --hover-bg-strong: #475569;
 
   --divider:        #334155;
   --divider-strong: #475569;
@@ -121,9 +113,9 @@
   --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.5);
   --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.6);
 
-  --text-primary:   #F1F5F9;   /* slate-100 */
-  --text-secondary: #CBD5E1;   /* slate-300 */
-  --text-muted:     #94A3B8;   /* slate-400 */
+  --text-primary:   #F1F5F9;
+  --text-secondary: #CBD5E1;
+  --text-muted:     #94A3B8;
 }
 
 /* ============================================
@@ -142,7 +134,6 @@ html, body {
   transition: background var(--transition), color var(--transition);
 }
 
-/* 柔和光暈（大幅降低透明度） */
 body::before {
   content: "";
   position: fixed;
@@ -174,7 +165,6 @@ button { font-family: inherit; cursor: pointer; }
 .text-orange  { color: var(--accent-warm); }
 .text-muted   { color: var(--text-muted); }
 
-/* 捲軸 */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
@@ -228,6 +218,6 @@ button { font-family: inherit; cursor: pointer; }
 /* ═══════════════════════════════════════════
    END OF FILE
    File: css/theme.css
-   Version: v103.0.40
-   Batch: B30-3c
+   Version: v103.0.41
+   Batch: B30-3d
    ═══════════════════════════════════════════ */
