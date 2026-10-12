@@ -1,7 +1,7 @@
 # C-02 通用規則（跨專案）
 
-最後更新：B29-10
-版本：v1.3
+最後更新：B30-5
+版本：v1.4
 用途：所有專案的通用協作規則
 
 ---
@@ -307,9 +307,30 @@ Token: 🟢 [████████░░] 80% 剩餘
 
 ---
 
+## 十一、CF Pages Functions 環境變數
+
+| 項目 | 說明 |
+|---|---|
+| ❌ 錯誤 | `process.env.DB_TARGET` |
+| ✅ 正確 | handler 參數 `{ env }` → `env.DB_TARGET` |
+| 傳遞 | 每個 `onRequest*` 開頭呼叫 `initConfig(env)` |
+| 相容 | 用 `export let` 保留舊引用（live binding） |
+| 設定位置 | CF Dashboard → Pages → Settings → Environment variables |
+| 生效條件 | 設定後**必須重新部署** |
+
+**禁止**：
+
+| 禁止 | 後果 |
+|---|---|
+| 用 `process.env` | CF Pages 讀不到，回 undefined |
+| 移除既有 export | 依賴模組崩潰 |
+| 設定 env 後未重部署 | 仍讀舊值 |
+
+---
+
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/C-02-rules.md
-   Version: v1.3
-   Batch: B29-10
+   Version: v1.4
+   Batch: B30-5
    ═══════════════════════════════════════════ */

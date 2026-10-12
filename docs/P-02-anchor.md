@@ -1,8 +1,8 @@
 # P-02 專案錨點（家庭財務 Web App）
 
-最後更新：B29-10b
-版本：v103.0.37
-批次：B29-10b
+最後更新：B30-5
+版本：v103.0.38
+批次：B30-5
 用途：本專案技術架構（通用規則見 C-02）
 
 ---
@@ -18,7 +18,7 @@
 | 登入 | Firebase Auth（自訂帳號 @familyfin.local） |
 | 前端 | 純 HTML + CSS + ES Module JS |
 | 後端 | Cloudflare Pages Functions |
-| 視覺 | 深色科幻霓虹（Cyan / Magenta / Emerald） |
+| 視覺 | 深色科幻霓虹（Cyan / Magenta / Emerald）→ 亮色家庭暖陽（B30-3） |
 | 金額 | 四捨五入至整數 |
 
 ---
@@ -239,6 +239,8 @@ Firebase RTDB → data-engine → page-engine → derived → block → DOM
 | 控制列 | P-02 第七節 + lib/page-controls.js |
 | 側邊欄角色過濾 | P-02 第八節 + constants.js |
 | 頁面 metadata | P-02 第九節 + page-metadata-registry.js |
+| CF Pages env | C-02 §十一 + _config.js initConfig |
+| DB 切換（後端） | _config.js DB_TARGET + CF env |
 
 ---
 
@@ -258,10 +260,10 @@ Firebase RTDB → data-engine → page-engine → derived → block → DOM
 
 | 項目 | 值 |
 |---|---|
-| 當前批次 | B29-10b（docs 同步中） |
+| 當前批次 | B30-5（docs 同步中） |
 | SW 版本 | family-fin-v141 |
 | 部署 URL | family-financial-management-system.pages.dev |
-| 測試狀態 | B29 已部署測試通過 |
+| 測試狀態 | B30-5 已部署測試通過 |
 
 ---
 
@@ -269,17 +271,18 @@ Firebase RTDB → data-engine → page-engine → derived → block → DOM
 
 | 項目 | 狀態 |
 |---|---|
-| B29-9 docs 補回（4 批 + 修正批） | ✅ 完成 |
-| B29-10 C-02 Token 視覺化 | ✅ 完成 |
-| B29-10a 同步 C-03 / C-04 | ✅ 完成 |
-| B29-10b 同步 P-02 / P-03 / P-04 | 🔄 本批 |
-| B30 起新功能 | 📋 待規劃 |
+| B30-3：主題 Tailwind 色板 | ✅ 完成 |
+| B30-3b：navbar DB 標籤 + 主題切換 | ✅ 完成 |
+| B30-5：後端 DB 切換 | ✅ 完成 |
+| B30-5-docs：docs 同步 | 🔄 本批 |
+| B30 後續：icon 更換 | 📋 待規劃 |
+| B30 後續：docs 版本號統一 | 📋 待規劃 |
 
 ---
 
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/P-02-anchor.md
-   Version: v103.0.37
-   Batch: B29-10b
+   Version: v103.0.38
+   Batch: B30-5
    ═══════════════════════════════════════════ */

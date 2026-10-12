@@ -1,9 +1,9 @@
 # P-12 事故日誌
 
-最後更新：B29-9d
-版本：v103.0.37
-批次：B29-9d
-適用批次：B11 ~ B29
+最後更新：B30-5
+版本：v103.0.38
+批次：B30-5
+適用批次：B11 ~ B30
 
 **用途**：記錄歷史問題，避免重複犯錯
 
@@ -30,6 +30,23 @@
 | B25 | P20~P24 | 全站修復 | 🟠 |
 | B26 | — | 全站優化 | 🟠 |
 | B29 | P25~P28 | 表頭 + metadata | 🟠 |
+| B30 | P29 | 後端 DB 切換 | 🔴 |
+
+---
+
+## 二點五、B30：後端 DB 切換（P29）
+
+### P29：後端永遠連舊 DB
+
+| 項目 | 內容 |
+|---|---|
+| 症狀 | superadmin 登入新 DB 後，API 顯示「需要超級管理員權限」 |
+| 原因 A | `_config.js` 寫死舊 DB URL + API Key |
+| 原因 B | CF Pages 不支援 `process.env` → 改用 `context.env` |
+| 原因 C | 移除 `FIREBASE_DB_URL` export → 依賴模組崩潰 |
+| 解決 | `export let` + `initConfig(env)` + handler 傳遞 |
+| 修復批次 | B30-5 |
+| 教訓 | CF Pages env 走 handler 參數；不得移除既有 export |
 
 ---
 
@@ -318,6 +335,8 @@
 | 動態值快照 | P22 | P25 | 內部讀 AppState |
 | 未清空既有內容 | — | P27 | 動態注入時清空 |
 | backtick 嵌套 | — | B29-9 | 交付前強制檢查 |
+| 後端寫死舊 DB | — | P29 | 用 env + initConfig |
+| 移除 export 崩潰 | — | P29 | 用 export let |
 
 ---
 
@@ -331,6 +350,7 @@
 | 不支援 shim | 用底線前綴 + Catch-all |
 | 靜態檔案 | 所有連結帶 .html |
 | _redirects | 不要對 / 加規則 |
+| 環境變數 | 走 handler `{ env }`，非 `process.env` |
 
 ### Page Engine
 
@@ -354,6 +374,7 @@
 | 狀態字串 | 一律走 status-registry |
 | filters | 只放 row 過濾欄位 |
 | 邊界值 | 需特判 |
+| export 相容 | 用 export let（live binding） |
 
 ### 交付
 
@@ -393,6 +414,6 @@
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/P-12-incident.md
-   Version: v103.0.37
-   Batch: B29-9d
+   Version: v103.0.38
+   Batch: B30-5
    ═══════════════════════════════════════════ */
