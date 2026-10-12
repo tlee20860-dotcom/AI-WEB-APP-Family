@@ -1,134 +1,174 @@
 # 交付進度
 
-最後更新：B26-7
-當前批次：B26-7
-狀態：B26 全批次完成，部署測試中
+最後更新：B29-6c
+當前批次：B29
+狀態：B29 已部署測試通過
 
 ---
 
 ## 總覽
 
-| 批次 | 主題 | 檔案數 | 狀態 |
-|---|---|---|---|
-| B01 ~ B19 | 重構階段 | 見 incident-log | ✅ |
-| B20 | 第二輪測試修復 | 10 | ✅ |
-| B21 | docs 重構 | 14 | ✅ |
-| B22 | 第三輪測試修復 | 9 | ✅ |
-| B23 | 基金保險分支 | 8 | ✅ |
-| B24 | docs 更新 + 診斷報告 | 14 | ✅ |
-| B25 | 全站修復（含 B25-1~7） | 27 + 6 docs | ✅ |
-| B26 | 全站優化（含 B26-1~7） | 30 + 7 docs | ✅ |
+| 批次 | 主題 | 狀態 |
+|---|---|---|
+| B01 ~ B19 | 重構階段 | ✅ |
+| B20 | 第二輪測試修復 | ✅ |
+| B21 | docs 重構 | ✅ |
+| B22 | 第三輪測試修復 | ✅ |
+| B23 | 基金保險分支 | ✅ |
+| B24 | docs 更新 + 診斷報告 | ✅ |
+| B25 | 全站修復 | ✅ |
+| B26 | 全站優化 | ✅ |
+| B29 | 表頭排序 + config 整合 + 頁面 metadata | ✅ |
 
 ---
 
-## B26 子批次
+## B29 子批次
 
-### B26-1a：docs 補齊（2 檔）
+### B29-1a：page-controls.js
 
-| # | 檔案 | 變更 |
-|---|---|---|
-| 1 | docs/api-contracts.md | 加 admin-migrate 端點 |
-| 2 | docs/compatibility.md | 加一次性遷移說明 |
-
-### B26-1b：docs 補齊（3 檔）
-
-| # | 檔案 | 變更 |
-|---|---|---|
-| 1 | docs/ai-guide.md | 規則索引補 0.19~0.22 |
-| 2 | docs/delivery-rules.md | 規則對照 + 新規則操作指引 |
-| 3 | docs/sop.md | 加新任務 SOP |
-
-### B26-2：P22 修正（1 檔）
-
-| # | 檔案 | 變更 |
-|---|---|---|
-| 1 | js/pages/settlements.js | reload 開頭同步 filters.year/month |
-
-### B26-3：P24 全站佈局統一（20 檔）
-
-| 內容 | 檔案 |
+| # | 變更 |
 |---|---|
-| 新增 | js/lib/page-controls.js |
-| 修改 | navbar / constants / sw / 7 JS / 7 HTML / components.css |
-| docs | ui-spec.md（新）+ README + file-manifest + anchor |
+| 1 | 強制 viewToggle / sort 在 body |
+| 2 | year + month 靠左同排 |
 
-### B26-3.1：缺陷修復（9 檔）
+### B29-1b：column-registry.js
 
-| 內容 | 檔案 |
+| # | 變更 |
 |---|---|
-| 修改 | page-controls.js + components.css + 7 HTML |
+| 1 | 加 6 columns（settlements / insurancePolicies / bankAccounts / bankTransactions / recentExpense） |
+| 2 | 加 sortable / filterable / filterOptions 屬性 |
 
-### B26-3.2：page-header 統一（16 檔）
+### B29-1c：data-table.js
 
-| 內容 | 檔案 |
+| # | 變更 |
 |---|---|
-| 修改 | page-controls.js + components.css + 7 HTML + 3 JS |
-| docs | ui-spec.md（新）+ README + file-manifest + anchor |
+| 1 | 表頭點擊排序（升 / 降 / 清除） |
+| 2 | 表頭篩選下拉 |
 
-### B26-3.3：手機版 page-header 換行（1 檔）
+### B29-2a：settlements.js
 
-| # | 檔案 | 變更 |
-|---|---|---|
-| 1 | css/components.css | 移除手機強制 column |
+| # | 變更 |
+|---|---|
+| 1 | columns 用 registry |
+| 2 | 移除 sort / source（改表頭） |
 
-### B26-4：Superadmin sidebar（3 檔）
+### B29-2b：insurance + member-report
 
-| # | 檔案 | 變更 |
-|---|---|---|
-| 1 | js/config/constants.js | SIDEBAR_GROUPS 加 roles 標記 |
-| 2 | js/layout/sidebar.js | renderSidebar 依角色過濾 |
-| 3 | admin.html | page-header 對齊標準 |
+| # | 變更 |
+|---|---|
+| 1 | columns 用 registry |
 
-### B26-5：遷移按鈕方案 C（1 檔）
+### B29-3：finance-overview + input-center
 
-| # | 檔案 | 變更 |
-|---|---|---|
-| 1 | js/pages/settings.js | 遷移卡加家庭選擇器 |
+| # | 變更 |
+|---|---|
+| 1 | columns 用 registry |
 
-### B26-6：年度總覽恢復（2 檔）
+**注意**：portfolio 自繪卡片，不需改（依 anchor 0.25）
 
-| # | 檔案 | 變更 |
-|---|---|---|
-| 1 | index.html | 加 annual-overview-root |
-| 2 | js/pages/dashboard.js | 加年度總覽渲染 |
+### B29-4a：HTML + input-center.js
 
-### B26-7：docs 收尾（7 檔）
+| # | 變更 |
+|---|---|
+| 1 | insurance.html / settlements.html banner 上移 |
+| 2 | input-center.js 刪支出 Tab banner |
+
+### B29-4b：components.css
+
+| # | 變更 |
+|---|---|
+| 1 | 加 `.page-banner` |
+| 2 | 加 dt-* 樣式 |
+
+### B29-5a：page-metadata-registry.js（新）
+
+| # | 變更 |
+|---|---|
+| 1 | 每頁預設 title / subtitleStatic |
+| 2 | getPageKeyFromUrl / getDefaultMetadata / listPages |
+
+### B29-5b：db.js
+
+| # | 變更 |
+|---|---|
+| 1 | listenPageMetadata / savePageMetadata |
+
+### B29-5c：page-engine.js
+
+| # | 變更 |
+|---|---|
+| 1 | _applyPageMetadata（title 覆蓋 + subtitle data-prefix） |
+
+### B29-5d：layout.css + settings.js
+
+| # | 變更 |
+|---|---|
+| 1 | layout.css 加 ::before 規則 |
+| 2 | settings.js 加「頁面標題」卡 |
+
+### B29-7a：insurance + settlements + finance-overview
+
+| # | 變更 |
+|---|---|
+| 1 | 刪 syncSubtitle（動態副標題） |
+
+### B29-7b：dashboard + member-report
+
+| # | 變更 |
+|---|---|
+| 1 | 刪 subtitle derived / syncSubtitle |
+
+### B29-8：副標題修正
+
+| # | 變更 |
+|---|---|
+| 1 | page-engine 清 textContent（避免硬編碼殘留） |
+| 2 | input-center / database / settings HTML page-header 統一結構 |
+
+### B29-6：docs 收尾
 
 | # | 檔案 | 狀態 |
 |---|---|---|
-| 1 | docs/file-manifest.md | ✅ |
-| 2 | docs/progress.md | ✅ 本檔 |
-| 3 | docs/README.md | ✅ |
-| 4 | docs/anchor.md | 待交付 |
-| 5 | docs/page-map.md | 待交付 |
+| 1 | docs/anchor.md | ✅ |
+| 2 | docs/ai-guide.md | ✅ |
+| 3 | docs/file-manifest.md | ✅ |
+| 4 | docs/progress.md | ✅ 本檔 |
+| 5 | docs/README.md | ✅ |
 | 6 | docs/ui-spec.md | 待交付 |
-| 7 | docs/ai-guide.md | 待交付 |
+| 7 | docs/page-map.md | 待交付 |
+| 8 | docs/incident-log.md | 待交付 |
 
 ---
 
-## B26 已修復問題
+## B29 期間發現問題
 
-| 編號 | 主題 | 修復批次 |
+| # | 問題 | 修復批次 |
 |---|---|---|
-| P22 | 年月切換需重整 | B26-2 |
-| P24 | 全站佈局不統一 | B26-3 |
-| B26-3 缺陷 | 月份 0 / 雙重渲染 / 順序 | B26-3.1 |
-| 手機換行 | page-header column | B26-3.3 |
-| Superadmin sidebar | 顯示家庭頁面群組 | B26-4 |
-| 遷移按鈕 | 無家庭選擇器 | B26-5 |
-| 年度總覽 | 被移除 | B26-6 |
+| 1 | 年月 select 高亮不動 | B29-1a（內部讀 AppState） |
+| 2 | 月份邊界 / 雙重渲染 | B29-1a |
+| 3 | 副標題動態不重要（刪除） | B29-7 |
+| 4 | 副標題未取代（硬編碼殘留） | B29-8 |
 
 ---
 
-## 待處理
+## B29 教訓（納入 anchor 0.25）
 
-| 項目 | 狀態 |
+| # | 教訓 |
 |---|---|
-| B27 偏好設定系統 | 暫緩 |
-| B28 page-engine 統一佈局 | 記錄 |
-| _headers | ✅ 確認不需 |
-| SW 改 stale | ✅ 確認不需 |
-| 清理 deprecated 檔（v104） | 記錄 |
+| 1 | 未盤點實際 banner 頁數（估 10，實 2） |
+| 2 | 未思考集中層強制（切換位置） |
+| 3 | 未檢查現有 API 複用（頁面標題） |
+| 4 | 未用 CSS ::before 替代 5 頁 compose |
+
+---
+
+## 目前狀態
+
+| 項目 | 值 |
+|---|---|
+| 當前批次 | B29-6（docs 收尾） |
+| 當前部署 | B29 已測試通過 |
+| 下一步 | docs 收尾（B29-6d） |
 
 ---
 
@@ -136,15 +176,14 @@
 
 | 項目 | 狀態 |
 |---|---|
-| B26 部署測試 | ⏳ 進行中 |
-| B26-7 docs 收尾 | 🔄 進行中 |
-| B27 偏好設定 | 📋 暫緩 |
+| B29-6d 交付 | 🔄 進行中 |
+| B30 起新功能 | 📋 待規劃 |
 
 ---
 
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/progress.md
-   Version: v103.0.32
-   Batch: B26-7
+   Version: v103.0.36
+   Batch: B29-6c
    ═══════════════════════════════════════════ */

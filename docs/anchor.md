@@ -1,7 +1,7 @@
 # 主錨點 — 家庭財務 Web App
 
-最後更新：B26-7
-當前批次：B26-7
+最後更新：B29-6a
+當前批次：B29
 專案狀態：測試中
 
 ---
@@ -22,6 +22,7 @@ Firebase RTDB → data-engine → page-engine → derived → block → DOM
 - 13 Page Schema：純宣告式
 - page-controls：統一控制列渲染
 - 側邊欄依角色過濾（roles 標記）
+- 頁面 metadata：title / subtitle 可編輯
 
 **五大鐵則**：
 1. 最簡潔實用
@@ -305,6 +306,7 @@ anchor → ai-guide → file-manifest → progress → ui-spec（如需）→ �
      - 違反 0.20 Modal 統一
      - 違反 0.21 Action 契約
      - 違反 0.22 版面規格保護
+     - 違反 0.25 最小改動優先
    - 🟧 B 級（可優化）→ 順便改，需記錄：
      - 可縮短行數 / 可抽區域變數 / 命名可精簡
    - 🟨 C 級（微調）→ 記錄但不改：
@@ -330,28 +332,10 @@ anchor → ai-guide → file-manifest → progress → ui-spec（如需）→ �
 ### 0.18 文檔寫作原則（強制）
 
 1. 示範 code block 用「規則 + 表格」
-   - 不用真 code block 示範「含 code block 的格式」
-   - 用「情況 → 做法」表格
-
 2. 唯一真相 + 引用
-   - 規則集中在 anchor.md
-   - 其他 docs 只引用，不重複定義
-   - 補充「操作範例」而非「重新定義」
-
 3. 清單用表格，敘述用段落
-   - 清單類（檔案 / API / 批次）→ 表格
-   - 決策類 → 段落
-   - 禁止：清單混段落
-
 4. 格式示範避開嵌套
-   - 若必須示範含 code block 的格式
-   - 用文字描述（不用真 code block）
-   - 或放文件最尾，獨立區塊
-
 5. 表格 ≤ 30 行
-   - 超過 → 拆多個小表格
-   - 表格內容不含 |
-
 6. 禁止：
    - 用 code block 示範「含 code block 的東西」
    - 重複定義 anchor 已有的規則
@@ -360,7 +344,7 @@ anchor → ai-guide → file-manifest → progress → ui-spec（如需）→ �
 
 ### 0.19 編輯入口職責分離（強制）
 
-**原則**：資料建立與狀態操作分離。各欄位只允許在指定頁面編輯。
+**原則**：資料建立與狀態操作分離。
 
 **各頁可編輯欄位對照**：
 
@@ -370,7 +354,7 @@ anchor → ai-guide → file-manifest → progress → ui-spec（如需）→ �
 | input-center（收入） | memberId / amount | — |
 | input-center（保單） | 全部保單資料 | 扣款狀態 |
 | input-center（基金） | 全部基金資料 | — |
-| database | 基礎資料（成員 / 銀行 / 類別 / 項目 / 狀態 / 支付方式） | — |
+| database | 基礎資料 | — |
 | settlements（支出） | status / paymentMethodId / bankId / repaidDate | name / amount / date / categoryId / itemId |
 | settlements（保險） | status / bankId | 保單基本資料 |
 | insurance | 保單資料（不含扣款狀態） | 扣款狀態 |
@@ -454,8 +438,6 @@ anchor → ai-guide → file-manifest → progress → ui-spec（如需）→ �
 | 未經確認改變容器 ID | 🔴 阻斷 |
 | 未經確認改變順序 | 🟠 高 |
 
-**理由**：避免 AI 優化時無意砍掉區塊。
-
 ### 0.23 重大修改對比（強制）
 
 **原則**：涉及重大結構改動時，交付前必須附「更新前後對比」。
@@ -505,24 +487,76 @@ anchor → ai-guide → file-manifest → progress → ui-spec（如需）→ �
 | 項目 | 內容 |
 |---|---|
 | 權威來源 | `docs/ui-spec.md` |
-| 使用 | 所有 UI 描述一律用術語（Page / Section / Row / Item / type） |
+| 使用 | 所有 UI 描述一律用術語 |
 | 禁止 | 使用未定義術語 |
 | 新增術語 | 先加至 ui-spec.md |
 | 衝突處理 | 與其他 docs 衝突時，以 ui-spec.md 為準 |
 | 重複定義 | 禁止在其他 docs 重複定義 UI 術語 |
 
-**各 docs 角色**：
-
-| 檔案 | 角色 |
-|---|---|
-| ui-spec.md | UI 術語（唯一真相） |
-| page-map.md | 頁面區塊規格（應用層） |
-| anchor.md | 規則（本檔） |
-| page-controls.js | 實作 |
-
 **違反判定**：🟧 高
 
-**理由**：建立共同詞彙，避免模糊溝通導致 AI 誤解。
+### 0.25 最小改動優先（強制）
+
+**原則**：任何方案提出前，**必須先找出「最小改動路徑」**。
+
+**觸發**：每次提方案（含修 bug / 新增 / 重構 / 改 UI）
+
+**強制自問（5 問）**：
+
+| # | 問題 | 若答「是」 |
+|---|---|---|
+| 1 | 能不能只改 1 檔？ | → 到此為止 |
+| 2 | 能否改集中層（lib / ui / registry / engine）處理？ | → 改集中層 |
+| 3 | 各檔改動可否用「預設值」吸收？ | → 呼叫端不動 |
+| 4 | 可否加參數（向後相容）解決？ | → 舊呼叫不動 |
+| 5 | 現有架構是否已提供切入點？ | → 用現有 |
+
+**禁止**：
+
+| 項目 | 說明 |
+|---|---|
+| 從現況推論範圍 | 「現在各頁都傳 X，所以改 X 要改各頁」← 錯 |
+| 把「統一」誤解為「各頁都要改」 | 「統一」= 邏輯集中 1 處 |
+| 未先問「能不能只改 1 檔」 | 直接提 N 檔方案 |
+| 為「統一」而擴大範圍 | 統一是手段，非目的 |
+| 未盤點實際範圍就估檔數 | 估 10 檔前先掃描「實際有幾檔」 |
+| 未檢查「現有 API 可否複用」 | 找複用機會優先 |
+| 未思考「集中層強制」 | 優先考慮集中層強制邏輯 |
+
+**正確推論方式**：
+
+| 步驟 | 動作 |
+|---|---|
+| 1 | 問「理想設計」是什麼 |
+| 2 | 問「最小改動路徑」是什麼 |
+| 3 | 對比「現況 → 理想」的最小步驟 |
+| 4 | 提出方案 |
+
+**交付摘要新增欄位**：
+
+| 欄位 | 內容 |
+|---|---|
+| 改動檔案數 | N |
+| 最小改動路徑 | （如何得出 N） |
+| 為何不是 N-1 | （為何不能再少） |
+
+**反例（B29-5 教訓）**：
+
+| 我原方案 | 正確方案 | 差異 |
+|---|---|---|
+| 頁面標題可編輯：7 檔（含後端 API） | **4 檔**（複用 Firebase 直連） | −3 |
+| 副標題靜態段：page-engine + 5 頁 JS | **1 檔**（page-engine + CSS ::before） | −5 |
+| banner 上移：10 HTML | **2 HTML**（只 insurance + settlements） | −8 |
+| 刪動態副標題：5 頁 JS | **5 頁 JS**（無法集中，最小） | 0 |
+| 偏好設定系統：8 檔 | 使用者已取消 | — |
+
+**反例（B29-5a 教訓）**：
+
+| 我原以為 | 實際 |
+|---|---|
+| 10 頁 schema 加 `banner` / `controls` | schema 不動；page-engine 讀 registry |
+
+**違反判定**：🟥 A 級（若未先做 5 問自檢）
 
 ---
 
@@ -561,8 +595,14 @@ anchor → ai-guide → file-manifest → progress → ui-spec（如需）→ �
 | status-registry.js | 狀態系統 |
 | entity-registry.js | 名稱解析 |
 | label-registry.js | 顯示文字 |
-| column-registry.js | 表格欄位 |
+| column-registry.js | 表格欄位 + 排序 / 篩選屬性 |
 | constants.js | 全站常數 |
+
+**附加 registry**：
+
+| Registry | 職責 |
+|---|---|
+| page-metadata-registry.js | 頁面 title / subtitle 預設 |
 
 ---
 
@@ -570,7 +610,7 @@ anchor → ai-guide → file-manifest → progress → ui-spec（如需）→ �
 
 | 引擎 | 職責 |
 |---|---|
-| page-engine.js | 解讀 Schema、生命週期、onDataChange |
+| page-engine.js | 解讀 Schema、生命週期、onDataChange、頁面 metadata |
 | data-engine.js | Firebase 訂閱 + 衍生 |
 | render-engine.js | 掛載 UI 區塊 |
 
@@ -600,21 +640,6 @@ anchor → ai-guide → file-manifest → progress → ui-spec（如需）→ �
 | onYearMonthChange | function | 年月變更 hook（可選） |
 | customMount | function | 逃生艙（可選） |
 
-data 配置：
-
-| 欄位 | 說明 |
-|---|---|
-| type | list / object / value / raw |
-| path | Firebase 路徑 |
-| transform | 資料轉換（可選） |
-
-block 常用：
-
-| type | 必要欄位 |
-|---|---|
-| stats | container, cards |
-| list | container, rows, columns |
-
 customMount 回傳：
 
 | 欄位 | 說明 |
@@ -635,21 +660,12 @@ ctx 提供：
 
 **模組**：`js/lib/page-controls.js`
 
-**用途**：全站頁面控制列統一渲染，改一處生效全站。
-
-**對外 API**：
-
-| 函式 | 說明 |
-|---|---|
-| renderPageControls(config) | 渲染控制列 |
-| destroyPageControls(instance) | 清理 |
-
 **config 結構**：
 
 | 欄位 | 說明 |
 |---|---|
-| containerId | body 容器 ID（通常 `page-controls-root`） |
-| headerContainerId | header 容器 ID（如 `page-header-actions`） |
+| containerId | body 容器 ID（`page-controls-root`） |
+| headerContainerId | header 容器 ID（`page-header-actions`） |
 | items | 元素陣列 |
 
 **items 元素結構**：
@@ -657,24 +673,24 @@ ctx 提供：
 | 欄位 | 說明 |
 |---|---|
 | type | 內建 type 或 'custom' |
-| align | 'left' / 'right'（body 內用） |
-| position | 'header'（放 page-header 右側） |
+| align | 'left' / 'right' |
+| position | 'header'（部分 type 除外） |
 
-**內建 type 清單**：
+**內建 type**：
 
-| type | 必要參數 | 說明 |
+| type | 說明 | position |
 |---|---|---|
-| add | label, onClick | 新增按鈕 |
-| viewToggle | storageKey, onChange | 卡片/表格切換 |
-| export | label, onClick | 匯出按鈕 |
-| year | year, onChange | 年份（3 顆按鈕） |
-| month | month, onChange | 月份（3 顆按鈕） |
-| viewSwitcher | options, onChange | 檢視切換 |
-| sort | options, value, onChange | 排序下拉 |
-| filter | render | 自訂篩選 HTML |
-| custom | render | 逃生艙 |
+| add | 新增按鈕 | 任意 |
+| export | 匯出按鈕 | 任意 |
+| viewToggle | 卡片/表格切換 | **強制 body** |
+| viewSwitcher | 檢視切換 | body |
+| sort | 排序下拉 | **強制 body** |
+| year | 年份下拉 | body（左側） |
+| month | 月份下拉 | body（左側） |
+| filter | 自訂篩選 | body |
+| custom | 逃生艙 | 任意 |
 
-**UI 術語權威來源**：`docs/ui-spec.md`（見 0.24）
+**year / month 內部讀寫 AppState（各頁不需傳值）**。
 
 ---
 
@@ -682,42 +698,42 @@ ctx 提供：
 
 **模組**：`js/config/constants.js` + `js/layout/sidebar.js`
 
-**原則**：`SIDEBAR_GROUPS` 每群組加 `roles` 陣列，依當前角色過濾。
+**SIDEBAR_GROUPS 每群組加 `roles` 陣列**。
 
 **角色可見群組**：
 
 | 角色 | 可見群組 |
 |---|---|
 | superadmin | 平台管理 + 系統 |
-| owner | 總覽 / 記錄中心 / 保險與基金 / 對帳 / 資產 / 報表 / 系統 |
+| owner | 全部家庭群組 + 系統 |
 | member | 同 owner |
 
-**對外函式**：
-
-| 函式 | 說明 |
-|---|---|
-| getSidebarGroupsByRole(role) | 依角色過濾群組 |
-
-**新增群組流程**：
-
-| 步驟 | 動作 |
-|---|---|
-| 1 | 在 SIDEBAR_GROUPS 加新群組 |
-| 2 | 加 `roles` 陣列 |
-| 3 | sidebar.js 自動過濾 |
-
-**新增角色流程**：
-
-| 步驟 | 動作 |
-|---|---|
-| 1 | 在 ROLES 加新角色 |
-| 2 | 各群組的 `roles` 加新角色（如需） |
+**對外函式**：`getSidebarGroupsByRole(role)`
 
 ---
 
-## 九、目標檔案結構
+## 九、頁面 metadata
 
-js/config（7 檔）：constants / firebase-config / app-config / 4 Registry
+**模組**：`js/config/page-metadata-registry.js` + `js/engines/page-engine.js`
+
+**儲存**：`families/{familyId}/settings/page_metadata/{pageKey}`
+
+**結構**：`{ title, subtitleStatic }`
+
+**顯示機制**：
+
+| 元素 | 機制 |
+|---|---|
+| title | `textContent` 覆蓋 |
+| subtitleStatic | `data-prefix` + CSS `::before` |
+
+**動態副標題已於 B29-7 刪除**（原 5 頁：dashboard / insurance / settlements / finance-overview / member-report）。
+
+---
+
+## 十、目標檔案結構
+
+js/config（8 檔）：constants / firebase-config / app-config / 4 Registry / page-metadata-registry
 
 js/core（8 檔）：state / api / db / auth / auth-guard / utils / pwa / debug
 
@@ -743,7 +759,7 @@ docs（15 檔）：README / anchor / ai-guide / file-manifest / progress / sop /
 
 ---
 
-## 十、關鍵字索引
+## 十一、關鍵字索引
 
 | 關鍵字 | 讀此檔 |
 |---|---|
@@ -771,12 +787,14 @@ docs（15 檔）：README / anchor / ai-guide / file-manifest / progress / sop /
 | 版面規格保護 | anchor.md 0.22 |
 | 重大修改對比 | anchor.md 0.23 |
 | UI 術語權威 | anchor.md 0.24 + ui-spec.md |
+| 最小改動優先 | anchor.md 0.25 |
 | 控制列 | anchor.md 七 + lib/page-controls.js |
 | 側邊欄角色過濾 | anchor.md 八 + constants.js |
+| 頁面 metadata | anchor.md 九 + page-metadata-registry.js |
 
 ---
 
-## 十一、下一步
+## 十二、下一步
 
 | 使用者說 | AI 動作 |
 |---|---|
@@ -787,33 +805,29 @@ docs（15 檔）：README / anchor / ai-guide / file-manifest / progress / sop /
 
 ---
 
-## 十二、目前狀態
+## 十三、目前狀態
 
 | 項目 | 值 |
 |---|---|
-| 當前批次 | B26-7 |
+| 當前批次 | B29-6a（docs 收尾中） |
 | SW 版本 | family-fin-v141 |
 | 部署 URL | family-financial-management-system.pages.dev |
-| 測試狀態 | B26 已部署測試通過 |
-| 下一步 | docs 收尾（B26-7 進行中） |
+| 測試狀態 | B29 已部署測試通過 |
 
 ---
 
-## 十三、待辦事項
+## 十四、待辦事項
 
 | 項目 | 狀態 |
 |---|---|
-| B27 偏好設定系統 | 📋 暫緩（已確認方案，待重啟） |
-| B28 page-engine 統一佈局 | 📋 記錄 |
-| _headers | ✅ 確認不需 |
-| SW 改 stale | ✅ 確認不需 |
-| 清理 deprecated 檔（v104） | 📋 記錄 |
+| B29-6 docs 收尾 | 🔄 進行中 |
+| B30 起新功能 | 待規劃 |
 
 ---
 
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/anchor.md
-   Version: v103.0.32
-   Batch: B26-7
+   Version: v103.0.36
+   Batch: B29-6a
    ═══════════════════════════════════════════ */

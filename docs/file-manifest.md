@@ -1,7 +1,7 @@
 # 檔案清單
 
-最後更新：B26-7
-當前批次：B26-7
+最後更新：B29-6c
+當前批次：B29
 
 **說明**：
 - 每次交付後必須更新此表
@@ -10,7 +10,7 @@
 
 ---
 
-## js/config/（7 檔）
+## js/config/（8 檔）
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
@@ -20,7 +20,8 @@
 | status-registry.js | v103.0.0 | B01 |
 | entity-registry.js | v103.0.22 | B25 |
 | label-registry.js | v103.0.0 | B01 |
-| column-registry.js | v103.0.21 | B23 |
+| column-registry.js | v103.0.34 | B29 |
+| page-metadata-registry.js | v103.0.34 | B29 |
 
 ---
 
@@ -29,7 +30,7 @@
 | 檔案 | 版本 | 批次 |
 |---|---|---|
 | state.js | v103.0.11 | B14A |
-| db.js | v103.0.22 | B25 |
+| db.js | v103.0.34 | B29 |
 | utils.js | v103.0.22 | B25 |
 | auth.js | v103.0.0 | B05 |
 | auth-guard.js | v103.0.11 | B13A |
@@ -54,7 +55,7 @@
 | expense-modal.js | v103.0.22 | B25 |
 | income-modal.js | v103.0.18 | B19 |
 | filter-sort.js | v103.0.18 | B19 |
-| page-controls.js | v103.0.29 | B26-3.2 |
+| page-controls.js | v103.0.34 | B29 |
 
 ---
 
@@ -62,7 +63,7 @@
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
-| page-engine.js | v103.0.17 | B18.1 |
+| page-engine.js | v103.0.36 | B29-8 |
 | data-engine.js | v103.0.11 | B12 |
 | render-engine.js | v103.0.0 | B07 |
 
@@ -128,7 +129,7 @@
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
-| data-table.js | v103.0.22 | B25 |
+| data-table.js | v103.0.34 | B29 |
 | data-card.js | v103.0.22 | B25 |
 | entity-list-page.js | v103.0.16 | B18 |
 | column-settings.js | v103.0.22 | B25 |
@@ -147,19 +148,19 @@
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
-| dashboard.js | v103.0.32 | B26-6 |
+| dashboard.js | v103.0.35 | B29 |
 | portfolio.js | v103.0.27 | B26-3 |
 | annual-report.js | v103.0.29 | B26-3.2 |
-| settings.js | v103.0.32 | B26-5 |
-| finance-overview.js | v103.0.27 | B26-3 |
-| member-report.js | v103.0.27 | B26-3 |
-| input-center.js | v103.0.20 | B22 |
+| settings.js | v103.0.34 | B29 |
+| finance-overview.js | v103.0.35 | B29 |
+| member-report.js | v103.0.35 | B29 |
+| input-center.js | v103.0.34 | B29 |
 | database.js | v103.0.3 | B11 |
 | database-options.js | v103.0.0 | B11 |
 | database-dropdowns.js | v103.0.0 | B11 |
 | database-yearrange.js | v103.0.0 | B11 |
-| settlements.js | v103.0.29 | B26-3.2 |
-| insurance.js | v103.0.27 | B26-3 |
+| settlements.js | v103.0.35 | B29 |
+| insurance.js | v103.0.35 | B29 |
 
 ---
 
@@ -185,8 +186,8 @@
 | 檔案 | 版本 | 批次 |
 |---|---|---|
 | theme.css | v101 | 未變 |
-| layout.css | v103.0.19 | B20 |
-| components.css | v103.0.30 | B26-3.3 |
+| layout.css | v103.0.34 | B29 |
+| components.css | v103.0.34 | B29 |
 | utilities.css | v101.6.6 | 未變 |
 | pages/annual-report.css | v103.0.22 | B25 |
 | pages/insurance.css | v101.10.0 | 未變 |
@@ -199,17 +200,17 @@
 |---|---|---|
 | admin.html | v103.0.31 | B26-4 |
 | annual-report.html | v103.0.29 | B26-3.2 |
-| database.html | — | B11 |
+| database.html | v103.0.36 | B29-8 |
 | finance-overview.html | v103.0.29 | B26-3.2 |
 | index.html | v103.0.32 | B26-6 |
-| input-center.html | — | B12 |
-| insurance.html | v103.0.29 | B26-3.2 |
+| input-center.html | v103.0.36 | B29-8 |
+| insurance.html | v103.0.34 | B29 |
 | login.html | — | B14C |
 | member-report.html | v103.0.29 | B26-3.2 |
 | portfolio.html | v103.0.29 | B26-3.2 |
 | register.html | — | B11 |
-| settings.html | — | B11 |
-| settlements.html | v103.0.29 | B26-3.2 |
+| settings.html | v103.0.36 | B29-8 |
+| settlements.html | v103.0.34 | B29 |
 
 ---
 
@@ -219,7 +220,7 @@
 |---|---|---|
 | sw.js | v103.0.27 | B26-3 |
 | manifest.json | — | 未變 |
-| docs/（15 檔） | v103.0.32 | B26-7 |
+| docs/（15 檔） | v103.0.36 | B29-6 |
 
 ---
 
@@ -227,7 +228,7 @@
 
 | 目錄 | 檔案數 |
 |---|---|
-| js/config/ | 7 |
+| js/config/ | 8 |
 | js/core/ | 8 |
 | js/lib/ | 12 |
 | js/engines/ | 3 |
@@ -243,7 +244,7 @@
 | HTML | 13 |
 | 根目錄 | 2 |
 | docs/ | 15 |
-| **總計** | **122** |
+| **總計** | **123** |
 
 ---
 
@@ -251,14 +252,14 @@
 
 | 項目 | 狀態 |
 |---|---|
-| B27 偏好設定系統 | 暫緩 |
-| B28 page-engine 統一佈局 | 記錄 |
-| _headers | ✅ 確認不需 |
-| SW 改 stale | ✅ 確認不需 |
+| B30 起新功能 | 📋 待規劃 |
 | js/shared/date-helpers.js | v101，未重構 |
 | js/shared/form-handler.js | deprecated（v104 移除） |
 | js/shared/listener-group.js | deprecated（v104 移除） |
 | js/core/utils.js | 過渡期轉接層（v104 移除） |
+| db.js ~510 行 | 觀察（未來拆檔候選） |
+| column-registry.js ~450 行 | 觀察（未來拆檔候選） |
+| data-table.js ~330 行 | 觀察 |
 
 ---
 
@@ -266,14 +267,8 @@
 
 | 批次 | 更新 |
 |---|---|
-| B26-7 | docs 收尾（file-manifest / progress / README / anchor / page-map / ui-spec / ai-guide） |
-| B26-6 | dashboard.js / index.html（年度總覽恢復） |
-| B26-5 | settings.js（遷移加家庭選擇器） |
-| B26-4 | constants.js / sidebar.js / admin.html（roles 過濾） |
-| B26-3.3 | components.css（手機版 page-header） |
-| B26-3.2 | page-controls / components.css / navbar / constants / 7 HTML / 3 JS / sw.js + ui-spec 新 + docs |
-| B26-3.1 | page-controls / components.css / 7 HTML |
-| B26-3 | page-controls（新）/ navbar / constants / sw / 7 JS + 7 HTML |
+| B29 | page-controls / column-registry / data-table / 6 頁 JS / page-metadata-registry（新）/ db / page-engine / settings / components.css / layout.css / 3 HTML + docs |
+| B26 | page-controls（新）/ navbar / constants / sw / 7 JS + 7 HTML / settings / sidebar / admin.html |
 | B25 | 27 檔 + docs |
 | B23 | entity-definitions / entity-modal / entity-funds-allocation（新）/ _insurance / db / column-registry / portfolio / portfolio.html |
 
@@ -282,6 +277,6 @@
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/file-manifest.md
-   Version: v103.0.32
-   Batch: B26-7
+   Version: v103.0.36
+   Batch: B29-6c
    ═══════════════════════════════════════════ */
