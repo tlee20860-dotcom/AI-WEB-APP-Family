@@ -1,8 +1,8 @@
 # P-06 常見任務 SOP
 
-最後更新：B29-8e
-版本：v103.0.36
-批次：B29
+最後更新：B29-9c
+版本：v103.0.37
+批次：B29-9c
 用途：AI 執行常見任務時的具體步驟
 
 ---
@@ -37,18 +37,77 @@
 | 7 | 更新 P-07-pagemap 頁面區塊規格 |
 | 8 | 更新 P-04 + P-03 |
 
-**Page Schema 結構**：
+### Page Schema 結構（完整欄位）
+
+| 欄位 | 類型 | 說明 |
+|---|---|---|
+| title | string | 頁面標題 |
+| data | object | Firebase 訂閱配置（key → config） |
+| state | object | 響應式狀態初始值 |
+| derived | object | 衍生資料（key → { deps, compute }） |
+| blocks | array | UI 區塊陣列 |
+| onYearMonthChange | function | 年月變更 hook（可選） |
+| customMount | function | 逃生艙（可選） |
+
+### data 配置
 
 | 欄位 | 說明 |
 |---|---|
-| title | 頁面標題 |
-| data | Firebase 訂閱配置 |
-| state | 響應式狀態初始值 |
-| derived | 衍生資料 |
-| blocks | UI 區塊 |
-| customMount | 逃生艙（可選） |
+| type | list / object / value / raw |
+| path | Firebase 相對路徑（可含 {key} / {__all__}） |
+| transform | 資料轉換函式（可選） |
+| params | 佔位符對應（可選） |
 
-**HTML 結構**：參考任一現有頁面（如 settlements.html）
+### derived 配置
+
+| 欄位 | 說明 |
+|---|---|
+| deps | 依賴的 data / state key 陣列 |
+| compute | (ctx) => value 計算函式 |
+
+### block 常用類型
+
+| type | 必要欄位 |
+|---|---|
+| stats | container, cards |
+| list | container, rows, columns |
+| filter | container, fields, bind |
+
+### customMount 回傳
+
+| 欄位 | 說明 |
+|---|---|
+| destroy | 清理函式（unsub / destroy 等） |
+
+### HTML 結構
+
+| 元素 | 說明 |
+|---|---|
+| head | 4 個 CSS（theme / layout / components / utilities） |
+| body | app-shell > sidebar-root + main-area |
+| main-area | navbar-root + content |
+| content | page-header + 各 block container |
+| scripts | lucide + modulepreload + type="module" |
+
+### HTML 載入邏輯
+
+| 部分 | 內容 |
+|---|---|
+| 1 | 載入 initApp from app-shell.js |
+| 2 | 載入 createPage from page-engine.js |
+| 3 | 載入 schema from pages/xxx.js |
+| 4 | 呼叫 initApp（帶 activeHref / title） |
+| 5 | 若 user 存在 → 呼叫 createPage(schema) |
+
+### 新增頁面需同步更新
+
+| 檔案 | 更新 |
+|---|---|
+| js/config/constants.js | SIDEBAR_GROUPS + ROUTES |
+| sw.js | STATIC_ASSETS 加新檔 |
+| docs/P-04-manifest.md | 加檔案列 |
+| docs/P-03-progress.md | 記錄批次 |
+| docs/P-07-pagemap.md | 加頁面 → 檔案 + 頁面區塊規格 |
 
 ---
 
@@ -90,7 +149,7 @@
 
 | 步驟 | 動作 |
 |---|---|
-| 1 | 檢查是否可複用（C-02 0.15） |
+| 1 | 檢查是否可複用（C-02 §四） |
 | 2 | 評估抽新 lib 或擴充 |
 | 3 | 改 lib |
 | 4 | 更新 P-04 |
@@ -223,7 +282,28 @@
 
 ---
 
-## 十二、任務速查
+## 十二、改版面（C-02 §五）
+
+| 步驟 | 動作 |
+|---|---|
+| 1 | 讀 P-07-pagemap「頁面區塊規格」 |
+| 2 | 列出「變更前後對照」 |
+| 3 | 待使用者確認 |
+| 4 | 交付時在摘要標示 |
+
+**允許 / 禁止**：
+
+| 動作 | 允許 |
+|---|---|
+| 改區塊內部實作 | ✅ |
+| 新增區塊（標示） | ✅ |
+| 使用者明確要求刪除 | ✅ |
+| 未確認刪除區塊 | ❌ |
+| 未確認改容器 ID | ❌ |
+
+---
+
+## 十三、任務速查
 
 | 任務 | 章節 |
 |---|---|
@@ -238,10 +318,11 @@
 | 部署後驗證 | 九 |
 | 緊急回滾 | 十 |
 | 執行遷移 | 十一 |
+| 改版面 | 十二 |
 
 ---
 
-## 十三、關聯檔案
+## 十四、關聯檔案
 
 | 主題 | 檔案 |
 |---|---|
@@ -257,6 +338,6 @@
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/P-06-sop.md
-   Version: v103.0.36
-   Batch: B29-8e
+   Version: v103.0.37
+   Batch: B29-9c
    ═══════════════════════════════════════════ */
