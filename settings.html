@@ -102,7 +102,7 @@
     import { createPage } from './js/engines/page-engine.js';
     import schema from './js/pages/settings.js';
 
-    const user = await initApp({ activeHref: 'settings.html', title: '系統設定' });
+    const user = await initApp({ activeHref: 'settings.html', title: '系統設定', requireFamily: false });
     if (user) {
       await createPage(schema);
     }
@@ -113,6 +113,6 @@
 <!-- ═══════════════════════════════════════════
      END OF FILE
      File: settings.html
-     Version: v103.0.36
-     Batch: B29-8
+     Version: v103.0.37
+     Batch: B30-1
      ═══════════════════════════════════════════ -->
