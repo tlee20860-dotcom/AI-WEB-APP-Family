@@ -1,47 +1,68 @@
 /* ============================================
-   theme.css — 家庭暖陽主題色票與基礎樣式（v103.0.38）
+   theme.css — 家庭暖陽主題（Tailwind 色板 v103.0.40）
    ============================================
-   v103.0.38（B30-3a）：
-     ✅ 改為亮色主題（A 家庭暖陽）
-     ✅ 保留深色為 [data-theme="dark"]
-     ✅ 色票對齊新 icon（深藍 + 橙 + 綠 + 藍 + 米白）
+   v103.0.40（B30-3c）：
+     ✅ 色值改用 Tailwind 官方色板，對比已驗證
+     ✅ 亮色層次分明（slate 灰底 + 白卡 + 深藍字）
+     ✅ 深色保留（slate-900 系列）
    ============================================ */
 
 /* ============================================
-   亮色主題（預設）— A 家庭暖陽
+   亮色主題（預設）
    ============================================ */
 :root,
 [data-theme="light"] {
-  /* 主背景 */
-  --bg-deep:  #FFF9F0;
-  --bg-navy:  #FFF2E0;
-  --bg-panel: rgba(255, 255, 255, 0.85);
+  /* 背景 */
+  --bg-deep:  #F1F5F9;   /* slate-100 */
+  --bg-navy:  #E2E8F0;   /* slate-200 */
+  --bg-panel: #FFFFFF;
 
   /* 主色票 */
-  --primary:      #1E4E8C;   /* 深藍（icon 描邊） */
-  --accent-warm:  #FF9F43;   /* 橙（icon 屋頂） */
-  --accent-fresh: #52B788;   /* 綠（icon 箭頭） */
-  --accent-sky:   #4A90E2;   /* 藍（icon 人像） */
-  --danger:       #E85D3A;
+  --primary:      #1D4ED8;   /* blue-700 */
+  --accent-warm:  #F97316;   /* orange-500 */
+  --accent-fresh: #10B981;   /* emerald-500 */
+  --accent-sky:   #3B82F6;   /* blue-500 */
+  --danger:       #EF4444;   /* red-500 */
 
   /* 舊變數名（向後相容） */
-  --neon-cyan:    #4A90E2;
-  --neon-magenta: #E85D3A;
-  --neon-emerald: #52B788;
-  --neon-red:     #E85D3A;
-  --neon-orange:  #FF9F43;
+  --neon-cyan:    #3B82F6;
+  --neon-magenta: #EF4444;
+  --neon-emerald: #10B981;
+  --neon-red:     #EF4444;
+  --neon-orange:  #F97316;
 
-  /* 玻璃卡片（改為實心白，取消玻璃感） */
+  /* 玻璃卡片（實心白 + 清楚邊框 + 陰影） */
   --glass-bg:           #FFFFFF;
-  --glass-border:       rgba(30, 78, 140, 0.12);
-  --glass-border-hover: rgba(30, 78, 140, 0.3);
-  --glass-shadow-hover: 0 4px 16px rgba(30, 78, 140, 0.12);
+  --glass-border:       #CBD5E1;              /* slate-300 */
+  --glass-border-hover: #94A3B8;              /* slate-400 */
+  --glass-shadow-hover: 0 4px 12px rgba(15, 23, 42, 0.08);
   --glass-blur:         0px;
 
+  /* 結構色 */
+  --input-bg:        #FFFFFF;
+  --modal-bg:        #FFFFFF;
+  --overlay-bg:      rgba(15, 23, 42, 0.5);
+  --sidebar-bg:      #FFFFFF;
+  --navbar-bg:       #FFFFFF;
+  --filter-panel-bg: #FFFFFF;
+
+  /* 互動色 */
+  --hover-bg:        #F1F5F9;              /* slate-100 */
+  --hover-bg-strong: #E2E8F0;              /* slate-200 */
+
+  /* 分隔線 */
+  --divider:        #E2E8F0;               /* slate-200 */
+  --divider-strong: #CBD5E1;               /* slate-300 */
+
+  /* 陰影（Tailwind 風格） */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 6px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 10px 15px rgba(15, 23, 42, 0.10);
+
   /* 文字 */
-  --text-primary:   #1E3A5F;
-  --text-secondary: #4A5C75;
-  --text-muted:     #6B7C93;
+  --text-primary:   #1E293B;   /* slate-800 */
+  --text-secondary: #475569;   /* slate-600 */
+  --text-muted:     #64748B;   /* slate-500 */
 
   /* 圓角 */
   --radius-sm: 8px;
@@ -54,38 +75,55 @@
   --font-mono: "JetBrains Mono", "SF Mono", "Consolas", "Menlo", monospace;
 
   /* 動畫 */
-  --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ============================================
    深色主題 — [data-theme="dark"]
    ============================================ */
 [data-theme="dark"] {
-  --bg-deep:  #0F1419;
-  --bg-navy:  #1A2332;
-  --bg-panel: rgba(26, 35, 50, 0.7);
+  --bg-deep:  #0F172A;   /* slate-900 */
+  --bg-navy:  #1E293B;   /* slate-800 */
+  --bg-panel: #1E293B;
 
-  --primary:      #60A5FA;
-  --accent-warm:  #FBBF24;
-  --accent-fresh: #84CC16;
+  --primary:      #60A5FA;   /* blue-400 */
+  --accent-warm:  #FBBF24;   /* amber-400 */
+  --accent-fresh: #34D399;   /* emerald-400 */
   --accent-sky:   #60A5FA;
-  --danger:       #F87171;
+  --danger:       #F87171;   /* red-400 */
 
   --neon-cyan:    #60A5FA;
   --neon-magenta: #F87171;
-  --neon-emerald: #84CC16;
+  --neon-emerald: #34D399;
   --neon-red:     #F87171;
   --neon-orange:  #FBBF24;
 
-  --glass-bg:           rgba(26, 35, 50, 0.7);
-  --glass-border:       rgba(96, 165, 250, 0.2);
-  --glass-border-hover: rgba(96, 165, 250, 0.5);
-  --glass-shadow-hover: 0 0 15px rgba(96, 165, 250, 0.15);
-  --glass-blur:         12px;
+  --glass-bg:           #1E293B;              /* slate-800 */
+  --glass-border:       #334155;              /* slate-700 */
+  --glass-border-hover: #475569;              /* slate-600 */
+  --glass-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --glass-blur:         0px;
 
-  --text-primary:   #E5E7EB;
-  --text-secondary: #9CA3AF;
-  --text-muted:     #6B7280;
+  --input-bg:        #0F172A;
+  --modal-bg:        #1E293B;
+  --overlay-bg:      rgba(0, 0, 0, 0.7);
+  --sidebar-bg:      #0F172A;
+  --navbar-bg:       #0F172A;
+  --filter-panel-bg: #1E293B;
+
+  --hover-bg:        #334155;              /* slate-700 */
+  --hover-bg-strong: #475569;              /* slate-600 */
+
+  --divider:        #334155;
+  --divider-strong: #475569;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.6);
+
+  --text-primary:   #F1F5F9;   /* slate-100 */
+  --text-secondary: #CBD5E1;   /* slate-300 */
+  --text-muted:     #94A3B8;   /* slate-400 */
 }
 
 /* ============================================
@@ -104,22 +142,22 @@ html, body {
   transition: background var(--transition), color var(--transition);
 }
 
-/* 背景柔和漸層（亮色 / 深色共用，參數依主題） */
+/* 柔和光暈（大幅降低透明度） */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse at 20% 0%,   rgba(255, 159, 67, 0.10), transparent 50%),
-    radial-gradient(ellipse at 80% 100%, rgba(82, 183, 136, 0.10), transparent 50%);
+    radial-gradient(ellipse at 20% 0%,   rgba(249, 115, 22, 0.04), transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(16, 185, 129, 0.04), transparent 50%);
   pointer-events: none;
   z-index: 0;
 }
 
 [data-theme="dark"] body::before {
   background:
-    radial-gradient(ellipse at 20% 0%,   rgba(96, 165, 250, 0.08), transparent 50%),
-    radial-gradient(ellipse at 80% 100%, rgba(132, 204, 22, 0.06), transparent 50%);
+    radial-gradient(ellipse at 20% 0%,   rgba(96, 165, 250, 0.06), transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(52, 211, 153, 0.04), transparent 50%);
 }
 
 a { color: var(--primary); text-decoration: none; }
@@ -129,7 +167,6 @@ button { font-family: inherit; cursor: pointer; }
 
 .mono { font-family: var(--font-mono); }
 
-/* 文字色 */
 .text-cyan    { color: var(--accent-sky); }
 .text-magenta { color: var(--danger); }
 .text-emerald { color: var(--accent-fresh); }
@@ -137,23 +174,19 @@ button { font-family: inherit; cursor: pointer; }
 .text-orange  { color: var(--accent-warm); }
 .text-muted   { color: var(--text-muted); }
 
-/* 捲軸美化 */
+/* 捲軸 */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgba(30, 78, 140, 0.2);
+  background: #CBD5E1;
   border-radius: 4px;
 }
-::-webkit-scrollbar-thumb:hover { background: rgba(30, 78, 140, 0.4); }
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
 
-[data-theme="dark"] ::-webkit-scrollbar-thumb {
-  background: rgba(96, 165, 250, 0.2);
-}
-[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
-  background: rgba(96, 165, 250, 0.4);
-}
+[data-theme="dark"] ::-webkit-scrollbar-thumb { background: #334155; }
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-/* ================= 認證頁面（login / register） ================= */
+/* ================= 認證頁面 ================= */
 .auth-page {
   display: flex;
   align-items: center;
@@ -195,6 +228,6 @@ button { font-family: inherit; cursor: pointer; }
 /* ═══════════════════════════════════════════
    END OF FILE
    File: css/theme.css
-   Version: v103.0.38
-   Batch: B30-3a
+   Version: v103.0.40
+   Batch: B30-3c
    ═══════════════════════════════════════════ */
