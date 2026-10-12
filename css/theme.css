@@ -1,35 +1,51 @@
 /* ============================================
-   theme.css — 科幻霓虹主題色票與基礎樣式（v101）
+   theme.css — 家庭暖陽主題色票與基礎樣式（v103.0.38）
+   ============================================
+   v103.0.38（B30-3a）：
+     ✅ 改為亮色主題（A 家庭暖陽）
+     ✅ 保留深色為 [data-theme="dark"]
+     ✅ 色票對齊新 icon（深藍 + 橙 + 綠 + 藍 + 米白）
    ============================================ */
 
-:root {
+/* ============================================
+   亮色主題（預設）— A 家庭暖陽
+   ============================================ */
+:root,
+[data-theme="light"] {
   /* 主背景 */
-  --bg-deep: #080B11;
-  --bg-navy: #0F172A;
-  --bg-panel: rgba(15, 23, 42, 0.6);
+  --bg-deep:  #FFF9F0;
+  --bg-navy:  #FFF2E0;
+  --bg-panel: rgba(255, 255, 255, 0.85);
 
-  /* 霓虹色票 */
-  --neon-cyan:    #00F0FF;
-  --neon-magenta: #D946EF;
-  --neon-emerald: #10B981;
-  --neon-red:     #F43F5E;
-  --neon-orange:  #FB923C;
+  /* 主色票 */
+  --primary:      #1E4E8C;   /* 深藍（icon 描邊） */
+  --accent-warm:  #FF9F43;   /* 橙（icon 屋頂） */
+  --accent-fresh: #52B788;   /* 綠（icon 箭頭） */
+  --accent-sky:   #4A90E2;   /* 藍（icon 人像） */
+  --danger:       #E85D3A;
 
-  /* 玻璃卡片 */
-  --glass-bg: rgba(15, 23, 42, 0.6);
-  --glass-border: rgba(0, 240, 255, 0.2);
-  --glass-border-hover: rgba(0, 240, 255, 0.5);
-  --glass-shadow-hover: 0 0 15px rgba(0, 240, 255, 0.15);
-  --glass-blur: 12px;
+  /* 舊變數名（向後相容） */
+  --neon-cyan:    #4A90E2;
+  --neon-magenta: #E85D3A;
+  --neon-emerald: #52B788;
+  --neon-red:     #E85D3A;
+  --neon-orange:  #FF9F43;
+
+  /* 玻璃卡片（改為實心白，取消玻璃感） */
+  --glass-bg:           #FFFFFF;
+  --glass-border:       rgba(30, 78, 140, 0.12);
+  --glass-border-hover: rgba(30, 78, 140, 0.3);
+  --glass-shadow-hover: 0 4px 16px rgba(30, 78, 140, 0.12);
+  --glass-blur:         0px;
 
   /* 文字 */
-  --text-primary:   #E2E8F0;
-  --text-secondary: #94A3B8;
-  --text-muted:     #64748B;
+  --text-primary:   #1E3A5F;
+  --text-secondary: #4A5C75;
+  --text-muted:     #6B7C93;
 
   /* 圓角 */
-  --radius-sm: 6px;
-  --radius-md: 10px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
   --radius-lg: 16px;
 
   /* 字體 */
@@ -41,6 +57,40 @@
   --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* ============================================
+   深色主題 — [data-theme="dark"]
+   ============================================ */
+[data-theme="dark"] {
+  --bg-deep:  #0F1419;
+  --bg-navy:  #1A2332;
+  --bg-panel: rgba(26, 35, 50, 0.7);
+
+  --primary:      #60A5FA;
+  --accent-warm:  #FBBF24;
+  --accent-fresh: #84CC16;
+  --accent-sky:   #60A5FA;
+  --danger:       #F87171;
+
+  --neon-cyan:    #60A5FA;
+  --neon-magenta: #F87171;
+  --neon-emerald: #84CC16;
+  --neon-red:     #F87171;
+  --neon-orange:  #FBBF24;
+
+  --glass-bg:           rgba(26, 35, 50, 0.7);
+  --glass-border:       rgba(96, 165, 250, 0.2);
+  --glass-border-hover: rgba(96, 165, 250, 0.5);
+  --glass-shadow-hover: 0 0 15px rgba(96, 165, 250, 0.15);
+  --glass-blur:         12px;
+
+  --text-primary:   #E5E7EB;
+  --text-secondary: #9CA3AF;
+  --text-muted:     #6B7280;
+}
+
+/* ============================================
+   基礎樣式
+   ============================================ */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
@@ -51,43 +101,57 @@ html, body {
   font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  transition: background var(--transition), color var(--transition);
 }
 
-/* 背景微光漸層 */
+/* 背景柔和漸層（亮色 / 深色共用，參數依主題） */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse at 20% 0%,  rgba(0, 240, 255, 0.08), transparent 50%),
-    radial-gradient(ellipse at 80% 100%, rgba(217, 70, 239, 0.06), transparent 50%);
+    radial-gradient(ellipse at 20% 0%,   rgba(255, 159, 67, 0.10), transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(82, 183, 136, 0.10), transparent 50%);
   pointer-events: none;
   z-index: 0;
 }
 
-a { color: var(--neon-cyan); text-decoration: none; }
+[data-theme="dark"] body::before {
+  background:
+    radial-gradient(ellipse at 20% 0%,   rgba(96, 165, 250, 0.08), transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(132, 204, 22, 0.06), transparent 50%);
+}
+
+a { color: var(--primary); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 button { font-family: inherit; cursor: pointer; }
 
 .mono { font-family: var(--font-mono); }
 
-/* 霓虹文字色 */
-.text-cyan    { color: var(--neon-cyan); }
-.text-magenta { color: var(--neon-magenta); }
-.text-emerald { color: var(--neon-emerald); }
-.text-red     { color: var(--neon-red); }
-.text-orange  { color: var(--neon-orange); }
+/* 文字色 */
+.text-cyan    { color: var(--accent-sky); }
+.text-magenta { color: var(--danger); }
+.text-emerald { color: var(--accent-fresh); }
+.text-red     { color: var(--danger); }
+.text-orange  { color: var(--accent-warm); }
 .text-muted   { color: var(--text-muted); }
 
 /* 捲軸美化 */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 240, 255, 0.2);
+  background: rgba(30, 78, 140, 0.2);
   border-radius: 4px;
 }
-::-webkit-scrollbar-thumb:hover { background: rgba(0, 240, 255, 0.4); }
+::-webkit-scrollbar-thumb:hover { background: rgba(30, 78, 140, 0.4); }
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: rgba(96, 165, 250, 0.2);
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(96, 165, 250, 0.4);
+}
 
 /* ================= 認證頁面（login / register） ================= */
 .auth-page {
@@ -110,10 +174,9 @@ button { font-family: inherit; cursor: pointer; }
   font-family: var(--font-mono);
   font-size: 24px;
   font-weight: 700;
-  color: var(--neon-cyan);
+  color: var(--primary);
   text-align: center;
   letter-spacing: 2px;
-  text-shadow: 0 0 20px rgba(0, 240, 255, 0.5);
   margin-bottom: 8px;
 }
 
@@ -128,3 +191,10 @@ button { font-family: inherit; cursor: pointer; }
   .auth-card { padding: 24px; }
   .auth-title { font-size: 20px; }
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: css/theme.css
+   Version: v103.0.38
+   Batch: B30-3a
+   ═══════════════════════════════════════════ */
