@@ -1,9 +1,9 @@
 # P-03 交付進度
 
-最後更新：B29-10b
-版本：v103.0.37
-批次：B29-10b
-狀態：B29 已部署測試通過
+最後更新：B30-5
+版本：v103.0.38
+批次：B30-5
+狀態：B30-5 已部署測試通過
 
 ---
 
@@ -24,102 +24,132 @@
 | B29-8 | P-* 重組（14 檔） | ✅ |
 | B29-9 | docs 補回（4 批 + 修正批） | ✅ |
 | B29-10 | C-02 Token 視覺化 + 3 檔同步 | ✅ |
+| B30-1 | settings.html 加 requireFamily:false | ✅ |
+| B30-2 | URL 切 DB + storage 前綴 | ✅ |
+| B30-3 | 主題 A 家庭暖陽（Tailwind 色板） | ✅ |
+| B30-3b | navbar DB 標籤 + 主題切換 | ✅ |
+| B30-5 | 後端 DB 切換（CF env） | ✅ |
+| B30-5-docs | docs 同步（本批） | 🔄 |
 
 ---
 
-## B29-9：docs 補回
+## B30-5：後端 DB 切換
 
-### 第 1 批（B29-9）
+### 背景
 
-| # | 檔案 | 變更 |
-|---|---|---|
-| 1 | C-02-rules.md | 加入 §0 Token 不足處理 |
-| 2 | P-02-anchor.md | 完整補回（二~七、十~十四） |
+superadmin 登入新 DB 後，API 顯示「需要超級管理員權限」。根因：後端 `_config.js` 寫死舊 DB URL + API Key。
 
-### 修正批（B29-9a）
+### 修復
 
 | # | 檔案 | 變更 |
 |---|---|---|
-| 1 | C-02-rules.md | §0 開場白改 3 backtick；§六 加 backtick 嵌套強制檢查 |
-| 2 | P-02-anchor.md | 三層資料流改 3 backtick |
-| 3 | C-05-learning.md | 加 L-009（backtick 嵌套未自檢） |
+| 1 | `functions/api/_config.js` | `export let` + `initConfig(env)` 動態切 DB |
+| 2 | `functions/api/_helpers.js` | 改從 `getApiKey()` 讀 |
+| 3 | `functions/api/[[path]].js` | 每個 `onRequest*` 呼叫 `initConfig(env)` |
 
-### 第 2 批（B29-9b）
+### CF 設定
 
-| # | 檔案 | 變更 |
+| 部署 | 環境變數 |
+|---|---|
+| 新網頁 | `DB_TARGET=new` |
+| 舊網頁 | `DB_TARGET=old` |
+
+### 測試結果
+
+| # | 項目 | 結果 |
 |---|---|---|
-| 1 | C-04-delivery.md | 補回 11 項錯誤 + 檔案大小 + 命名 + 新規則 |
-| 2 | P-14-refactor.md | 新建（從舊 refactor-plan.md 遷移） |
-
-### 第 3 批（B29-9c）
-
-| # | 檔案 | 變更 |
-|---|---|---|
-| 1 | C-03-guide.md | 補回 Q1~Q14 FAQ + 動作模板 4 個 + 規則速查 |
-| 2 | P-06-sop.md | 補回 Page Schema 結構完整欄位 |
-
-### 第 4 批（B29-9d）
-
-| # | 檔案 | 變更 |
-|---|---|---|
-| 1 | P-12-incident.md | 補回 B12~B15 完整事故表 |
-| 2 | P-10-data.md | 補回 B23 基金累積流程完整步驟 |
+| 1 | 新網頁 superadmin 登入 | ✅ |
+| 2 | 平台管理 → 家庭清單 | ✅ 正常載入 |
+| 3 | 系統設定 → 遷移卡 | ✅ 正常 |
 
 ---
 
-## B29-10：Token 視覺化 + 同步
-
-### B29-10
+## B30-3b：navbar DB 標籤 + 主題切換
 
 | # | 檔案 | 變更 |
 |---|---|---|
-| 1 | C-02-rules.md | §0 調整（Token 足夠不需開場白）+ §0.5 新增 Token 視覺化 |
+| 1 | `js/core/state.js` | 加 `theme` 狀態 + `setTheme` / `getTheme` / `toggleTheme` |
+| 2 | `js/layout/navbar.js` | 加 DB 標籤 + 主題按鈕 |
+| 3 | `css/components.css` | 加 `.navbar-right` / `.navbar-db-tag` / `.navbar-theme-btn` |
+
+---
+
+## B30-3：主題 A 家庭暖陽（Tailwind 色板）
+
+| # | 檔案 | 變更 |
+|---|---|---|
+| 1 | `css/theme.css` | 全面改 Tailwind 色板（亮色 + 深色） |
+| 2 | `css/components.css` | 實色按鈕 / 色條 / 實色 badge / 表格加深 |
+| 3 | `css/layout.css` | 硬編碼深色改走變數 |
+| 4 | `css/utilities.css` | 同上 |
+| 5 | `css/pages/annual-report.css` | 同上 |
+| 6 | `css/pages/insurance.css` | 同上 |
+
+---
+
+## B30-2：URL 切 DB + storage 前綴
+
+| # | 檔案 | 變更 |
+|---|---|---|
+| 1 | `js/config/firebase-config.js` | 支援 `?db=old` / `?db=new` |
+| 2 | `js/config/constants.js` | `DB_TARGET` 解析 + 所有 storage key 加 DB 前綴 |
+
+---
+
+## B30-1：settings.html 加 requireFamily:false
+
+| # | 檔案 | 變更 |
+|---|---|---|
+| 1 | `settings.html` | `initApp` 加 `requireFamily: false` |
+
+---
+
+## B29 系列（歷史）
+
+### B29-10b
+
+| # | 檔案 | 變更 |
+|---|---|---|
+| 1 | P-02 / P-03 / P-04 | 同步 Token 視覺化 |
 
 ### B29-10a
 
 | # | 檔案 | 變更 |
 |---|---|---|
-| 1 | C-03-guide.md | §五 +§九 +§十 +§十一 加 Token 提示；Q15 新增 |
-| 2 | C-04-delivery.md | §四 +§十一 +§十二 +§十三 +§十四 加 Token 相關 |
+| 1 | C-03 / C-04 | 同步 Token 視覺化 |
 
-### B29-10b（本批）
+### B29-10
 
 | # | 檔案 | 變更 |
 |---|---|---|
-| 1 | P-02-anchor.md | §十一 加「Token 視覺化」關鍵字 |
-| 2 | P-03-progress.md | 本檔（記錄 B29-9 / B29-10） |
-| 3 | P-04-manifest.md | 版本更新 |
+| 1 | C-02 | 加 Token 視覺化 |
 
----
+### B29-9
 
-## B29 子批次（歷史）
+| # | 檔案 | 變更 |
+|---|---|---|
+| 1 | C-02 / P-02 / C-04 / P-14 / C-03 / P-06 / P-12 / P-10 | 補回 |
 
-### B29-1a：page-controls.js
+### B29-8
 
-| # | 變更 |
-|---|---|
-| 1 | 強制 viewToggle / sort 在 body |
-| 2 | year + month 靠左同排 |
+| # | 檔案 | 變更 |
+|---|---|---|
+| 1 | P-* | 重組（14 檔） |
 
-### B29-1b：column-registry.js
+### B29-7
 
-| # | 變更 |
-|---|---|
-| 1 | 加 6 columns |
-| 2 | 加 sortable / filterable / filterOptions |
+| # | 檔案 | 變更 |
+|---|---|---|
+| 1 | C-* | 6 檔（共用） |
 
-### B29-1c：data-table.js
-
-| # | 變更 |
-|---|---|
-| 1 | 表頭排序 |
-| 2 | 表頭篩選下拉 |
-
-### B29-2a ~ B29-5d
+### B29 主批次
 
 | 批次 | 主題 |
 |---|---|
-| B29-2a | settlements.js columns 用 registry |
+| B29-1a | page-controls 強制 viewToggle / sort 在 body |
+| B29-1b | column-registry 加 6 columns |
+| B29-1c | data-table 表頭排序 / 篩選 |
+| B29-2a | settlements 用 registry |
 | B29-2b | insurance + member-report |
 | B29-3 | finance-overview + input-center |
 | B29-4a | HTML banner 上移 |
@@ -128,14 +158,9 @@
 | B29-5b | db.js |
 | B29-5c | page-engine.js |
 | B29-5d | layout.css + settings.js |
-
-### B29-7a / 7b / 8
-
-| 批次 | 主題 |
-|---|---|
 | B29-7a | 刪 syncSubtitle（3 頁） |
 | B29-7b | 刪 subtitle derived（2 頁） |
-| B29-8 | 副標題修正（清 textContent） |
+| B29-8 | 副標題修正 |
 
 ---
 
@@ -143,9 +168,9 @@
 
 | 項目 | 值 |
 |---|---|
-| 當前批次 | B29-10b（docs 同步） |
-| 當前部署 | B29 已測試通過 |
-| 下一步 | 完成 P-04 更新，B30 起新功能 |
+| 當前批次 | B30-5（docs 同步中） |
+| 當前部署 | B30-5 已測試通過 |
+| 下一步 | 完成 docs 同步，B31 起新功能 |
 
 ---
 
@@ -153,14 +178,15 @@
 
 | 項目 | 狀態 |
 |---|---|
-| B29-10b 完成 | 🔄 進行中 |
-| B30 起新功能 | 📋 待規劃 |
+| B30-5-docs 完成 | 🔄 進行中 |
+| icon 更換 | 📋 待規劃 |
+| docs 版本號統一 | 📋 待規劃 |
 
 ---
 
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/P-03-progress.md
-   Version: v103.0.37
-   Batch: B29-10b
+   Version: v103.0.38
+   Batch: B30-5
    ═══════════════════════════════════════════ */
