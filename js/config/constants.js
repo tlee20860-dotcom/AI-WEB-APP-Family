@@ -34,7 +34,7 @@ function _resolveDbTarget() {
     const saved = localStorage.getItem(DB_TARGET_KEY);
     if (saved === 'old' || saved === 'new') return saved;
   } catch (e) { /* noop */ }
-  return 'old';
+  return 'new';
 }
 
 export const DB_TARGET = _resolveDbTarget();
