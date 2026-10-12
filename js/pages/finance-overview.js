@@ -1,11 +1,8 @@
-// finance-overview.js — 銀行交易（v103.0.34）
-// v103.0.34（B29-3）：
-//   ✅ columns / resolvers 改用 column-registry
-// v103.0.27（B26-3）：
-//   ✅ 改用 page-controls
+// finance-overview.js — 銀行交易（v103.0.35）
+// v103.0.35（B29-7a）：
+//   ✅ 刪除 syncSubtitle（動態副標題）
 // ============================================
 import { formatHKD } from '../lib/format.js';
-import { esc } from '../lib/dom.js';
 import { calcTotalBankBalance, calcBankBalance } from '../lib/bank.js';
 import { getColumns, getResolvers } from '../config/column-registry.js';
 import { renderDataTable } from '../shared/data-table.js';
@@ -55,11 +52,6 @@ export default {
       const m = String(AppState.month || '12');
       if (ctx.state.currentYear !== y) ctx.state.currentYear = y;
       if (ctx.state.currentMonth !== m) ctx.state.currentMonth = m;
-    };
-
-    const syncSubtitle = () => {
-      const el = document.getElementById('finance-month-label');
-      if (el) el.textContent = AppState.getYearMonthLabel();
     };
 
     const render = () => {
@@ -169,7 +161,6 @@ export default {
       filterRoot.addEventListener('change', _filterH);
     }
 
-    /* v103.0.34：viewToggle 不再 position: 'header' */
     _controls = renderPageControls({
       containerId: 'page-controls-root',
       headerContainerId: 'page-header-actions',
@@ -186,13 +177,11 @@ export default {
     });
 
     syncState();
-    syncSubtitle();
     render();
 
     const unsub = ctx.onDataChange((key) => {
       if (key === '__APP__') {
         syncState();
-        syncSubtitle();
         if (_controls) { try { _controls.refresh(); } catch (e) {} }
       }
       render();
@@ -257,6 +246,6 @@ function _filterTxns(txns, filters, year, month) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/finance-overview.js
-   Version: v103.0.34
-   Batch: B29-3
+   Version: v103.0.35
+   Batch: B29-7a
    ═══════════════════════════════════════════ */

@@ -1,13 +1,9 @@
 // ============================================
-// dashboard.js — 總覽儀表板（v103.0.32 Page Schema）
+// dashboard.js — 總覽儀表板（v103.0.35 Page Schema）
 // 位置：js/pages/dashboard.js
 // ============================================
-// v103.0.32（B26-6）：
-//   ✅ 恢復「年度總覽（前後 2 年）」區塊
-// v103.0.29（B26-3.2）：
-//   ✅ 「查看年度報表」移到 page-header 右側
-// v103.0.27（B26-3）：
-//   ✅ 改用 page-controls
+// v103.0.35（B29-7b）：
+//   ✅ 刪除副標題動態（subtitle derived + update 邏輯）
 // ============================================
 
 import { calcTotalBankBalance } from '../lib/bank.js';
@@ -44,10 +40,6 @@ export default {
       deps: ['totalBankBalance', 'data.bankAccounts', 'state.currentYear', 'yearTotals'],
       compute: _buildCards,
     },
-    subtitle: {
-      deps: ['data.members', 'data.bankAccounts', 'data.bankTransactions', 'state.currentYear'],
-      compute: _buildSubtitle,
-    },
     annualOverview: {
       deps: ['data.allIncome', 'data.allExpenses', 'data.allPolicies', 'state.currentYear'],
       compute: _computeAnnualOverview,
@@ -65,11 +57,6 @@ export default {
       if (ctx.state.currentYear !== y) ctx.state.currentYear = y;
       const m = String(AppState.month || '12');
       if (ctx.state.currentMonth !== m) ctx.state.currentMonth = m;
-    };
-
-    const update = () => {
-      const el = document.getElementById('dashboard-subtitle');
-      if (el) el.textContent = ctx.derived.subtitle || '載入中…';
     };
 
     const _paintAnnualOverview = () => {
@@ -127,10 +114,8 @@ export default {
       }
     };
 
-    update();
     _paintAnnualOverview();
 
-    /* v103.0.29：page-controls（查看年報 → header） */
     _controls = renderPageControls({
       containerId: 'page-controls-root',
       headerContainerId: 'page-header-actions',
@@ -145,7 +130,6 @@ export default {
 
     const unsub = ctx.onDataChange((key) => {
       if (key === '__APP__') syncYear();
-      update();
       _paintAnnualOverview();
     });
 
@@ -208,14 +192,6 @@ function _buildCards(totalBankBalance, accounts, year, yearTotals) {
   ];
 }
 
-function _buildSubtitle(members, accounts, txns, year) {
-  return `${year} 年 · ${(members || []).length} 位成員 · ${(accounts || []).length} 個銀行帳號 · ${(txns || []).length} 筆交易`;
-}
-
-/**
- * 🆕 v103.0.32：計算年度總覽（前後 2 年）
- * @returns {Array<{year, totalIncome, totalExpense, insurance, net, avg, isCurrent}>}
- */
 function _computeAnnualOverview(allIncome, allExpenses, policies, currentYear) {
   const curY = Number(currentYear) || new Date().getFullYear();
   const startY = curY - 2;
@@ -227,13 +203,11 @@ function _computeAnnualOverview(allIncome, allExpenses, policies, currentYear) {
     const yi = (allIncome || {})[yk] || {};
     const ye = (allExpenses || {})[yk] || {};
 
-    /* 家庭收入 */
     let totalIncome = 0;
     Object.values(yi).forEach((md) => {
       Object.values(md || {}).forEach((v) => { totalIncome += Number(v) || 0; });
     });
 
-    /* 總支出 + 有紀錄月數 */
     let totalExpense = 0;
     let monthsWithData = 0;
     Object.values(ye).forEach((md) => {
@@ -246,7 +220,6 @@ function _computeAnnualOverview(allIncome, allExpenses, policies, currentYear) {
       totalExpense += monthSum;
     });
 
-    /* 保險平攤（該年度總年繳） */
     let insurance = 0;
     (policies || []).forEach((p) => {
       try { insurance += getPolicyAnnualPremium(p, y) || 0; } catch (e) { /* noop */ }
@@ -272,6 +245,6 @@ function _computeAnnualOverview(allIncome, allExpenses, policies, currentYear) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/dashboard.js
-   Version: v103.0.32
-   Batch: B26-6
+   Version: v103.0.35
+   Batch: B29-7b
    ═══════════════════════════════════════════ */

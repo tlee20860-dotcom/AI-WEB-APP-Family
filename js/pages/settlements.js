@@ -1,9 +1,6 @@
-// settlements.js — 結算清單（v103.0.34）
-// v103.0.34（B29-2a）：
-//   ✅ columns / resolvers 改用 column-registry
-//   ✅ 移除 sort item（表頭已支援排序）
-//   ✅ 移除 source filter（表頭已支援篩選）
-//   ✅ 移除 state.sortMode
+// settlements.js — 結算清單（v103.0.35）
+// v103.0.35（B29-7a）：
+//   ✅ 刪除 syncSubtitle（動態副標題）
 // ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
@@ -60,11 +57,6 @@ export default {
       const v = localStorage.getItem(`${STORAGE_PREFIXES.VIEW}settlement-view`);
       if (v === 'card' || v === 'table') _view = v;
     } catch (e) { /* noop */ }
-
-    const syncSubtitle = () => {
-      const el = document.getElementById('settlement-month');
-      if (el) el.textContent = AppState.getYearMonthLabel();
-    };
 
     const _recompute = () => {
       const { year, month } = AppState.getYearMonth();
@@ -178,7 +170,6 @@ export default {
       });
       await _loadInsuranceRows();
       _recompute();
-      syncSubtitle();
     };
 
     const render = () => {
@@ -266,12 +257,10 @@ export default {
       }
     };
 
-    /* 首次初始化 filters */
     const { year, month } = AppState.getYearMonth();
     ctx.state.filters.year = String(year);
     ctx.state.filters.month = month === 'all' ? '' : String(month);
 
-    /* v103.0.34：移除 sort / source filter（改由表頭） */
     _controls = renderPageControls({
       containerId: 'page-controls-root',
       headerContainerId: 'page-header-actions',
@@ -446,6 +435,6 @@ async function _openBankPickerModal(row) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/settlements.js
-   Version: v103.0.34
-   Batch: B29-2a
+   Version: v103.0.35
+   Batch: B29-7a
    ═══════════════════════════════════════════ */

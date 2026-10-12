@@ -1,6 +1,6 @@
-// insurance.js — 保險清單表（v103.0.34）
-// v103.0.34（B29-2b）：
-//   ✅ columns / resolvers 改用 column-registry（insurancePolicies）
+// insurance.js — 保險清單表（v103.0.35）
+// v103.0.35（B29-7a）：
+//   ✅ 刪除 syncSubtitle（動態副標題）
 // ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
@@ -42,11 +42,6 @@ export default {
       if (saved === 'card' || saved === 'table') _view = saved;
     } catch (e) { /* noop */ }
 
-    const syncSubtitle = () => {
-      const el = document.getElementById('insurance-month');
-      if (el) el.textContent = AppState.getYearMonthLabel();
-    };
-
     const render = () => {
       const policies = ctx.data.policies || [];
       const { year } = AppState.getYearMonth();
@@ -70,7 +65,6 @@ export default {
 
       _paintSection(enriched.filter((p) => p._isCompleted));
       _paintActive(enriched.filter((p) => !p._isCompleted), policies.length);
-      syncSubtitle();
       if (window.lucide) window.lucide.createIcons();
     };
 
@@ -198,7 +192,6 @@ export default {
     };
     if (headerEl) headerEl.addEventListener('click', _toggleHandler);
 
-    /* v103.0.34：viewToggle 不再 position: 'header'（page-controls 強制 body） */
     _controls = renderPageControls({
       containerId: 'page-controls-root',
       headerContainerId: 'page-header-actions',
@@ -269,6 +262,6 @@ export default {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/insurance.js
-   Version: v103.0.34
-   Batch: B29-2b
+   Version: v103.0.35
+   Batch: B29-7a
    ═══════════════════════════════════════════ */

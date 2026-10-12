@@ -1,6 +1,6 @@
-// member-report.js — 成員收支明細（v103.0.34）
-// v103.0.34（B29-2b）：
-//   ✅ columns / resolvers 改用 column-registry（memberReport）
+// member-report.js — 成員收支明細（v103.0.35）
+// v103.0.35（B29-7b）：
+//   ✅ 刪除 syncSubtitle（動態副標題）
 // ============================================
 import { formatHKD } from '../lib/format.js';
 import { AppState } from '../core/state.js';
@@ -35,14 +35,6 @@ export default {
       if (v === 'card' || v === 'table') _view = v;
     } catch (e) { /* noop */ }
 
-    const syncSubtitle = () => {
-      const el = document.getElementById('member-report-subtitle');
-      if (!el) return;
-      const { year } = AppState.getYearMonth();
-      const memberCount = (ctx.data.members || []).length;
-      el.textContent = `${year} 年 · ${memberCount} 位成員`;
-    };
-
     const paint = () => {
       const root = document.getElementById('member-list-root');
       if (!root) return;
@@ -71,7 +63,6 @@ export default {
       }
     };
 
-    /* v103.0.34：viewToggle 不再 position: 'header' */
     _controls = renderPageControls({
       containerId: 'page-controls-root',
       headerContainerId: 'page-header-actions',
@@ -87,7 +78,6 @@ export default {
       ],
     });
 
-    syncSubtitle();
     paint();
 
     const unsub = ctx.onDataChange((key) => {
@@ -96,7 +86,6 @@ export default {
         if (ctx.state.currentYear !== y) ctx.state.currentYear = y;
         if (_controls) { try { _controls.refresh(); } catch (e) {} }
       }
-      syncSubtitle();
       paint();
     });
 
@@ -155,6 +144,6 @@ function _buildStats(rows, year) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/member-report.js
-   Version: v103.0.34
-   Batch: B29-2b
+   Version: v103.0.35
+   Batch: B29-7b
    ═══════════════════════════════════════════ */
