@@ -525,6 +525,18 @@ export const STATUS_CATEGORIES = {
   INSURANCE: 'insurance',
 };
 
+/* ============================================
+   0.2 DB 顯示名稱（依 DB_TARGET 對照）
+   ============================================ */
+export const DB_LABELS = {
+  old: 'family-fin',
+  new: '2026-10-12-family',
+};
+
+export function getDbLabel() {
+  return DB_LABELS[DB_TARGET] || DB_TARGET;
+}
+
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/config/constants.js

@@ -1,46 +1,35 @@
 // ============================================
-// state.js — 全域狀態中心（v103.0.11）
+// state.js — 全域狀態中心（v103.0.42）
 // 位置：js/core/state.js
 // ============================================
-// v103.0.11 修正：
-//   ✅ [M08] getRoleLabel 改走 label-registry（SSOT）
-//   ✅ 保留 v103.0.0 全部功能
+// v103.0.42（B30-3b）：
+//   ✅ 加 theme 狀態 + setTheme / getTheme
+//   ✅ init() 讀取 localStorage 主題
 // ============================================
 
 import { STORAGE_KEYS, ROLES } from '../config/constants.js';
 import { L } from '../config/label-registry.js';
 
+const THEME_KEY = 'fin_ui_theme';
+
 export const AppState = {
-  /* ---------- 使用者 ---------- */
   currentUser: null,
   isSuperAdmin: false,
-
-  /* ---------- 家庭 ---------- */
   currentFamilyId: '',
   currentFamilyName: '',
   familyOwnerUid: '',
-
-  /* ---------- 帳號 ---------- */
   role: '',
   canInput: false,
   displayName: '',
   memberAccount: null,
   currentMemberId: '',
-
-  /* ---------- 年月 ---------- */
   year: '',
   month: '',
-
-  /* ---------- 檢視模式 ---------- */
   currentView: 'table',
-
-  /* ---------- 內部狀態 ---------- */
+  theme: 'light',
   _listeners: {},
   _initialized: false,
 
-  /* ============================================
-     初始化 / 銷毀
-     ============================================ */
   init() {
     if (this._initialized) return;
     this._initialized = true;
@@ -49,21 +38,22 @@ export const AppState = {
     const savedMonth = localStorage.getItem(STORAGE_KEYS.MONTH);
     const savedFamilyId = localStorage.getItem(STORAGE_KEYS.FAMILY_ID);
     const savedFamilyName = localStorage.getItem(STORAGE_KEYS.FAMILY_NAME);
+    const savedTheme = localStorage.getItem(THEME_KEY);
 
     this.year = savedYear || String(new Date().getFullYear());
     this.month = savedMonth || 'all';
+    this.theme = (savedTheme === 'dark' || savedTheme === 'light') ? savedTheme : 'light';
 
     if (savedFamilyId) {
       this.currentFamilyId = savedFamilyId;
       this.currentFamilyName = savedFamilyName || '';
     }
+
+    this._applyTheme(this.theme);
   },
 
   destroy() {
-    /* 清空事件監聽 */
     this._listeners = {};
-
-    /* 重設所有狀態 */
     this.currentUser = null;
     this.isSuperAdmin = false;
     this.currentFamilyId = '';
@@ -75,13 +65,32 @@ export const AppState = {
     this.memberAccount = null;
     this.currentMemberId = '';
     this.currentView = 'table';
-
     this._initialized = false;
   },
 
-  /* ============================================
-     使用者
-     ============================================ */
+  /* ---------- 主題 ---------- */
+  _applyTheme(theme) {
+    if (typeof document !== 'undefined') {
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+  },
+
+  setTheme(theme) {
+    if (theme !== 'light' && theme !== 'dark') return;
+    if (this.theme === theme) return;
+    this.theme = theme;
+    localStorage.setItem(THEME_KEY, theme);
+    this._applyTheme(theme);
+    this.emit('theme-change', theme);
+  },
+
+  getTheme() { return this.theme; },
+
+  toggleTheme() {
+    this.setTheme(this.theme === 'light' ? 'dark' : 'light');
+  },
+
+  /* ---------- 使用者 ---------- */
   setUser(user) {
     this.currentUser = user;
     this.emit('user-change', user);
@@ -96,9 +105,7 @@ export const AppState = {
     this.emit('superadmin-change', this.isSuperAdmin);
   },
 
-  /* ============================================
-     家庭
-     ============================================ */
+  /* ---------- 家庭 ---------- */
   setFamily(familyId, familyName, ownerUid) {
     this.currentFamilyId = familyId || '';
     this.currentFamilyName = familyName || '';
@@ -132,9 +139,7 @@ export const AppState = {
     this.emit('family-change', { familyId: '', familyName: '' });
   },
 
-  /* ============================================
-     帳號
-     ============================================ */
+  /* ---------- 帳號 ---------- */
   setRole(role) {
     this.role = role || '';
     this.emit('role-change', this.role);
@@ -167,7 +172,6 @@ export const AppState = {
         this.currentMemberId = account.memberId;
       }
     } else {
-      /* 重置為預設值（避免切換家庭時殘留前位使用者資訊） */
       this.role = '';
       this.canInput = false;
       this.displayName = '';
@@ -195,11 +199,6 @@ export const AppState = {
     this.setMemberAccount(memberAccount);
   },
 
-  /* ============================================
-     便利：角色 / 權限文字
-     -------------------------------------------------
-     🆕 v103.0.11 [M08]：改走 label-registry（SSOT）
-     ============================================ */
   getRoleLabel() {
     switch (this.role) {
       case ROLES.SUPERADMIN: return L('roles.superadmin');
@@ -213,9 +212,7 @@ export const AppState = {
     return this.canInput ? '可輸入' : '唯讀';
   },
 
-  /* ============================================
-     年月
-     ============================================ */
+  /* ---------- 年月 ---------- */
   setYearMonth(year, month) {
     this.year = String(year);
     this.month = String(month);
@@ -227,19 +224,12 @@ export const AppState = {
   getYearMonth() { return { year: this.year, month: this.month }; },
   isAnnualMode() { return this.month === 'all'; },
 
-  /**
-   * 取得年月顯示文字
-   * @param {string} [sep=' ']
-   * @returns {string}
-   */
   getYearMonthLabel(sep = ' ') {
     if (this.month === 'all') return `${this.year} 年 全年`;
     return `${this.year} 年${sep}${this.month} 月`;
   },
 
-  /* ============================================
-     當前檢視模式
-     ============================================ */
+  /* ---------- 檢視 ---------- */
   setCurrentView(view) {
     if (view !== 'table' && view !== 'card') return;
     if (this.currentView === view) return;
@@ -249,13 +239,10 @@ export const AppState = {
 
   getCurrentView() { return this.currentView; },
 
-  /* ============================================
-     事件總線
-     ============================================ */
+  /* ---------- 事件總線 ---------- */
   on(event, callback) {
     if (!this._listeners[event]) this._listeners[event] = [];
     this._listeners[event].push(callback);
-
     return () => {
       this._listeners[event] = (this._listeners[event] || []).filter((cb) => cb !== callback);
     };
@@ -274,3 +261,10 @@ export const AppState = {
     });
   },
 };
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: js/core/state.js
+   Version: v103.0.42
+   Batch: B30-3b
+   ═══════════════════════════════════════════ */
