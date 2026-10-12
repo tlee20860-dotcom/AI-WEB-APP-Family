@@ -44,7 +44,7 @@ const _P = `fin_${DB_TARGET}_`;   /* 所有 storage key 的共同前綴 */
    0.1 版本號
    ============================================ */
 export const APP_VERSION = 'v103.0.38';
-export const SW_VERSION = 'family-fin-v141';
+export const SW_VERSION = 'family-fin-v142';
 
 /* ============================================
    1. localStorage Keys（依 DB 隔離）
