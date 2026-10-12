@@ -1,10 +1,14 @@
 // ============================================
-// [[path]].js — API Catch-all 路由器（v103.0.22）
+// [[path]].js — API Catch-all 路由器（v103.0.44）
 // 位置：functions/api/[[path]].js
 // ============================================
+// v103.0.44（B30-5）：
+//   ✅ 每個 handler 呼叫 initConfig(env) 支援 DB 切換
 // v103.0.22（B25-6）：
 //   ✅ 加 admin-migrate 分派
 // ============================================
+
+import { initConfig } from './_config.js';
 
 import {
   handleLookupFamily,
@@ -45,7 +49,8 @@ import { handleInsuranceSync } from './_insurance.js';
 /* ============================================
    OPTIONS preflight
    ============================================ */
-export async function onRequestOptions() {
+export async function onRequestOptions({ env }) {
+  initConfig(env);
   return new Response(null, {
     status: 204,
     headers: {
@@ -60,7 +65,8 @@ export async function onRequestOptions() {
 /* ============================================
    GET 分派
    ============================================ */
-export async function onRequestGet({ request }) {
+export async function onRequestGet({ request, env }) {
+  initConfig(env);
   const url = new URL(request.url);
   const path = url.pathname;
 
@@ -91,7 +97,8 @@ export async function onRequestGet({ request }) {
 /* ============================================
    POST 分派
    ============================================ */
-export async function onRequestPost({ request }) {
+export async function onRequestPost({ request, env }) {
+  initConfig(env);
   const url = new URL(request.url);
   const path = url.pathname;
 
@@ -125,6 +132,6 @@ export async function onRequestPost({ request }) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: functions/api/[[path]].js
-   Version: v103.0.22
-   Batch: B25-6
+   Version: v103.0.44
+   Batch: B30-5
    ═══════════════════════════════════════════ */

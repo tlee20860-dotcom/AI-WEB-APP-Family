@@ -1,19 +1,15 @@
 // ============================================
-// _config.js — Firebase REST 設定（v103.0.43）
+// _config.js — Firebase REST 設定（v103.0.44）
 // 位置：functions/api/_config.js
 // ============================================
-// v103.0.43（B30-5）：
-//   ✅ 支援環境變數 DB_TARGET 切換 DB（old / new）
-//   ✅ CF Pages 設 DB_TARGET=new 即連新 DB
-// v103.0.0 重構：
-//   ✅ 版本號更新
+// v103.0.44（B30-5）：
+//   ✅ 支援 initConfig(env) 從 CF Pages context.env 讀 DB_TARGET
+//   ✅ 動態選 DB URL + API Key
 // ============================================
 
 /* ============================================
-   DB 目標（環境變數）
+   DB 目標（由 initConfig 設定）
    ============================================ */
-const _DB_TARGET = (typeof process !== 'undefined' && process.env?.DB_TARGET) || 'old';
-
 const _DB_CONFIGS = {
   old: {
     url:    'https://family-fin-a6dd1-default-rtdb.asia-southeast1.firebasedatabase.app',
@@ -25,11 +21,32 @@ const _DB_CONFIGS = {
   },
 };
 
-const _cfg = _DB_CONFIGS[_DB_TARGET] || _DB_CONFIGS.old;
+let _dbUrl    = _DB_CONFIGS.old.url;
+let _apiKey   = _DB_CONFIGS.old.apiKey;
+let _initialized = false;
 
-export const FIREBASE_DB_URL   = _cfg.url;
-export const FIREBASE_API_KEY  = _cfg.apiKey;
-export const SUPERADMIN_EMAIL  = 'superadmin@familyfin.local';
+/**
+ * 初始化設定（每個 request 開頭呼叫）
+ * @param {object} env - CF Pages context.env
+ */
+export function initConfig(env) {
+  const target = (env && env.DB_TARGET) || 'old';
+  const cfg = _DB_CONFIGS[target] || _DB_CONFIGS.old;
+  _dbUrl  = cfg.url;
+  _apiKey = cfg.apiKey;
+  _initialized = true;
+}
+
+/* ============================================
+   對外唯讀取值（給 _helpers.js 等使用）
+   ============================================ */
+export function getDbUrl()  { return _dbUrl; }
+export function getApiKey() { return _apiKey; }
+
+/* ============================================
+   靜態常數
+   ============================================ */
+export const SUPERADMIN_EMAIL = 'superadmin@familyfin.local';
 export const IDENTITY_TOOLKIT_URL = 'https://identitytoolkit.googleapis.com/v1';
 
 /* ============================================
@@ -37,14 +54,14 @@ export const IDENTITY_TOOLKIT_URL = 'https://identitytoolkit.googleapis.com/v1';
    ============================================ */
 
 export async function dbGet(path, token = '') {
-  const url = `${FIREBASE_DB_URL}/${path}.json${token ? `?auth=${token}` : ''}`;
+  const url = `${_dbUrl}/${path}.json${token ? `?auth=${token}` : ''}`;
   const res = await fetch(url);
   if (!res.ok) return null;
   return res.json();
 }
 
 export async function dbPut(path, data, token = '') {
-  const url = `${FIREBASE_DB_URL}/${path}.json${token ? `?auth=${token}` : ''}`;
+  const url = `${_dbUrl}/${path}.json${token ? `?auth=${token}` : ''}`;
   const res = await fetch(url, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -54,7 +71,7 @@ export async function dbPut(path, data, token = '') {
 }
 
 export async function dbPatch(path, data, token = '') {
-  const url = `${FIREBASE_DB_URL}/${path}.json${token ? `?auth=${token}` : ''}`;
+  const url = `${_dbUrl}/${path}.json${token ? `?auth=${token}` : ''}`;
   const res = await fetch(url, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -64,7 +81,7 @@ export async function dbPatch(path, data, token = '') {
 }
 
 export async function dbPush(path, data, token = '') {
-  const url = `${FIREBASE_DB_URL}/${path}.json${token ? `?auth=${token}` : ''}`;
+  const url = `${_dbUrl}/${path}.json${token ? `?auth=${token}` : ''}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -76,18 +93,18 @@ export async function dbPush(path, data, token = '') {
 }
 
 export async function dbDelete(path, token = '') {
-  const url = `${FIREBASE_DB_URL}/${path}.json${token ? `?auth=${token}` : ''}`;
+  const url = `${_dbUrl}/${path}.json${token ? `?auth=${token}` : ''}`;
   const res = await fetch(url, { method: 'DELETE' });
   return res.ok;
 }
 
 /* ============================================
-   Firebase Auth 操作（Identity Toolkit REST）
+   Firebase Auth 操作
    ============================================ */
 
 export async function dbSignUp(email, password) {
   try {
-    const url = `${IDENTITY_TOOLKIT_URL}/accounts:signUp?key=${FIREBASE_API_KEY}`;
+    const url = `${IDENTITY_TOOLKIT_URL}/accounts:signUp?key=${_apiKey}`;
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -127,6 +144,6 @@ export function jsonResponse(data, status = 200) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: functions/api/_config.js
-   Version: v103.0.43
+   Version: v103.0.44
    Batch: B30-5
    ═══════════════════════════════════════════ */

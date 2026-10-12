@@ -1,12 +1,14 @@
 // ============================================
-// _helpers.js — API 共用輔助（v103.0.22）
+// _helpers.js — API 共用輔助（v103.0.44）
 // 位置：functions/api/_helpers.js
 // ============================================
+// v103.0.44（B30-5）：
+//   ✅ 改從 getApiKey() 讀（支援 DB 切換）
 // v103.0.22（B25-4）：
-//   ✅ H3：移除重複定義的 FIREBASE_API_KEY / IDENTITY_TOOLKIT_URL，改從 _config.js 導入
+//   ✅ H3：移除重複定義，改從 _config.js 導入
 // ============================================
 
-import { SUPERADMIN_EMAIL, FIREBASE_API_KEY, IDENTITY_TOOLKIT_URL as IDENTITY_TOOLKIT_BASE, jsonResponse, dbGet } from './_config.js';
+import { SUPERADMIN_EMAIL, getApiKey, IDENTITY_TOOLKIT_URL as IDENTITY_TOOLKIT_BASE, jsonResponse, dbGet } from './_config.js';
 
 const IDENTITY_TOOLKIT_LOOKUP_URL = `${IDENTITY_TOOLKIT_BASE}/accounts:lookup`;
 
@@ -50,7 +52,7 @@ export async function verifyToken(token) {
   if (cached && cached.expireAt > Date.now()) return cached.user;
 
   try {
-    const res = await fetch(`${IDENTITY_TOOLKIT_LOOKUP_URL}?key=${FIREBASE_API_KEY}`, {
+    const res = await fetch(`${IDENTITY_TOOLKIT_LOOKUP_URL}?key=${getApiKey()}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ idToken: token }),
@@ -252,6 +254,6 @@ export function buildLinkedKey(policyId) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: functions/api/_helpers.js
-   Version: v103.0.22
-   Batch: B25-4
+   Version: v103.0.44
+   Batch: B30-5
    ═══════════════════════════════════════════ */
