@@ -1,8 +1,8 @@
 # P-03 交付進度
 
-最後更新：B29-8c
-版本：v103.0.36
-批次：B29
+最後更新：B29-10b
+版本：v103.0.37
+批次：B29-10b
 狀態：B29 已部署測試通過
 
 ---
@@ -21,11 +21,78 @@
 | B26 | 全站優化 | ✅ |
 | B29 | 表頭排序 + config 整合 + 頁面 metadata | ✅ |
 | B29-7 | C-* 6 檔（共用） | ✅ |
-| B29-8 | P-* 重組（進行中） | 🔄 |
+| B29-8 | P-* 重組（14 檔） | ✅ |
+| B29-9 | docs 補回（4 批 + 修正批） | ✅ |
+| B29-10 | C-02 Token 視覺化 + 3 檔同步 | ✅ |
 
 ---
 
-## B29 子批次
+## B29-9：docs 補回
+
+### 第 1 批（B29-9）
+
+| # | 檔案 | 變更 |
+|---|---|---|
+| 1 | C-02-rules.md | 加入 §0 Token 不足處理 |
+| 2 | P-02-anchor.md | 完整補回（二~七、十~十四） |
+
+### 修正批（B29-9a）
+
+| # | 檔案 | 變更 |
+|---|---|---|
+| 1 | C-02-rules.md | §0 開場白改 3 backtick；§六 加 backtick 嵌套強制檢查 |
+| 2 | P-02-anchor.md | 三層資料流改 3 backtick |
+| 3 | C-05-learning.md | 加 L-009（backtick 嵌套未自檢） |
+
+### 第 2 批（B29-9b）
+
+| # | 檔案 | 變更 |
+|---|---|---|
+| 1 | C-04-delivery.md | 補回 11 項錯誤 + 檔案大小 + 命名 + 新規則 |
+| 2 | P-14-refactor.md | 新建（從舊 refactor-plan.md 遷移） |
+
+### 第 3 批（B29-9c）
+
+| # | 檔案 | 變更 |
+|---|---|---|
+| 1 | C-03-guide.md | 補回 Q1~Q14 FAQ + 動作模板 4 個 + 規則速查 |
+| 2 | P-06-sop.md | 補回 Page Schema 結構完整欄位 |
+
+### 第 4 批（B29-9d）
+
+| # | 檔案 | 變更 |
+|---|---|---|
+| 1 | P-12-incident.md | 補回 B12~B15 完整事故表 |
+| 2 | P-10-data.md | 補回 B23 基金累積流程完整步驟 |
+
+---
+
+## B29-10：Token 視覺化 + 同步
+
+### B29-10
+
+| # | 檔案 | 變更 |
+|---|---|---|
+| 1 | C-02-rules.md | §0 調整（Token 足夠不需開場白）+ §0.5 新增 Token 視覺化 |
+
+### B29-10a
+
+| # | 檔案 | 變更 |
+|---|---|---|
+| 1 | C-03-guide.md | §五 +§九 +§十 +§十一 加 Token 提示；Q15 新增 |
+| 2 | C-04-delivery.md | §四 +§十一 +§十二 +§十三 +§十四 加 Token 相關 |
+
+### B29-10b（本批）
+
+| # | 檔案 | 變更 |
+|---|---|---|
+| 1 | P-02-anchor.md | §十一 加「Token 視覺化」關鍵字 |
+| 2 | P-03-progress.md | 本檔（記錄 B29-9 / B29-10） |
+| 3 | P-04-manifest.md | 版本更新 |
+
+---
+
+## B29 子批次（歷史）
 
 ### B29-1a：page-controls.js
 
@@ -38,174 +105,62 @@
 
 | # | 變更 |
 |---|---|
-| 1 | 加 6 columns（settlements / insurancePolicies / bankAccounts / bankTransactions / recentExpense） |
-| 2 | 加 sortable / filterable / filterOptions 屬性 |
+| 1 | 加 6 columns |
+| 2 | 加 sortable / filterable / filterOptions |
 
 ### B29-1c：data-table.js
 
 | # | 變更 |
 |---|---|
-| 1 | 表頭點擊排序（升 / 降 / 清除） |
+| 1 | 表頭排序 |
 | 2 | 表頭篩選下拉 |
 
-### B29-2a：settlements.js
+### B29-2a ~ B29-5d
 
-| # | 變更 |
+| 批次 | 主題 |
 |---|---|
-| 1 | columns 用 registry |
-| 2 | 移除 sort / source（改表頭） |
+| B29-2a | settlements.js columns 用 registry |
+| B29-2b | insurance + member-report |
+| B29-3 | finance-overview + input-center |
+| B29-4a | HTML banner 上移 |
+| B29-4b | components.css |
+| B29-5a | page-metadata-registry.js（新） |
+| B29-5b | db.js |
+| B29-5c | page-engine.js |
+| B29-5d | layout.css + settings.js |
 
-### B29-2b：insurance + member-report
+### B29-7a / 7b / 8
 
-| # | 變更 |
+| 批次 | 主題 |
 |---|---|
-| 1 | columns 用 registry |
-
-### B29-3：finance-overview + input-center
-
-| # | 變更 |
-|---|---|
-| 1 | columns 用 registry |
-
-**注意**：portfolio 自繪卡片，不需改。
-
-### B29-4a：HTML + input-center.js
-
-| # | 變更 |
-|---|---|
-| 1 | insurance.html / settlements.html banner 上移 |
-| 2 | input-center.js 刪支出 Tab banner |
-
-### B29-4b：components.css
-
-| # | 變更 |
-|---|---|
-| 1 | 加 `.page-banner` |
-| 2 | 加 dt-* 樣式 |
-
-### B29-5a：page-metadata-registry.js（新）
-
-| # | 變更 |
-|---|---|
-| 1 | 每頁預設 title / subtitleStatic |
-| 2 | getPageKeyFromUrl / getDefaultMetadata / listPages |
-
-### B29-5b：db.js
-
-| # | 變更 |
-|---|---|
-| 1 | listenPageMetadata / savePageMetadata |
-
-### B29-5c：page-engine.js
-
-| # | 變更 |
-|---|---|
-| 1 | _applyPageMetadata（title 覆蓋 + subtitle data-prefix） |
-
-### B29-5d：layout.css + settings.js
-
-| # | 變更 |
-|---|---|
-| 1 | layout.css 加 ::before 規則 |
-| 2 | settings.js 加「頁面標題」卡 |
-
-### B29-7a：insurance + settlements + finance-overview
-
-| # | 變更 |
-|---|---|
-| 1 | 刪 syncSubtitle（動態副標題） |
-
-### B29-7b：dashboard + member-report
-
-| # | 變更 |
-|---|---|
-| 1 | 刪 subtitle derived / syncSubtitle |
-
-### B29-8：副標題修正
-
-| # | 變更 |
-|---|---|
-| 1 | page-engine 清 textContent |
-| 2 | input-center / database / settings HTML page-header 統一結構 |
-
-### B29-7：C-* 6 檔（共用）
-
-| # | 檔案 | 狀態 |
-|---|---|---|
-| 1 | C-00-startup.md | ✅ |
-| 2 | C-01-profile.md | ✅ |
-| 3 | C-02-rules.md | ✅ |
-| 4 | C-03-guide.md | ✅ |
-| 5 | C-04-delivery.md | ✅ |
-| 6 | C-05-learning.md | ✅ |
-
-### B29-8：P-* 重組（進行中）
-
-| # | 檔案 | 狀態 |
-|---|---|---|
-| 1 | P-01-index.md | ✅ |
-| 2 | P-99-errors-map.md | ✅ |
-| 3 | P-02-anchor.md | ✅ |
-| 4 | P-13-glossary.md | ✅ |
-| 5 | P-03-progress.md | ✅ 本檔 |
-| 6 | P-11-compat.md | ✅ |
-| 7 | P-04-manifest.md | 📋 |
-| 8 | P-05-adr.md | 📋 |
-| 9 | P-06-sop.md | 📋 |
-| 10 | P-07-pagemap.md | 📋 |
-| 11 | P-08-uispec.md | 📋 |
-| 12 | P-09-api.md | 📋 |
-| 13 | P-10-data.md | 📋 |
-| 14 | P-12-incident.md | 📋 |
+| B29-7a | 刪 syncSubtitle（3 頁） |
+| B29-7b | 刪 subtitle derived（2 頁） |
+| B29-8 | 副標題修正（清 textContent） |
 
 ---
 
-## B29 期间发现问题
+## 當前狀態
 
-| # | 问题 | 修复批次 |
-|---|---|---|
-| 1 | 年月 select 高亮不动 | B29-1a |
-| 2 | 月份边界 / 双重渲染 | B29-1a |
-| 3 | 副标题动态不重要（删除） | B29-7 |
-| 4 | 副标题未取代（硬编码残留） | B29-8 |
-
----
-
-## B29 教训
-
-| # | 教训 |
+| 項目 | 值 |
 |---|---|
-| 1 | 未盘点实际 banner 页数（估 10，实 2） |
-| 2 | 未思考集中层强制 |
-| 3 | 未检查现有 API 复用 |
-| 4 | 未用 CSS ::before 替代 5 页 compose |
-
-**完整教训**：C-05-learning.md
-
----
-
-## 当前状态
-
-| 项目 | 值 |
-|---|---|
-| 当前批次 | B29-8（P-* 重组） |
-| 当前部署 | B29 已测试通过 |
-| 下一步 | 完成剩余 7 个 P-* 档 |
+| 當前批次 | B29-10b（docs 同步） |
+| 當前部署 | B29 已測試通過 |
+| 下一步 | 完成 P-04 更新，B30 起新功能 |
 
 ---
 
 ## 下一步
 
-| 项目 | 状态 |
+| 項目 | 狀態 |
 |---|---|
-| P-* 剩余 7 档 | 🔄 进行中 |
-| B30 起新功能 | 📋 待规划 |
+| B29-10b 完成 | 🔄 進行中 |
+| B30 起新功能 | 📋 待規劃 |
 
 ---
 
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/P-03-progress.md
-   Version: v103.0.36
-   Batch: B29-8c
+   Version: v103.0.37
+   Batch: B29-10b
    ═══════════════════════════════════════════ */
