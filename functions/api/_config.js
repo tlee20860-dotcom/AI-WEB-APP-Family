@@ -1,15 +1,35 @@
 // ============================================
-// _config.js — Firebase REST 設定（v103.0.0）
+// _config.js — Firebase REST 設定（v103.0.43）
 // 位置：functions/api/_config.js
 // ============================================
+// v103.0.43（B30-5）：
+//   ✅ 支援環境變數 DB_TARGET 切換 DB（old / new）
+//   ✅ CF Pages 設 DB_TARGET=new 即連新 DB
 // v103.0.0 重構：
-//   ✅ 版本號更新（無功能變更）
-//   ✅ 保留 v101.8.0 全部功能
+//   ✅ 版本號更新
 // ============================================
 
-export const FIREBASE_DB_URL = 'https://family-fin-a6dd1-default-rtdb.asia-southeast1.firebasedatabase.app';
-export const SUPERADMIN_EMAIL = 'superadmin@familyfin.local';
-export const FIREBASE_API_KEY = 'AIzaSyCQlrNdorKJI9xsqr4m4ME046lrubo9Y7I';
+/* ============================================
+   DB 目標（環境變數）
+   ============================================ */
+const _DB_TARGET = (typeof process !== 'undefined' && process.env?.DB_TARGET) || 'old';
+
+const _DB_CONFIGS = {
+  old: {
+    url:    'https://family-fin-a6dd1-default-rtdb.asia-southeast1.firebasedatabase.app',
+    apiKey: 'AIzaSyCQlrNdorKJI9xsqr4m4ME046lrubo9Y7I',
+  },
+  new: {
+    url:    'https://family-3d0a5-default-rtdb.asia-southeast1.firebasedatabase.app',
+    apiKey: 'AIzaSyBJCK83RQyHbol4yJ4UDo3pOUXpUgcW9hU',
+  },
+};
+
+const _cfg = _DB_CONFIGS[_DB_TARGET] || _DB_CONFIGS.old;
+
+export const FIREBASE_DB_URL   = _cfg.url;
+export const FIREBASE_API_KEY  = _cfg.apiKey;
+export const SUPERADMIN_EMAIL  = 'superadmin@familyfin.local';
 export const IDENTITY_TOOLKIT_URL = 'https://identitytoolkit.googleapis.com/v1';
 
 /* ============================================
@@ -84,7 +104,6 @@ export async function dbSignUp(email, password) {
 }
 
 export async function dbEmailExists(email) {
-  // Identity Toolkit 無直接查詢 API，由呼叫端處理
   return false;
 }
 
@@ -104,3 +123,10 @@ export function jsonResponse(data, status = 200) {
     },
   });
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: functions/api/_config.js
+   Version: v103.0.43
+   Batch: B30-5
+   ═══════════════════════════════════════════ */
