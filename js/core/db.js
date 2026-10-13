@@ -1,8 +1,8 @@
-// db.js — Firebase RTDB 讀寫封裝（v103.0.34）
-// v103.0.34（B29-5b）：
-//   ✅ 加 listenPageMetadata / savePageMetadata
-// v103.0.22（B25-4）：
-//   ✅ 加 getBanksOnce / getInsuranceCompaniesOnce
+// db.js — Firebase RTDB 讀寫封裝（v103.0.35）
+// v103.0.35（B31-1）：
+//   ✅ saveInsurancePaymentBatch 改 set → update
+//      - 避免覆蓋既有 paymentMode / advanceHolderId 等欄位
+//      - 加 @deprecated（前端已改用 api.insuranceSync）
 // ============================================
 import { db } from '../config/firebase-config.js';
 import { AppState } from './state.js';
@@ -423,7 +423,7 @@ export async function saveYearRange(d) {
 export function listenUIConstants(cb, err) { return listen('settings/ui_constants', (s) => cb(s.val() || {}), err); }
 export async function saveUIConstants(d) { await set(familyRef('settings/ui_constants'), d || {}); }
 
-/* ============ 🆕 v103.0.34：頁面 metadata ============ */
+/* ============ 頁面 metadata ============ */
 export function listenPageMetadata(cb, err) {
   return listen('settings/page_metadata', (s) => cb(s.val() || {}), err);
 }
@@ -660,12 +660,21 @@ export async function getInsurancePaymentsOnce(pid) {
   const snap = await get(familyRef(`insurance_payments/${pid}`));
   return snap.val() || {};
 }
+
+/**
+ * @deprecated v103.0.35（B31-1）
+ * 前端已改用 `api.insuranceSync()`（連動基金 / 代墊 / 銀行）。
+ * 本函式保留僅供舊呼叫端相容；新程式碼請勿使用。
+ *
+ * v103.0.35：set → update（避免覆蓋 paymentMode / advanceHolderId 等欄位）
+ */
 export async function saveInsurancePaymentBatch(pid, y, m, d) {
-  await set(familyRef(`insurance_payments/${pid}/${y}/${m}`), {
+  await update(familyRef(`insurance_payments/${pid}/${y}/${m}`), {
     status: normalizeStatus(d.status || '已扣款'),
     amount: roundInt(d.amount),
     date: d.date || new Date().toISOString().slice(0, 10),
     bankId: d.bankId || '', txnId: d.txnId || '',
+    updatedAt: Date.now(),
   });
 }
 export async function removeInsurancePaymentBatch(pid, y, m) {
@@ -805,6 +814,6 @@ export async function saveSidebarOrder(order) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/core/db.js
-   Version: v103.0.34
-   Batch: B29-5b
+   Version: v103.0.35
+   Batch: B31-1
    ═══════════════════════════════════════════ */
