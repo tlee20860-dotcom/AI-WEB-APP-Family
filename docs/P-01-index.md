@@ -1,20 +1,12 @@
-# P-01 專案索引（家庭財務 Web App）
+# P-01 專案索引 + 技術架構
 
-最後更新：B30-6
-版本：v103.0.39
-批次：B30-6
-用途：新對話時上傳此檔 + 相關 P-*
-
----
-
-## ⚡ 開場白（複製用）
+最後更新：B32-1
+Version: 1791883200
+Batch: B32-1
+Writer: A20261013-001#010
+用途：專案索引 + 技術架構（合併原 P-01 + P-02）
 
 ---
-```
-
-請讀取 docs/，繼續家庭財務 Web App 專案。
-
-```
 
 ## 一、專案身份
 
@@ -27,7 +19,7 @@
 | 登入 | Firebase Auth（自訂帳號 @familyfin.local） |
 | 前端 | 純 HTML + CSS + ES Module JS |
 | 後端 | Cloudflare Pages Functions |
-| 視覺 | 亮色家庭暖陽（Tailwind 色板，B30-3 起） |
+| 視覺 | 亮色家庭暖陽（Tailwind 色板） |
 | 金額 | 四捨五入至整數 |
 
 ---
@@ -36,175 +28,198 @@
 
 | 項目 | 值 |
 |---|---|
-| 版本 | v103.0.39 |
-| 批次 | B30-6（docs 同步） |
-| SW 版本 | family-fin-v141 |
+| 當前批次 | B32-1（docs 重建中） |
 | 部署 URL | family-financial-management-system.pages.dev |
-| 測試狀態 | B30-5 已部署測試通過 |
+| 測試狀態 | B30-8 已測試通過 |
 
 ---
 
-## 三、技術棧速覽
+## 三、三層架構
 
-**三層架構**：
-
-| 層 | 職責 |
-|---|---|
-| 資料層 | Firebase RTDB |
-| 引擎層 | page-engine / data-engine / render-engine |
-| 呈現層 | block / UI 元件 / DOM |
-
-**核心 SSOT**：
-
-| 類型 | 檔 |
-|---|---|
-| 5 Registry | status / entity / label / column / constants |
-| 附加 | page-metadata-registry |
-| 實體定義 | entity-definitions / entity-resolvers |
-
----
-
-## 四、檔案結構
-
-| 目錄 | 檔數 | 職責 |
+| 層 | 職責 | 檔案 |
 |---|---|---|
-| js/config/ | 8 | 常數 / Registry |
-| js/core/ | 8 | state / api / db / auth |
-| js/lib/ | 12 | 工具 / Modal / page-controls |
-| js/engines/ | 3 | page / data / render |
-| js/blocks/ | 5 | stats / list / filter / detail / form |
-| js/ui/ | 6 | toast / modal / form-builder / tab-panel / view-toggle / collapsible |
-| js/layout/ | 3 | navbar / sidebar / app-shell |
-| js/entity/ | 5 | entity-modal / helpers / definitions / resolvers / funds-allocation |
-| js/admin/ | 2 | admin / platform-defaults |
-| js/shared/ | 12 | data-table / data-card / 其他 |
-| js/pages/ | 13 | 純 Schema |
-| functions/api/ | 10 | CF Pages Functions |
-| icons/ | 1+ | icon.svg / icon.png |
+| 資料層 | Firebase RTDB | — |
+| 引擎層 | page-engine / data-engine / render-engine | js/engines/ |
+| 呈現層 | block / UI 元件 / DOM | js/blocks, js/ui |
 
-**詳細檔案清單**：P-04-manifest.md
+**資料流**：
+
+> Firebase RTDB → data-engine → page-engine → derived → block → DOM
 
 ---
 
-## 五、文檔索引（P-* 專案專用）
+## 四、核心架構原則
 
-| # | 檔案 | 用途 |
+| 原則 | 說明 |
+|---|---|
+| SSOT 極大化 | 任何知識只存在一處 |
+| 宣告式 > 命令式 | 頁面只描述「要什麼」 |
+| 舊資料 100% 相容 | 讀取時 normalize |
+| 操作邏輯不變 | 只改實作方式 |
+| 無補丁 | 能宣告就不手寫 |
+
+---
+
+## 五、5 大 Registry
+
+| Registry | 職責 |
+|---|---|
+| status-registry.js | 狀態系統 |
+| entity-registry.js | 名稱解析 |
+| label-registry.js | 顯示文字 |
+| column-registry.js | 表格欄位 + 排序 / 篩選屬性 |
+| constants.js | 全站常數 |
+
+**附加**：page-metadata-registry.js
+
+---
+
+## 六、3 大引擎
+
+| 引擎 | 職責 |
+|---|---|
+| page-engine.js | 解讀 Schema、生命週期、onDataChange、頁面 metadata |
+| data-engine.js | Firebase 訂閱 + 衍生 |
+| render-engine.js | 掛載 UI 區塊 |
+
+---
+
+## 七、5 大 Block
+
+| Block | 職責 |
+|---|---|
+| stats-block.js | 統計卡區 |
+| list-block.js | 列表區 |
+| filter-block.js | 篩選列區 |
+| detail-block.js | 明細展開區 |
+| form-block.js | 表單 Modal 區 |
+
+---
+
+## 八、Page Schema 欄位
+
+| 欄位 | 類型 | 說明 |
 |---|---|---|
-| 1 | P-01-index.md | 本檔，索引 |
-| 2 | P-02-anchor.md | 技術架構 + 專案規則 |
-| 3 | P-03-progress.md | 交付進度 |
-| 4 | P-04-manifest.md | 檔案清單 |
-| 5 | P-05-adr.md | 關鍵決策 |
-| 6 | P-06-sop.md | 常見任務 |
-| 7 | P-07-pagemap.md | 頁面 → 檔案 |
-| 8 | P-08-uispec.md | UI 術語 |
-| 9 | P-09-api.md | API 契約 |
-| 10 | P-10-data.md | Firebase 結構 |
-| 11 | P-11-compat.md | 舊資料相容 |
-| 12 | P-12-incident.md | 事故日誌 |
-| 13 | P-13-glossary.md | 業務術語 |
-| 14 | P-14-refactor.md | 重構歷程 |
-| 15 | P-99-errors-map.md | 錯誤摘要（交付前必讀） |
+| title | string | 頁面標題 |
+| data | object | Firebase 訂閱配置 |
+| state | object | 響應式狀態初始值 |
+| derived | object | 衍生資料計算 |
+| blocks | array | UI 區塊 |
+| onYearMonthChange | function | 年月變更 hook（可選） |
+| customMount | function | 逃生艙（可選） |
 
-**C-* 共用檔**（跨專案）：C-00 ~ C-07
+**customMount 回傳**：`{ destroy }`
+
+**ctx 提供**：
+
+| 方法 | 用途 |
+|---|---|
+| ctx.onDataChange(fn) | 訂閱資料變更 |
+| ctx.setState(path, val) | 設 state |
+| ctx.invalidate(key) | 觸發重算 |
 
 ---
 
-## 六、AI 讀取順序
+## 九、page-controls
 
-**必讀**：
+**模組**：js/lib/page-controls.js
 
-| 順序 | 檔案 |
+**config 結構**：
+
+| 欄位 | 說明 |
 |---|---|
-| 1 | C-00-startup.md |
-| 2 | C-01-profile.md |
-| 3 | C-02-rules.md |
-| 4 | C-03-guide.md |
-| 5 | C-04-delivery.md |
-| 6 | C-05-learning.md |
-| 7 | C-06-token-log.md |
-| 8 | C-07-summary.md |
+| containerId | body 容器 ID |
+| headerContainerId | header 容器 ID |
+| items | 元素陣列 |
 
-**舊專案啟動時**：
+**內建 type**：
 
-| 順序 | 檔案 |
+| type | position |
 |---|---|
-| 9 | P-01-index.md（本檔） |
-| 10 | P-02-anchor.md |
-| 11 | P-03-progress.md |
-| 12 | P-04-manifest.md |
+| add | 任意 |
+| export | 任意 |
+| viewToggle | 強制 body |
+| viewSwitcher | body |
+| sort | 強制 body |
+| year | body（左側） |
+| month | body（左側） |
+| filter | body |
+| custom | 任意 |
 
-**按需**：
-
-| 情境 | 讀此檔 |
-|---|---|
-| 交付前 | P-99-errors-map.md |
-| 修 Bug | P-12-incident.md |
-| 改頁面 | P-07-pagemap.md |
-| 改 UI | P-08-uispec.md |
-| 改 API | P-09-api.md |
-| 改資料 | P-10-data.md + P-11-compat.md |
-| 業務術語 | P-13-glossary.md |
-| 決策背景 | P-05-adr.md |
-| 常見任務 | P-06-sop.md |
+**year / month 內部讀寫 AppState**。
 
 ---
 
-## 七、五大鐵則
+## 十、側邊欄角色過濾
 
-| # | 鐵則 |
+**模組**：constants.js + js/layout/sidebar.js
+
+**SIDEBAR_GROUPS 每群組加 roles 陣列**。
+
+| 角色 | 可見群組 |
 |---|---|
-| 1 | 最簡潔實用 |
-| 2 | 無補丁（能宣告就不手寫） |
-| 3 | SSOT 極大化 |
-| 4 | 檔案 ≤ 500 行 |
-| 5 | AI 優先（不需為人類可讀性妥協） |
+| superadmin | 平台管理 + 系統 |
+| owner | 全部家庭群組 + 系統 |
+| member | 同 owner |
 
-**詳細**：C-02-rules.md + P-02-anchor.md
+**對外函式**：`getSidebarGroupsByRole(role)`
 
 ---
 
-## 八、下一步
+## 十一、頁面 metadata
 
-| 使用者說 | AI 動作 |
+**模組**：page-metadata-registry.js + page-engine.js
+
+**儲存**：families/{familyId}/settings/page_metadata/{pageKey}
+
+**結構**：`{ title, subtitleStatic }`
+
+**顯示機制**：
+
+| 元素 | 機制 |
 |---|---|
-| 「請交付第 N 波」 | 依 P-03-progress 交付 |
-| 「查看進度」 | 讀 P-03 回報 |
-| 「需要更新清單」 | 列已交付批次 |
-| 「有問題」 | 跑 5 問 → 先診斷 |
-| 「新增 X」 | 跑 5 問 → 提供方案 |
-| 「重構 X」 | 跑 5 問 → 提供方案 |
-| 「階段性總結」 | 依 C-07 §一 執行 |
+| title | textContent 覆蓋 |
+| subtitleStatic | data-prefix + CSS ::before |
 
 ---
 
-## 九、待辦事項
+## 十二、目標檔案結構
 
-| 項目 | 狀態 |
-|---|---|
-| B31：icon 更換 | 📋 待規劃 |
-| B31：docs 版本號統一 | 📋 待規劃 |
-| 清理 deprecated 檔（v104） | 📋 記錄 |
-| db.js 拆檔（~510 行） | 📋 觀察 |
-| column-registry.js 拆檔（~450 行） | 📋 觀察 |
-| B30 起新功能 | 📋 待規劃 |
+| 目錄 | 檔數 | 內容 |
+|---|---|---|
+| js/config | 8 | constants / firebase-config / app-config / 4 Registry / page-metadata-registry |
+| js/core | 8 | state / api / db / auth / auth-guard / utils / pwa / debug |
+| js/lib | 12 | dom / async / lifecycle / registry / merge / insurance / bank / format / expense-modal / income-modal / filter-sort / page-controls |
+| js/engines | 3 | page / data / render |
+| js/blocks | 5 | stats / list / filter / detail / form |
+| js/ui | 6 | toast / modal / form-builder / tab-panel / view-toggle / collapsible |
+| js/layout | 3 | navbar / sidebar / app-shell |
+| js/entity | 5 | entity-modal / entity-helpers / entity-definitions / entity-resolvers / entity-funds-allocation |
+| js/admin | 2 | admin / platform-defaults |
+| js/pages | 13 | 純 Schema |
+| functions/api | 10 | _config / _helpers / _admin / _bank / _family / _insurance / _personal / _platform / _summary / [[path]] |
+| CSS | 6 | theme / layout / components / utilities / pages/annual-report / pages/insurance |
+| HTML | 13 | 各頁 + login / register |
+| icons | 1+ | icon.svg / icon.png |
+| docs | 19 | C-00 ~ C-07（8）+ P-01 ~ P-99（11） |
+| 根目錄 | 3 | sw.js / manifest.json / docs/ |
 
 ---
 
-## 十、關聯檔案
+## 十三、關聯檔案
 
 | 主題 | 檔案 |
 |---|---|
-| 技術架構 | P-02-anchor.md |
-| 進度 | P-03-progress.md |
-| 檔案清單 | P-04-manifest.md |
-| 錯誤摘要 | P-99-errors-map.md |
+| 進度 | P-02-progress.md |
+| 檔案清單 | P-03-manifest.md |
+| 決策 | P-04-decisions.md |
+| 常見任務 | P-05-sop.md |
 
 ---
 
-/* ═══════════════════════════════════════════
-   END OF FILE
-   File: docs/P-01-index.md
-   Version: v103.0.39
-   Batch: B30-6
-   ═══════════════════════════════════════════ */
+/* ═══ EOF ═══
+F: docs/P-01-index.md
+V: 1791883200
+B: B32-1
+W: A20261013-001#010
+═══ */
