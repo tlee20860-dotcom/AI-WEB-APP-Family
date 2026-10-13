@@ -1,10 +1,12 @@
 // ============================================
-// auth-guard.js — 路由守衛（v103.0.11）
+// auth-guard.js — 路由守衛（v103.0.12）
 // 位置：js/core/auth-guard.js
 // ============================================
-// v103.0.11 修正：
+// v103.0.12（B31-1）：
+//   ✅ 修正：fallback 不再用 user.uid 當 familyId
+//      - 保留 AppState 既有 familyId（不污染 localStorage）
+// v103.0.11：
 //   ✅ [H10] fallback 改為「唯讀模式」（canInput = false）
-//   ✅ [H10] 加 toast 提示使用者網路異常
 // ============================================
 
 import { watchAuth, isSuperAdmin } from './auth.js';
@@ -131,10 +133,13 @@ function _applyAuthContext(ctx) {
 }
 
 /**
- * 🆕 v103.0.11 [H10]：fallback 為唯讀模式
+ * v103.0.12（B31-1）：
+ * - fallback 不再呼叫 AppState.setFamily(user.uid, ...)
+ *   因為新式帳號 uid ≠ familyId，會污染 localStorage 與查詢路徑
+ * - 保留既有 familyId（AppState.init 已從 localStorage 載入）
+ * - 只設定角色 / 權限 / 顯示名稱
  */
 function _applyFallbackContext(user) {
-  AppState.setFamily(user.uid, '我的家庭', user.uid);
   AppState.setRole(ROLES.MEMBER);
   AppState.setCanInput(false);
   AppState.setDisplayName(user.email?.split('@')[0] || '成員');
@@ -147,7 +152,7 @@ function _applyFallbackContext(user) {
 }
 
 /**
- * 🆕 v103.0.11 [H10]：提示使用者
+ * v103.0.11 [H10]：提示使用者
  */
 async function _notifyFallback() {
   try {
@@ -232,3 +237,10 @@ export function canInput() {
 export function isFamilyOwner() {
   return AppState.role === ROLES.OWNER;
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: js/core/auth-guard.js
+   Version: v103.0.12
+   Batch: B31-1
+   ═══════════════════════════════════════════ */
