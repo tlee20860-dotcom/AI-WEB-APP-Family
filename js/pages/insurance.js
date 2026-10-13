@@ -1,429 +1,283 @@
-// portfolio.js — 基金投資表（v103.0.32）
-// v103.0.32（B30-8）：
-//   ✅ 修正成本分配邏輯：若保單內有基金手動輸入成本，先從總保額扣除，再將剩餘按比例分配給其他基金
-//   ✅ 保證總投入成本 = 保單總供款，不會重複計算
+// insurance.js — 保險清單表（v103.0.36）
+// v103.0.36（B30-8）：
+//   ✅ 保單卡片加「已供款總額」與「剩餘供款」兩欄
+//      - 方便與基金頁的投入成本對比
+// v103.0.35（B29-7a）：
+//   ✅ 刪除 syncSubtitle（動態副標題）
 // ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
+import { computeEnrichedPolicies, calcProgress, getPolicyHolderId } from '../lib/insurance.js';
+import { getInsurancePaymentsOnce } from '../core/db.js';
+import { resolveName } from '../config/entity-registry.js';
+import { getColumns, getResolvers } from '../config/column-registry.js';
+import { AppState } from '../core/state.js';
 import { openEntityModal } from '../entity/entity-modal.js';
 import { deleteEntity } from '../entity/entity-helpers.js';
-import { openConfirm, openModal, closeModal } from '../ui/modal.js';
-import { buildForm } from '../ui/form-builder.js';
+import { openConfirm } from '../ui/modal.js';
 import { showToast } from '../ui/toast.js';
-import { saveFundSnapshot, getFundSnapshotsOnce } from '../core/db.js';
-import { AppState } from '../core/state.js';
+import { renderStatsCards } from '../shared/stats-cards.js';
+import { renderDataTable } from '../shared/data-table.js';
+import { renderDataCard } from '../shared/data-card.js';
 import { renderPageControls } from '../lib/page-controls.js';
-import { ENTITY_KEYS } from '../config/constants.js';
-import { calcFundCostEstimate } from '../lib/insurance.js';
-
-const SNAP_MODAL_ID = 'fund-snapshot-modal';
+import { ENTITY_KEYS, STORAGE_PREFIXES } from '../config/constants.js';
 
 export default {
-  title: '基金投資表',
-  data: {
-    funds: { type: 'list', path: 'funds' },
-    policies: { type: 'list', path: 'insurance_policies' },
-  },
-  state: {},
-  derived: {
-    insuranceFunds: {
-      deps: ['data.funds'],
-      compute: (funds) => (funds || []).filter((f) => f.type === 'insurance'),
-    },
-    standaloneFunds: {
-      deps: ['data.funds'],
-      compute: (funds) => (funds || []).filter((f) => f.type !== 'insurance'),
-    },
-    statsCards: {
-      deps: ['data.funds', 'data.policies'],
-      compute: (funds, policies) => _buildStats(funds, policies),
-    },
-  },
-  blocks: [
-    { type: 'stats', container: 'portfolio-stats-root', cards: '$.statsCards' },
-  ],
+  title: '保險清單表',
+  data: { policies: { type: 'list', path: 'insurance_policies' } },
+  state: { view: 'card' },
+  derived: {},
+  blocks: [],
 
   customMount: (ctx) => {
+    let _payments = {};
+    let _statsApi = null;
+    let _tableApi = null;
+    let _cardApi = null;
+    let _clickHandler = null;
+    let _toggleHandler = null;
     let _controls = null;
+    let _lastIds = '';
+    let _view = 'card';
+
+    try {
+      const saved = localStorage.getItem(`${STORAGE_PREFIXES.VIEW}insurance-view`);
+      if (saved === 'card' || saved === 'table') _view = saved;
+    } catch (e) { /* noop */ }
 
     const render = () => {
-      _paintInsurance(ctx);
-      _paintStandalone(ctx);
+      const policies = ctx.data.policies || [];
+      const { year } = AppState.getYearMonth();
+      const targetYear = Number(year) || new Date().getFullYear();
+      const enriched = computeEnrichedPolicies(policies, _payments, targetYear);
+
+      const statsRoot = document.getElementById('insurance-stats-root');
+      if (statsRoot) {
+        if (_statsApi) { try { _statsApi.destroy(); } catch (e) {} }
+        statsRoot.innerHTML = '';
+        const totalPaid = enriched.reduce((s, p) => s + (p._paidTotal || 0), 0);
+        _statsApi = renderStatsCards({
+          container: 'insurance-stats-root',
+          cards: [
+            { title: `${targetYear} 年度保單總供款`, value: formatHKD(enriched.reduce((s, p) => s + (p._currentAnnualPremium || 0), 0)), valueClass: 'cyan', hint: `共 ${enriched.length} 張保單`, icon: 'wallet' },
+            { title: '累計已供款總額', value: formatHKD(totalPaid), valueClass: 'emerald', hint: '所有保單的已扣款總和', icon: 'check-circle' },
+            { title: '供款中保單', value: `${enriched.filter((p) => !p._isCompleted).length} 張`, valueClass: 'emerald', hint: '未供滿的保單數量', icon: 'shield' },
+            { title: '已供滿保單', value: `${enriched.filter((p) => p._isCompleted).length} 張`, valueClass: 'emerald', hint: '已完成供款年期', icon: 'check-circle' },
+          ],
+          columns: 4,
+        });
+      }
+
+      _paintSection(enriched.filter((p) => p._isCompleted));
+      _paintActive(enriched.filter((p) => !p._isCompleted), policies.length);
       if (window.lucide) window.lucide.createIcons();
     };
 
-    const unsub = ctx.onDataChange((key) => {
-      if (key.startsWith('data.funds') || key.startsWith('data.policies') || key === '__APP__') {
-        if (key === '__APP__' && _controls) {
-          try { _controls.refresh(); } catch (e) {}
-        }
-        render();
-      }
+    const _hooks = (canInput) => ({
+      customActions: canInput ? (row) => [
+        { label: '編輯', icon: 'pencil', className: 'btn-ghost', action: 'edit', onClick: () => _onEdit(row) },
+        { label: '刪除', icon: 'trash-2', className: 'btn-danger', action: 'del', onClick: () => _onDelete(row) },
+      ] : () => [],
     });
 
-    render();
+    const _paintSection = (list) => {
+      const s = document.getElementById('completed-section');
+      const g = document.getElementById('completed-grid');
+      const c = document.getElementById('completed-count');
+      if (!s || !g) return;
+      if (list.length === 0) { s.style.display = 'none'; return; }
+      s.style.display = 'block';
+      if (c) c.textContent = String(list.length);
+      const html = list.map(_cardHtml).join('');
+      if (g.__lastHtml === html) return;
+      g.__lastHtml = html;
+      g.innerHTML = html;
+    };
+
+    const _paintActive = (active, total) => {
+      const cardEl = document.getElementById('insurance-card-view');
+      const tableEl = document.getElementById('insurance-table-view');
+      const emptyEl = document.getElementById('insurance-empty-state');
+      if (!cardEl || !tableEl) return;
+      if (total === 0) {
+        if (emptyEl) emptyEl.style.display = 'block';
+        cardEl.style.display = 'none';
+        tableEl.style.display = 'none';
+        return;
+      }
+      if (emptyEl) emptyEl.style.display = 'none';
+
+      if (_tableApi) { try { _tableApi.destroy(); } catch (e) {} _tableApi = null; }
+      if (_cardApi) { try { _cardApi.destroy(); } catch (e) {} _cardApi = null; }
+
+      if (_view === 'table') {
+        cardEl.style.display = 'none';
+        tableEl.style.display = 'block';
+        if (active.length === 0) {
+          tableEl.innerHTML = '<div class="glass-card"><div class="empty-state">所有保單均已供滿</div></div>';
+          return;
+        }
+        const canInput = AppState.getCanInput();
+        const columns = getColumns('insurancePolicies');
+        const resolvers = getResolvers('insurancePolicies');
+        _tableApi = renderDataTable({
+          container: tableEl,
+          entityKey: ENTITY_KEYS.POLICY,
+          rows: active,
+          tableId: 'insurance-table',
+          options: { columns, resolvers, storageKey: 'insurance-table' },
+          hooks: _hooks(canInput),
+        });
+      } else {
+        cardEl.style.display = 'block';
+        tableEl.style.display = 'none';
+        const html = active.length === 0
+          ? '<div class="glass-card" style="text-align:center;padding:40px 20px;"><p style="color:var(--neon-emerald);">🎉 所有保單均已供滿</p></div>'
+          : `<div class="grid grid-3">${active.map((p) => `<div class="glass-card policy-card">${_cardHtml(p)}</div>`).join('')}</div>`;
+        if (cardEl.__lastHtml !== html) {
+          cardEl.__lastHtml = html;
+          cardEl.innerHTML = html;
+        }
+      }
+    };
+
+    const _cardHtml = (p) => {
+      const holderId = getPolicyHolderId(p);
+      const holder = resolveName('members', holderId) || holderId || '—';
+      const insured = resolveName('members', p.memberId) || p.memberId || '—';
+      const isFund = p.type === 'fund_insurance';
+      const total = p.totalPolicyPeriods || 0;
+      const done = p.completedPeriods || 0;
+      const pct = calcProgress(p);
+      const canInput = AppState.getCanInput();
+
+      /* 🆕 已供款總額 / 剩餘供款 */
+      const paidTotal = p._paidTotal || 0;
+      const totalPremium = p._totalPremium || 0;
+      const remaining = Math.max(0, totalPremium - paidTotal);
+
+      const actions = canInput ? `<div class="policy-actions"><button type="button" class="btn btn-sm btn-ghost" data-action="edit-policy" data-id="${p.id}"><i data-lucide="pencil" style="width:14px;height:14px;"></i> 編輯</button><button type="button" class="btn btn-sm btn-danger" data-action="delete-policy" data-id="${p.id}"><i data-lucide="trash-2" style="width:14px;height:14px;"></i> 刪除</button></div>` : '';
+      const progressHtml = isFund ? '' : `<div class="policy-progress" style="margin-top:12px;"><div class="policy-progress-text"><span>整體供款進度</span><span>${done} / ${total} 期 (${pct}%)</span></div><div class="progress"><div class="progress-bar" style="width:${pct}%;"></div></div></div>`;
+
+      return `<div class="policy-header"><div><div class="policy-name">${esc(p.name || '')}</div><div class="policy-company">${esc(p.company || '')} · ${isFund ? '基金保險' : '普通保險'}</div></div></div>
+        <div class="policy-info-grid">
+          <div class="policy-info-item"><span class="policy-info-label">保單持有人</span><span class="policy-info-value">${esc(holder)}</span></div>
+          <div class="policy-info-item"><span class="policy-info-label">受保人</span><span class="policy-info-value">${esc(insured)}</span></div>
+        </div>
+        <div class="policy-info-grid" style="margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,0.08);">
+          <div class="policy-info-item"><span class="policy-info-label">本期年繳</span><span class="policy-info-value text-cyan">${formatHKD(p._currentAnnualPremium)}</span></div>
+          <div class="policy-info-item"><span class="policy-info-label">保單總供款</span><span class="policy-info-value text-magenta">${formatHKD(totalPremium)}</span></div>
+        </div>
+        <div class="policy-info-grid" style="margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,0.08);">
+          <div class="policy-info-item"><span class="policy-info-label">已供款總額</span><span class="policy-info-value text-emerald" style="font-weight:700;">${formatHKD(paidTotal)}</span></div>
+          <div class="policy-info-item"><span class="policy-info-label">剩餘供款</span><span class="policy-info-value">${formatHKD(remaining)}</span></div>
+        </div>${progressHtml}${actions}`;
+    };
+
+    const _onEdit = (row) => {
+      openEntityModal({ entity: ENTITY_KEYS.POLICY, mode: 'edit', id: row.id, allRows: ctx.data.policies || [] });
+    };
+
+    const _onDelete = async (row) => {
+      const ok = await openConfirm(`⚠️ 確定要刪除保單「${row.name}」嗎？`, { title: '刪除保單', okText: '刪除', okClass: 'btn-danger' });
+      if (!ok) return;
+      try { await deleteEntity(ENTITY_KEYS.POLICY, row.id, getPolicyHolderId(row)); showToast('✅ 已刪除保單', 'success'); }
+      catch (err) { showToast('刪除失敗：' + err.message, 'error'); }
+    };
+
+    _clickHandler = async (e) => {
+      const btn = e.target.closest('button[data-action]');
+      if (!btn || !AppState.getCanInput()) return;
+      const policies = ctx.data.policies || [];
+      const policy = policies.find((p) => p.id === btn.dataset.id);
+      if (!policy) return;
+      if (btn.dataset.action === 'edit-policy') _onEdit(policy);
+      else if (btn.dataset.action === 'delete-policy') _onDelete(policy);
+    };
+    document.getElementById('insurance-card-view')?.addEventListener('click', _clickHandler);
+    document.getElementById('completed-grid')?.addEventListener('click', _clickHandler);
+
+    const headerEl = document.getElementById('completed-header');
+    const bodyEl = document.getElementById('completed-body');
+    const sectionEl = document.getElementById('completed-section');
+    _toggleHandler = () => {
+      if (!bodyEl || !sectionEl) return;
+      const open = bodyEl.style.display === 'block';
+      bodyEl.style.display = open ? 'none' : 'block';
+      sectionEl.classList.toggle('open', !open);
+    };
+    if (headerEl) headerEl.addEventListener('click', _toggleHandler);
 
     _controls = renderPageControls({
       containerId: 'page-controls-root',
+      headerContainerId: 'page-header-actions',
       items: [
         {
           type: 'add',
-          label: '新增基金',
-          onClick: () => openEntityModal({ entity: ENTITY_KEYS.FUND, mode: 'add', onSuccess: render }),
+          label: '新增保單',
+          onClick: () => openEntityModal({ entity: ENTITY_KEYS.POLICY, mode: 'add' }),
         },
         {
-          type: 'year',
-          year: AppState.year,
-          onChange: (y) => AppState.setYearMonth(y, AppState.month === 'all' ? '01' : AppState.month),
+          type: 'viewToggle',
+          storageKey: 'insurance-view',
+          defaultView: 'card',
+          onChange: (v) => { _view = v; render(); },
         },
-        {
-          type: 'month',
-          month: AppState.month === 'all' ? '01' : AppState.month,
-          onChange: (m) => AppState.setYearMonth(AppState.year, m),
-        },
+        { type: 'year' },
+        { type: 'month' },
       ],
     });
 
-    const addFirstBtn = document.getElementById('add-first-fund-btn');
-    const onAddFirst = () => openEntityModal({ entity: ENTITY_KEYS.FUND, mode: 'add', onSuccess: render });
+    const addFirstBtn = document.getElementById('add-first-policy-btn');
+    const onAddFirst = () => openEntityModal({ entity: ENTITY_KEYS.POLICY, mode: 'add' });
     if (addFirstBtn) addFirstBtn.addEventListener('click', onAddFirst);
 
-    const cardClickHandler = async (e) => {
-      const btn = e.target.closest('button[data-action]');
-      if (!btn) return;
-      const id = btn.dataset.id;
-      if (!id) return;
-      const funds = ctx.data.funds || [];
-      const fund = funds.find((f) => f.id === id);
-      if (!fund) return;
+    const _loadPayments = async () => {
+      const policies = ctx.data.policies || [];
+      const ids = policies.map((p) => p.id).sort().join(',');
+      if (ids === _lastIds) return;
+      _lastIds = ids;
+      if (policies.length === 0) { _payments = {}; return; }
+      try {
+        const snaps = await Promise.all(policies.map((p) => getInsurancePaymentsOnce(p.id)));
+        _payments = {};
+        policies.forEach((p, i) => { _payments[p.id] = snaps[i]; });
+      } catch (e) { _payments = {}; }
+    };
 
-      if (btn.dataset.action === 'edit-fund') {
-        openEntityModal({ entity: ENTITY_KEYS.FUND, mode: 'edit', id, allRows: funds, onSuccess: render });
-      } else if (btn.dataset.action === 'delete-fund') {
-        const ok = await openConfirm(`確定要刪除基金「${fund.name}」嗎？`, { title: '刪除基金', okText: '刪除', okClass: 'btn-danger' });
-        if (!ok) return;
-        try { await deleteEntity(ENTITY_KEYS.FUND, id); showToast('✅ 已刪除基金', 'success'); }
-        catch (err) { showToast('刪除失敗：' + err.message, 'error'); }
+    const unsub = ctx.onDataChange(async (key) => {
+      if (key.startsWith('data.policies') || key === '__APP__') {
+        if (key === '__APP__' && _controls) {
+          try { _controls.refresh(); } catch (e) {}
+        }
+        await _loadPayments();
       }
-    };
+      render();
+    });
 
-    const snapshotHandler = async (e) => {
-      const btn = e.target.closest('button[data-action="snapshot"]');
-      if (!btn) return;
-      const fundId = btn.dataset.id;
-      const fundName = btn.dataset.name || '';
-      if (!fundId) return;
-      await _openSnapshotModal(fundId, fundName);
-    };
-
-    const insRoot = document.getElementById('insurance-funds-list');
-    const stdRoot = document.getElementById('standalone-funds-list');
-
-    insRoot?.addEventListener('click', cardClickHandler);
-    stdRoot?.addEventListener('click', cardClickHandler);
-    document.addEventListener('click', snapshotHandler);
+    _loadPayments().then(render);
 
     return {
       destroy: () => {
         unsub();
+        if (_statsApi) { try { _statsApi.destroy(); } catch (e) {} }
+        if (_tableApi) { try { _tableApi.destroy(); } catch (e) {} }
+        if (_cardApi) { try { _cardApi.destroy(); } catch (e) {} }
         if (_controls) { try { _controls.destroy(); } catch (e) {} }
+        if (_clickHandler) {
+          document.getElementById('insurance-card-view')?.removeEventListener('click', _clickHandler);
+          document.getElementById('completed-grid')?.removeEventListener('click', _clickHandler);
+        }
+        if (_toggleHandler && headerEl) headerEl.removeEventListener('click', _toggleHandler);
         if (addFirstBtn) addFirstBtn.removeEventListener('click', onAddFirst);
-        insRoot?.removeEventListener('click', cardClickHandler);
-        stdRoot?.removeEventListener('click', cardClickHandler);
-        document.removeEventListener('click', snapshotHandler);
       },
     };
   },
 };
 
-/* ============================================
-   反查機制：找出基金對應的保單
-   ============================================ */
-function _findPolicyByFund(fund, policies) {
-  if (fund.policyId) {
-    const p = (policies || []).find((x) => x.id === fund.policyId);
-    if (p) return p;
-  }
-  return (policies || []).find((p) =>
-    (p.fundsAllocation || []).some((a) => a.fundId === fund.id)
-  ) || null;
-}
-
-/* ============================================
-   🆕 核心邏輯：為單一保單計算所有基金的投入成本
-   -------------------------------------------------
-   1. 計算該保單的總投入成本（月供 × 已供月數）
-   2. 找出有手動成本的基金（如東方匯理）
-   3. 從總成本扣除手動成本
-   4. 剩餘成本按比例分配給其他基金
-   ============================================ */
-function _getCostMapForPolicy(policy, allFunds, targetYear, targetMonth) {
-  const costMap = {};
-  const policyFunds = (allFunds || []).filter(
-    (f) => f.type === 'insurance' && _findPolicyByFund(f, [policy]) !== null
-  );
-  if (policyFunds.length === 0) return costMap;
-
-  const totalPolicyCost = calcFundCostEstimate(policy, targetYear, targetMonth);
-
-  /* 分離手動成本基金 */
-  const manualFunds = policyFunds.filter((f) => Number(f.cost) > 0);
-  const manualTotal = manualFunds.reduce((s, f) => s + Number(f.cost), 0);
-
-  manualFunds.forEach((f) => { costMap[f.id] = Number(f.cost); });
-
-  /* 動態分配剩餘成本 */
-  const remainingCost = Math.max(0, totalPolicyCost - manualTotal);
-  const dynamicFunds = policyFunds.filter((f) => Number(f.cost) <= 0);
-  const dynamicTotalPct = dynamicFunds.reduce((s, f) => {
-    const alloc = (policy.fundsAllocation || []).find((a) => a.fundId === f.id);
-    return s + (alloc ? Number(alloc.pct) : 0);
-  }, 0);
-
-  dynamicFunds.forEach((f) => {
-    const alloc = (policy.fundsAllocation || []).find((a) => a.fundId === f.id);
-    const pct = alloc ? Number(alloc.pct) : 0;
-    costMap[f.id] = dynamicTotalPct > 0 ? Math.round(remainingCost * (pct / dynamicTotalPct)) : 0;
-  });
-
-  return costMap;
-}
-
-/* ============================================
-   保險基金區
-   ============================================ */
-function _paintInsurance(ctx) {
-  const root = document.getElementById('insurance-funds-list');
-  if (!root) return;
-  const list = ctx.derived.insuranceFunds || [];
-  if (list.length === 0) {
-    root.innerHTML = '<div class="glass-card"><div class="empty-state">尚無保險基金</div></div>';
-    return;
-  }
-  const policies = ctx.data.policies || [];
-  const ym = AppState.getYearMonth();
-  const y = ym.year || String(new Date().getFullYear());
-  const m = ym.month === 'all' ? String(new Date().getMonth() + 1).padStart(2, '0') : ym.month;
-
-  /* 為每張保單預先計算成本映射表 */
-  const costMaps = {};
-  policies.forEach((p) => { costMaps[p.id] = _getCostMapForPolicy(p, list, y, m); });
-
-  const rows = list.map((f) => {
-    const policy = _findPolicyByFund(f, policies);
-    const alloc = (policy?.fundsAllocation || []).find((a) => a.fundId === f.id);
-    const pct = alloc ? alloc.pct : 0;
-    const dynamicCost = (policy && costMaps[policy.id]) ? (costMaps[policy.id][f.id] || 0) : (Number(f.cost) || 0);
-    return { fund: f, policyName: policy?.name || '（未關聯）', pct, dynamicCost };
-  });
-  const html = rows.map((r) => _cardHtml(r, true)).join('');
-  if (root.__lastHtml === html) return;
-  root.__lastHtml = html;
-  root.innerHTML = html;
-}
-
-/* ============================================
-   獨立基金區
-   ============================================ */
-function _paintStandalone(ctx) {
-  const root = document.getElementById('standalone-funds-list');
-  if (!root) return;
-  const list = ctx.derived.standaloneFunds || [];
-  const empty = document.getElementById('fund-empty-state');
-  if (list.length === 0) {
-    if (empty) empty.style.display = 'block';
-    root.innerHTML = '';
-    root.__lastHtml = '';
-    return;
-  }
-  if (empty) empty.style.display = 'none';
-  const html = `<div class="data-cards-grid">${list.map((f) => _cardHtml({ fund: f }, false)).join('')}</div>`;
-  if (root.__lastHtml === html) return;
-  root.__lastHtml = html;
-  root.innerHTML = html;
-}
-
-/* ============================================
-   卡片 HTML
-   ============================================ */
-function _cardHtml({ fund, policyName, pct, dynamicCost }, isInsurance) {
-  const cost = isInsurance ? (dynamicCost != null ? dynamicCost : Number(fund.cost) || 0) : (Number(fund.cost) || 0);
-  const value = Number(fund.currentValue) || 0;
-  const pnl = value - cost;
-  const pnlCls = pnl >= 0 ? 'text-emerald' : 'text-red';
-  const pnlSign = pnl >= 0 ? '+' : '';
-  const pnlPct = cost > 0 ? ((pnl / cost) * 100).toFixed(2) : '0.00';
-
-  const meta = isInsurance
-    ? `<div class="policy-company">${esc(policyName)} · 比例 ${pct}%</div>`
-    : '';
-  const costHint = isInsurance
-    ? (pct > 0
-        ? '<div class="glass-card-hint" style="margin-top:2px;">月供 × 已供月數 × 比例（自動）</div>'
-        : '<div class="glass-card-hint" style="margin-top:2px;">手動輸入成本</div>')
-    : '';
-
-  return `
-    <div class="glass-card policy-card">
-      <div class="policy-header">
-        <div style="min-width:0;">
-          <div class="policy-name">${esc(fund.name || '（未命名）')}</div>
-          ${meta}
-        </div>
-      </div>
-      <div class="policy-info-grid">
-        <div class="policy-info-item"><span class="policy-info-label">投入成本</span><span class="policy-info-value">${formatHKD(cost)}</span>${costHint}</div>
-        <div class="policy-info-item"><span class="policy-info-label">現時價值</span><span class="policy-info-value text-emerald">${formatHKD(value)}</span></div>
-      </div>
-      <div class="policy-info-grid" style="margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,0.08);">
-        <div class="policy-info-item"><span class="policy-info-label">盈虧</span><span class="policy-info-value ${pnlCls}">${pnlSign}${formatHKD(pnl)} (${pnlPct}%)</span></div>
-        <div class="policy-info-item"><span class="policy-info-label">單位數</span><span class="policy-info-value">${fund.units || '—'}</span></div>
-      </div>
-      <div class="policy-actions">
-        <button type="button" class="btn btn-sm btn-primary" data-action="snapshot" data-id="${esc(fund.id)}" data-name="${esc(fund.name || '')}">
-          <i data-lucide="camera" style="width:14px;height:14px;"></i> 輸入本月快照
-        </button>
-        <button type="button" class="btn btn-sm btn-ghost" data-action="edit-fund" data-id="${esc(fund.id)}">
-          <i data-lucide="pencil" style="width:14px;height:14px;"></i> 編輯
-        </button>
-        <button type="button" class="btn btn-sm btn-danger" data-action="delete-fund" data-id="${esc(fund.id)}">
-          <i data-lucide="trash-2" style="width:14px;height:14px;"></i> 刪除
-        </button>
-      </div>
-    </div>
-  `;
-}
-
-/* ============================================
-   快照輸入 Modal
-   ============================================ */
-async function _openSnapshotModal(fundId, fundName) {
-  document.getElementById(SNAP_MODAL_ID)?.remove();
-
-  const overlay = document.createElement('div');
-  overlay.className = 'modal-overlay';
-  overlay.id = SNAP_MODAL_ID;
-  overlay.innerHTML = `<div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto;"><h2 class="modal-title">輸入快照 — ${esc(fundName)}</h2><div id="${SNAP_MODAL_ID}-form-root"></div></div>`;
-  document.body.appendChild(overlay);
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(SNAP_MODAL_ID); });
-
-  const { year, month } = AppState.getYearMonth();
-  const y = year || String(new Date().getFullYear());
-  const m = month === 'all' ? String(new Date().getMonth() + 1).padStart(2, '0') : month;
-
-  let snaps = {};
-  try { snaps = await getFundSnapshotsOnce(fundId); } catch (e) {}
-
-  const yearsOpts = [];
-  const curY = new Date().getFullYear();
-  for (let yy = curY - 5; yy <= curY + 1; yy++) yearsOpts.push({ value: String(yy), label: `${yy} 年` });
-  const monthsOpts = [];
-  for (let mm = 1; mm <= 12; mm++) monthsOpts.push({ value: String(mm).padStart(2, '0'), label: `${mm} 月` });
-
-  buildForm({
-    containerId: `${SNAP_MODAL_ID}-form-root`,
-    fields: [
-      { type: 'select', id: 'snap-year', label: '年度', required: true, includeEmpty: false, options: yearsOpts, defaultValue: y },
-      { type: 'select', id: 'snap-month', label: '月份', required: true, includeEmpty: false, options: monthsOpts, defaultValue: m },
-      { type: 'number', id: 'snap-shares', label: '股數', required: true, min: 0, step: 0.0001, defaultValue: 0 },
-      { type: 'number', id: 'snap-nav', label: '股價（淨值）', required: true, min: 0, step: 0.0001, defaultValue: 0 },
-      { type: 'number', id: 'snap-value', label: '現值（自動計算）', required: false, disabled: true, defaultValue: 0 },
-    ],
-    submitText: '儲存快照',
-    showCancel: true,
-    cancelText: '取消',
-    onSubmit: async (data) => {
-      try {
-        const sy = data['snap-year'];
-        const sm = data['snap-month'];
-        const shares = Number(data['snap-shares']) || 0;
-        const nav = Number(data['snap-nav']) || 0;
-        await saveFundSnapshot(fundId, sy, sm, { shares, nav });
-        showToast(`✅ 已儲存 ${sy}-${sm} 快照`, 'success');
-        closeModal(SNAP_MODAL_ID);
-        overlay.remove();
-      } catch (err) { showToast('儲存失敗：' + err.message, 'error'); }
-    },
-    onCancel: () => { closeModal(SNAP_MODAL_ID); overlay.remove(); },
-  });
-
-  const sharesEl = document.getElementById('snap-shares');
-  const navEl = document.getElementById('snap-nav');
-  const valueEl = document.getElementById('snap-value');
-  const yearEl = document.getElementById('snap-year');
-  const monthEl = document.getElementById('snap-month');
-
-  const calcValue = () => {
-    const s = Number(sharesEl?.value) || 0;
-    const n = Number(navEl?.value) || 0;
-    if (valueEl) valueEl.value = Math.round(s * n);
-  };
-  const loadExisting = () => {
-    const sy = yearEl?.value || '';
-    const sm = monthEl?.value || '';
-    const snap = snaps?.[sy]?.[sm];
-    if (snap) {
-      if (sharesEl) sharesEl.value = snap.shares || 0;
-      if (navEl) navEl.value = snap.nav || 0;
-      calcValue();
-    } else {
-      if (sharesEl) sharesEl.value = 0;
-      if (navEl) navEl.value = 0;
-      if (valueEl) valueEl.value = 0;
-    }
-  };
-  sharesEl?.addEventListener('input', calcValue);
-  navEl?.addEventListener('input', calcValue);
-  yearEl?.addEventListener('change', loadExisting);
-  monthEl?.addEventListener('change', loadExisting);
-
-  openModal(SNAP_MODAL_ID);
-  if (window.lucide) window.lucide.createIcons();
-}
-
-/* ============================================
-   Stats
-   ============================================ */
-function _buildStats(funds, policies) {
-  const list = funds || [];
-  const pols = policies || [];
-  const ym = AppState.getYearMonth();
-  const y = ym.year || String(new Date().getFullYear());
-  const m = ym.month === 'all' ? String(new Date().getMonth() + 1).padStart(2, '0') : ym.month;
-
-  /* 為每張保單預先計算成本映射表 */
-  const costMaps = {};
-  pols.forEach((p) => { costMaps[p.id] = _getCostMapForPolicy(p, list, y, m); });
-
-  let cost = 0;
-  list.forEach((f) => {
-    if (f.type === 'insurance') {
-      const policy = _findPolicyByFund(f, pols);
-      if (policy && costMaps[policy.id]) {
-        cost += costMaps[policy.id][f.id] || 0;
-      } else {
-        cost += Number(f.cost) || 0;
-      }
-    } else {
-      cost += Number(f.cost) || 0;
-    }
-  });
-  const value = list.reduce((s, f) => s + (Number(f.currentValue) || 0), 0);
-  const pnl = value - cost;
-  const pct = cost > 0 ? ((pnl / cost) * 100).toFixed(2) : '0.00';
-  const sign = pnl >= 0 ? '+' : '';
-  const insCount = list.filter((f) => f.type === 'insurance').length;
-  const standaloneCount = list.filter((f) => f.type !== 'insurance').length;
-  return [
-    { title: '總投入成本', value: formatHKD(cost), hint: `共 ${list.length} 筆（保險 ${insCount} / 獨立 ${standaloneCount}）`, icon: 'wallet' },
-    { title: '總現時價值', value: formatHKD(value), valueClass: 'emerald', hint: '最新現值加總', icon: 'line-chart' },
-    { title: '總帳面盈虧', value: `${sign}${formatHKD(pnl)} (${pct}%)`, valueClass: pnl >= 0 ? 'emerald' : 'red', hint: pnl >= 0 ? '獲利中' : '虧損中', icon: pnl >= 0 ? 'trending-up' : 'trending-down' },
-  ];
-}
-
 /* ═══════════════════════════════════════════
    END OF FILE
-   File: js/pages/portfolio.js
-   Version: v103.0.32
+   File: js/pages/insurance.js
+   Version: v103.0.36
    Batch: B30-8
    ═══════════════════════════════════════════ */
