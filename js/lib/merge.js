@@ -1,7 +1,10 @@
 // ============================================
-// merge.js — 結算資料合併邏輯（v103.0.22）
+// merge.js — 結算資料合併邏輯（v103.0.23）
 // 位置：js/lib/merge.js
 // ============================================
+// v103.0.23（B31-1）：
+//   ✅ 加 AppState.on('family-change') 重置狀態名稱快取
+//      - 避免切換家庭後使用舊家庭的狀態名稱
 // v103.0.22（B25-4）：
 //   ✅ H8：fallback 改走 status-registry.toLegacyName
 // ============================================
@@ -9,8 +12,16 @@
 import { getStatusesByCategory } from '../config/app-config.js';
 import { RESERVED_IDS } from '../config/constants.js';
 import { toLegacyName } from '../config/status-registry.js';
+import { AppState } from '../core/state.js';
 
 let _insuranceStatusNames = null;
+
+/* 🆕 v103.0.23：切換家庭時重置快取 */
+try {
+  AppState.on('family-change', () => {
+    _insuranceStatusNames = null;
+  });
+} catch (e) { /* noop */ }
 
 function _getInsuranceStatusNames() {
   if (_insuranceStatusNames) return _insuranceStatusNames;
@@ -163,7 +174,7 @@ function _buildInsuranceRow(p, year, month) {
 }
 
 /**
- * 🆕 v103.0.22：fallback 走 status-registry.toLegacyName（SSOT）
+ * v103.0.22：fallback 走 status-registry.toLegacyName（SSOT）
  */
 function _resolveInsuranceStatus(...candidates) {
   const validNames = _getInsuranceStatusNames();
@@ -197,6 +208,6 @@ function _isDoneStatus(statusName, category) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/lib/merge.js
-   Version: v103.0.22
-   Batch: B25-4
+   Version: v103.0.23
+   Batch: B31-1
    ═══════════════════════════════════════════ */
