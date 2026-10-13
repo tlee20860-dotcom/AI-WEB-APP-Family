@@ -7,7 +7,7 @@
 //   ✅ CACHE_NAME 升版 v140 → v141
 // ============================================
 
-const CACHE_NAME = 'family-fin-v142';
+const CACHE_NAME = 'family-fin-v151';
 
 const STATIC_ASSETS = [
   './css/theme.css',
