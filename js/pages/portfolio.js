@@ -1,8 +1,7 @@
-// portfolio.js — 基金投資表（v103.0.30）
-// v103.0.30（B30-8）：
-//   ✅ 修正基金成本計算：乘以該基金在保單中的比例（pct）
-// v103.0.29（B30-8）：
-//   ✅ 增加反查機制，找不到 policyId 時遍歷所有保單
+// portfolio.js — 基金投資表（v103.0.32）
+// v103.0.32（B30-8）：
+//   ✅ 修正成本分配邏輯：若保單內有基金手動輸入成本，先從總保額扣除，再將剩餘按比例分配給其他基金
+//   ✅ 保證總投入成本 = 保單總供款，不會重複計算
 // ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
@@ -151,26 +150,43 @@ function _findPolicyByFund(fund, policies) {
 }
 
 /* ============================================
-   🆕 修正：動態成本計算（乘以基金比例）
+   🆕 核心邏輯：為單一保單計算所有基金的投入成本
+   -------------------------------------------------
+   1. 計算該保單的總投入成本（月供 × 已供月數）
+   2. 找出有手動成本的基金（如東方匯理）
+   3. 從總成本扣除手動成本
+   4. 剩餘成本按比例分配給其他基金
    ============================================ */
-function _resolveCost(fund, policies) {
-  if (fund.type !== 'insurance') return Number(fund.cost) || 0;
-  const policy = _findPolicyByFund(fund, policies);
-  if (!policy) return Number(fund.cost) || 0;
+function _getCostMapForPolicy(policy, allFunds, targetYear, targetMonth) {
+  const costMap = {};
+  const policyFunds = (allFunds || []).filter(
+    (f) => f.type === 'insurance' && _findPolicyByFund(f, [policy]) !== null
+  );
+  if (policyFunds.length === 0) return costMap;
 
-  const ym = AppState.getYearMonth();
-  const y = ym.year || String(new Date().getFullYear());
-  const m = ym.month === 'all' ? String(new Date().getMonth() + 1).padStart(2, '0') : ym.month;
+  const totalPolicyCost = calcFundCostEstimate(policy, targetYear, targetMonth);
 
-  /* 1. 取得整張保單的總投入成本 */
-  const totalPolicyCost = calcFundCostEstimate(policy, y, m);
+  /* 分離手動成本基金 */
+  const manualFunds = policyFunds.filter((f) => Number(f.cost) > 0);
+  const manualTotal = manualFunds.reduce((s, f) => s + Number(f.cost), 0);
 
-  /* 2. 取得該基金在保單中的比例 */
-  const alloc = (policy.fundsAllocation || []).find((a) => a.fundId === fund.id);
-  const pct = alloc ? (Number(alloc.pct) || 0) : 0;
+  manualFunds.forEach((f) => { costMap[f.id] = Number(f.cost); });
 
-  /* 3. 按比例分配成本 */
-  return Math.round(totalPolicyCost * (pct / 100));
+  /* 動態分配剩餘成本 */
+  const remainingCost = Math.max(0, totalPolicyCost - manualTotal);
+  const dynamicFunds = policyFunds.filter((f) => Number(f.cost) <= 0);
+  const dynamicTotalPct = dynamicFunds.reduce((s, f) => {
+    const alloc = (policy.fundsAllocation || []).find((a) => a.fundId === f.id);
+    return s + (alloc ? Number(alloc.pct) : 0);
+  }, 0);
+
+  dynamicFunds.forEach((f) => {
+    const alloc = (policy.fundsAllocation || []).find((a) => a.fundId === f.id);
+    const pct = alloc ? Number(alloc.pct) : 0;
+    costMap[f.id] = dynamicTotalPct > 0 ? Math.round(remainingCost * (pct / dynamicTotalPct)) : 0;
+  });
+
+  return costMap;
 }
 
 /* ============================================
@@ -185,11 +201,19 @@ function _paintInsurance(ctx) {
     return;
   }
   const policies = ctx.data.policies || [];
+  const ym = AppState.getYearMonth();
+  const y = ym.year || String(new Date().getFullYear());
+  const m = ym.month === 'all' ? String(new Date().getMonth() + 1).padStart(2, '0') : ym.month;
+
+  /* 為每張保單預先計算成本映射表 */
+  const costMaps = {};
+  policies.forEach((p) => { costMaps[p.id] = _getCostMapForPolicy(p, list, y, m); });
+
   const rows = list.map((f) => {
     const policy = _findPolicyByFund(f, policies);
     const alloc = (policy?.fundsAllocation || []).find((a) => a.fundId === f.id);
     const pct = alloc ? alloc.pct : 0;
-    const dynamicCost = _resolveCost(f, policies);
+    const dynamicCost = (policy && costMaps[policy.id]) ? (costMaps[policy.id][f.id] || 0) : (Number(f.cost) || 0);
     return { fund: f, policyName: policy?.name || '（未關聯）', pct, dynamicCost };
   });
   const html = rows.map((r) => _cardHtml(r, true)).join('');
@@ -234,7 +258,9 @@ function _cardHtml({ fund, policyName, pct, dynamicCost }, isInsurance) {
     ? `<div class="policy-company">${esc(policyName)} · 比例 ${pct}%</div>`
     : '';
   const costHint = isInsurance
-    ? '<div class="glass-card-hint" style="margin-top:2px;">月供 × 已供月數 × 比例（自動）</div>'
+    ? (pct > 0
+        ? '<div class="glass-card-hint" style="margin-top:2px;">月供 × 已供月數 × 比例（自動）</div>'
+        : '<div class="glass-card-hint" style="margin-top:2px;">手動輸入成本</div>')
     : '';
 
   return `
@@ -361,10 +387,23 @@ async function _openSnapshotModal(fundId, fundName) {
 function _buildStats(funds, policies) {
   const list = funds || [];
   const pols = policies || [];
+  const ym = AppState.getYearMonth();
+  const y = ym.year || String(new Date().getFullYear());
+  const m = ym.month === 'all' ? String(new Date().getMonth() + 1).padStart(2, '0') : ym.month;
+
+  /* 為每張保單預先計算成本映射表 */
+  const costMaps = {};
+  pols.forEach((p) => { costMaps[p.id] = _getCostMapForPolicy(p, list, y, m); });
+
   let cost = 0;
   list.forEach((f) => {
     if (f.type === 'insurance') {
-      cost += _resolveCost(f, pols);
+      const policy = _findPolicyByFund(f, pols);
+      if (policy && costMaps[policy.id]) {
+        cost += costMaps[policy.id][f.id] || 0;
+      } else {
+        cost += Number(f.cost) || 0;
+      }
     } else {
       cost += Number(f.cost) || 0;
     }
@@ -385,6 +424,6 @@ function _buildStats(funds, policies) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/portfolio.js
-   Version: v103.0.30
+   Version: v103.0.32
    Batch: B30-8
    ═══════════════════════════════════════════ */
