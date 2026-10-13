@@ -1,8 +1,8 @@
 # P-04 檔案清單
 
-最後更新：B30-9
-版本：v103.0.40
-批次：B30-9
+最後更新：B31-1
+版本：v103.0.41
+批次：B31-1
 用途：所有交付檔案版本 + 批次追蹤
 
 ---
@@ -13,12 +13,12 @@
 |---|---|---|
 | constants.js | v103.0.45 | B30-5 |
 | firebase-config.js | v103.0.38 | B30-2 |
-| app-config.js | v103.0.22 | B25 |
+| app-config.js | v103.0.22 | B25-5 |
 | status-registry.js | v103.0.0 | B01 |
-| entity-registry.js | v103.0.22 | B25 |
+| entity-registry.js | v103.0.22 | B25-4 |
 | label-registry.js | v103.0.0 | B01 |
-| column-registry.js | v103.0.34 | B29 |
-| page-metadata-registry.js | v103.0.34 | B29 |
+| column-registry.js | v103.0.34 | B29-1b |
+| page-metadata-registry.js | v103.0.34 | B29-5a |
 
 ---
 
@@ -27,11 +27,11 @@
 | 檔案 | 版本 | 批次 |
 |---|---|---|
 | state.js | v103.0.42 | B30-3b |
-| db.js | v103.0.34 | B29 |
-| utils.js | v103.0.22 | B25 |
+| db.js | **v103.0.35** | **B31-1** |
+| utils.js | v103.0.22 | B25-4 |
 | auth.js | v103.0.0 | B05 |
-| auth-guard.js | v103.0.11 | B13A |
-| api.js | v103.0.22 | B25 |
+| auth-guard.js | **v103.0.12** | **B31-1** |
+| api.js | v103.0.22 | B25-6 |
 | pwa.js | v103.0.0 | B05 |
 | debug.js | v103.0.14 | B14C |
 
@@ -46,13 +46,13 @@
 | async.js | v103.0.2 | B03 |
 | lifecycle.js | v103.0.0 | B03 |
 | registry.js | v103.0.0 | B03 |
-| merge.js | v103.0.22 | B25 |
+| merge.js | **v103.0.23** | **B31-1** |
 | insurance.js | v103.0.23 | B30-7 |
-| bank.js | v103.0.22 | B25 |
-| expense-modal.js | v103.0.22 | B25 |
+| bank.js | v103.0.22 | B25-4 |
+| expense-modal.js | v103.0.22 | B25-3a |
 | income-modal.js | v103.0.18 | B19 |
 | filter-sort.js | v103.0.18 | B19 |
-| page-controls.js | v103.0.34 | B29 |
+| page-controls.js | v103.0.34 | B29-1a |
 
 ---
 
@@ -82,11 +82,11 @@
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
-| toast.js | v103.0.22 | B25 |
-| modal.js | v103.0.22 | B25 |
+| toast.js | v103.0.22 | B25-5 |
+| modal.js | **v103.0.23** | **B31-1** |
 | form-builder.js | v103.0.11 | B14B |
-| tab-panel.js | v103.0.12 | B14A |
-| view-toggle.js | v103.0.22 | B25 |
+| tab-panel.js | v103.0.11 | B14A |
+| view-toggle.js | v103.0.22 | B25-5 |
 | collapsible.js | v103.0.0 | B04 |
 
 ---
@@ -106,10 +106,10 @@
 | 檔案 | 版本 | 批次 |
 |---|---|---|
 | entity-definitions.js | v103.0.24 | B30-8 |
-| entity-helpers.js | v103.0.22 | B25 |
-| entity-modal.js | v103.0.22 | B25 |
-| entity-resolvers.js | v103.0.22 | B25 |
-| entity-funds-allocation.js | v103.0.22 | B25 |
+| entity-helpers.js | v103.0.22 | B25-4 |
+| entity-modal.js | v103.0.22 | B25-2 |
+| entity-resolvers.js | v103.0.22 | B25-4 |
+| entity-funds-allocation.js | v103.0.22 | B25-2 |
 
 ---
 
@@ -126,10 +126,10 @@
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
-| data-table.js | v103.0.34 | B29 |
-| data-card.js | v103.0.22 | B25 |
+| data-table.js | v103.0.34 | B29-1c |
+| data-card.js | v103.0.22 | B25-3a |
 | entity-list-page.js | v103.0.16 | B18 |
-| column-settings.js | v103.0.22 | B25 |
+| column-settings.js | v103.0.22 | B25-2 |
 | bank-account-manager.js | v103.0.11 | B13B1 |
 | page-filter.js | v103.0.11 | B13B2 |
 | quick-summary.js | v103.0.12 | B15 |
@@ -145,19 +145,19 @@
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
-| dashboard.js | v103.0.35 | B29 |
+| dashboard.js | v103.0.35 | B29-7b |
 | portfolio.js | v103.0.32 | B30-8 |
 | annual-report.js | v103.0.29 | B26-3.2 |
-| settings.js | v103.0.34 | B29 |
-| finance-overview.js | v103.0.35 | B29 |
-| member-report.js | v103.0.35 | B29 |
-| input-center.js | v103.0.34 | B29 |
+| settings.js | **v103.0.35** | **B31-1** |
+| finance-overview.js | v103.0.35 | B29-7a |
+| member-report.js | v103.0.35 | B29-7b |
+| input-center.js | v103.0.34 | B29-4a |
 | database.js | v103.0.3 | B11 |
 | database-options.js | v103.0.0 | B11 |
 | database-dropdowns.js | v103.0.0 | B11 |
-| database-yearrange.js | v103.0.0 | B11 |
-| settlements.js | v103.0.35 | B29 |
-| insurance.js | v103.0.36 | B30-8 |
+| database-yearrange.js | **v103.0.1** | **B31-1** |
+| settlements.js | v103.0.35 | B29-7a |
+| insurance.js | **v103.0.37** | **B31-1** |
 
 ---
 
@@ -168,7 +168,7 @@
 | [[path]].js | v103.0.44 | B30-5 |
 | _config.js | v103.0.45 | B30-5 |
 | _helpers.js | v103.0.44 | B30-5 |
-| _admin.js | v103.0.22 | B25 |
+| _admin.js | **v103.0.23** | **B31-1** |
 | _bank.js | v103.0.2 | B11 |
 | _family.js | v103.0.2 | B11 |
 | _insurance.js | v103.0.21 | B23 |
@@ -207,7 +207,7 @@
 | portfolio.html | v103.0.29 | B26-3.2 |
 | register.html | — | B11 |
 | settings.html | v103.0.38 | B30-1 |
-| settlements.html | v103.0.34 | B29 |
+| settlements.html | v103.0.34 | B29-4a |
 
 ---
 
@@ -217,7 +217,7 @@
 |---|---|---|
 | sw.js | v103.0.27 | B26-3 |
 | manifest.json | — | 未變 |
-| docs/（23 檔） | v103.0.40 | B30-9 |
+| docs/（23 檔） | v103.0.41 | B31-1 |
 
 ---
 
@@ -242,8 +242,8 @@
 |---|---|---|
 | P-01-index.md | v103.0.39 | B30-6 |
 | P-02-anchor.md | v103.0.39 | B30-6 |
-| P-03-progress.md | v103.0.40 | B30-9 |
-| P-04-manifest.md | v103.0.40 | B30-9 |
+| P-03-progress.md | **v103.0.41** | **B31-1** |
+| P-04-manifest.md | **v103.0.41** | **B31-1** |
 | P-05-adr.md | v103.0.36 | B29-8g |
 | P-06-sop.md | v103.0.37 | B29-9c |
 | P-07-pagemap.md | v103.0.36 | B29-8h |
@@ -286,7 +286,10 @@
 
 | 項目 | 狀態 |
 |---|---|
-| B31 起新功能 | 📋 |
+| B31-2：SW 版本統一（v142 / v151） | 📋 待決策 |
+| B31-3：END OF FILE 補齊（~44 檔） | 📋 待決策 |
+| B31-4：P-12 記錄 9 bug | 📋 可選 |
+| 版本號不一致（依使用者指示） | 📋 日後慢慢修正 |
 | icon 更換 | 📋 |
 | js/shared/date-helpers.js | v101，未重構 |
 | js/shared/form-handler.js | deprecated（v104 移除） |
@@ -302,6 +305,7 @@
 
 | 批次 | 更新 |
 |---|---|
+| **B31-1** | **P-03 / P-04（8 檔版本）+ 9 個 bug 修正** |
 | B30-9 | C-05 / C-02 / P-12 / P-03 / P-04 |
 | B30-8 | insurance.js / portfolio.js / entity-definitions.js / insurance.js（頁面） |
 | B30-7 | entity-definitions.js / lib/insurance.js |
@@ -321,6 +325,6 @@
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/P-04-manifest.md
-   Version: v103.0.40
-   Batch: B30-9
+   Version: v103.0.41
+   Batch: B31-1
    ═══════════════════════════════════════════ */
