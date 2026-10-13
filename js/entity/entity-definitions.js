@@ -1,10 +1,9 @@
-// entity-definitions.js — 實體表單定義 SSOT（v103.0.22）
+// entity-definitions.js — 實體表單定義 SSOT（v103.0.24）
+// v103.0.24（B30-8）：
+//   ✅ 修正基金保險的 annualPremium 不再被強制覆蓋為月供 * 12
 // v103.0.22（B30-7）：
-//   ✅ POLICY 改為依「付款類型」驗證（年繳 / 月繳 / 一次付款）
-//   ✅ 基金保險必填「月供金額」與「關聯基金」
-//   ✅ 新增 oncePremium 欄位（一次性付款）
-//   ✅ fromForm 依付款類型計算每月支出
-//   ✅ 普通保險三種付款類型皆正確計算
+//   ✅ POLICY 改為依「付款類型」驗證
+//   ✅ 新增 oncePremium 欄位
 // ============================================
 import {
   addMember, updateMember, removeMember, deleteMemberAndData,
@@ -19,13 +18,9 @@ import {
 } from '../core/db.js';
 import { ENTITY_KEYS, LIMITS } from '../config/constants.js';
 
-/* ============================================
-   POLICY 建立包裝（代墊模式自動建立 member_advances）
-   ============================================ */
 async function _createPolicyWithAdvance(policy) {
   const policyId = await addInsurancePolicy(policy);
   if (!policyId) return policyId;
-
   if (policy.paymentMode === 'advance' && policy.advanceHolderId && Number(policy.totalPremium) > 0) {
     try {
       const advanceId = await addMemberAdvance(policy.advanceHolderId, {
@@ -44,50 +39,26 @@ async function _createPolicyWithAdvance(policy) {
   return policyId;
 }
 
-/* ============================================
-   付款類型常數
-   ============================================ */
 const PAYMENT_TYPES = {
   ANNUAL: '年繳',
   MONTHLY: '月繳',
   ONCE: '一次付款',
 };
 
-/* ============================================
-   保單每月支出計算（依付款類型）
-   -------------------------------------------------
-   年繳：annualPremium / 12
-   月繳：monthlyPremium
-   一次付款：oncePremium / totalPolicyYears / 12
-   基金保險：monthlyPremium
-   ============================================ */
 function calcMonthlyExpense(data) {
   const policyType = data.type || 'normal';
   const paymentType = data.paymentType || PAYMENT_TYPES.ANNUAL;
   const ty = Number(data.totalPolicyYears) || 1;
-
-  if (policyType === 'fund_insurance') {
-    return Math.round(Number(data.monthlyPremium) || 0);
-  }
-
+  if (policyType === 'fund_insurance') return Math.round(Number(data.monthlyPremium) || 0);
   switch (paymentType) {
-    case PAYMENT_TYPES.ANNUAL:
-      return Math.round((Number(data.annualPremium) || 0) / 12);
-    case PAYMENT_TYPES.MONTHLY:
-      return Math.round(Number(data.monthlyPremium) || 0);
-    case PAYMENT_TYPES.ONCE:
-      return Math.round((Number(data.oncePremium) || 0) / ty / 12);
-    default:
-      return 0;
+    case PAYMENT_TYPES.ANNUAL:  return Math.round((Number(data.annualPremium) || 0) / 12);
+    case PAYMENT_TYPES.MONTHLY: return Math.round(Number(data.monthlyPremium) || 0);
+    case PAYMENT_TYPES.ONCE:    return Math.round((Number(data.oncePremium) || 0) / ty / 12);
+    default: return 0;
   }
 }
 
-/* ============================================
-   實體定義表
-   ============================================ */
 const ENTITY_DEFS = {
-
-  /* ---------- 1. 成員 ---------- */
   [ENTITY_KEYS.MEMBER]: {
     key: ENTITY_KEYS.MEMBER, label: '成員', labelPlural: '成員', icon: 'users',
     db: { create: addMember, update: updateMember, remove: removeMember, delete: deleteMemberAndData },
@@ -110,7 +81,6 @@ const ENTITY_DEFS = {
     },
   },
 
-  /* ---------- 2. 銀行 ---------- */
   [ENTITY_KEYS.BANK]: {
     key: ENTITY_KEYS.BANK, label: '銀行', labelPlural: '銀行', icon: 'landmark',
     db: { create: addBank, update: updateBank, remove: removeBank, delete: deleteBankAndBalances },
@@ -129,7 +99,6 @@ const ENTITY_DEFS = {
     },
   },
 
-  /* ---------- 3. 保單（含代墊自動建立） ---------- */
   [ENTITY_KEYS.POLICY]: {
     key: ENTITY_KEYS.POLICY, label: '保單', labelPlural: '保單', icon: 'shield',
     db: { create: _createPolicyWithAdvance, update: updateInsurancePolicy, remove: removeInsurancePolicy, delete: deleteInsurancePolicyAndData },
@@ -169,7 +138,6 @@ const ENTITY_DEFS = {
       const op = Number(data.oncePremium) || 0;
       const pm = data.paymentMode || 'direct';
 
-      /* 基金保險：必填月供 + 關聯基金 */
       if (policyType === 'fund_insurance') {
         if (mp <= 0) return { field: 'monthlyPremium', message: '基金保險請填寫月供金額（大於 0）' };
         const alloc = data.fundsAllocation || [];
@@ -178,24 +146,13 @@ const ENTITY_DEFS = {
         if (Math.abs(total - 100) > 0.01) return { field: 'fundsAllocation', message: `比例總和需為 100%（目前 ${total}%）` };
       }
 
-      /* 普通保險：依付款類型驗證對應欄位 */
       if (policyType === 'normal') {
-        if (paymentType === PAYMENT_TYPES.ANNUAL && ap <= 0) {
-          return { field: 'annualPremium', message: '年繳保費需大於 0' };
-        }
-        if (paymentType === PAYMENT_TYPES.MONTHLY && mp <= 0) {
-          return { field: 'monthlyPremium', message: '月繳金額需大於 0' };
-        }
-        if (paymentType === PAYMENT_TYPES.ONCE && op <= 0) {
-          return { field: 'oncePremium', message: '一次性付款金額需大於 0' };
-        }
+        if (paymentType === PAYMENT_TYPES.ANNUAL && ap <= 0) return { field: 'annualPremium', message: '年繳保費需大於 0' };
+        if (paymentType === PAYMENT_TYPES.MONTHLY && mp <= 0) return { field: 'monthlyPremium', message: '月繳金額需大於 0' };
+        if (paymentType === PAYMENT_TYPES.ONCE && op <= 0) return { field: 'oncePremium', message: '一次性付款金額需大於 0' };
       }
 
-      /* 代墊模式 */
-      if (pm === 'advance' && !data.advanceHolderId) {
-        return { field: 'advanceHolderId', message: '代墊模式需指定代墊成員' };
-      }
-
+      if (pm === 'advance' && !data.advanceHolderId) return { field: 'advanceHolderId', message: '代墊模式需指定代墊成員' };
       return null;
     },
     fromForm: (data) => {
@@ -210,13 +167,12 @@ const ENTITY_DEFS = {
       const ap = Math.round(Number(data.annualPremium) || 0);
       const op = Math.round(Number(data.oncePremium) || 0);
 
-      /* 依付款類型計算每月支出 */
       const monthlyExpense = calcMonthlyExpense(data);
 
-      /* 年繳保費（年化） */
+      /* 🆕 修正：基金保險不強制將 annualPremium 改為 mp * 12，保留使用者輸入（可為 0） */
       let annualPremium = 0;
       if (policyType === 'fund_insurance') {
-        annualPremium = mp * 12;
+        annualPremium = ap;
       } else if (paymentType === PAYMENT_TYPES.ANNUAL) {
         annualPremium = ap;
       } else if (paymentType === PAYMENT_TYPES.MONTHLY) {
@@ -225,7 +181,6 @@ const ENTITY_DEFS = {
         annualPremium = Math.round(op / ty);
       }
 
-      /* 總供款額 */
       let totalPremium = 0;
       if (policyType === 'fund_insurance') {
         totalPremium = mp * 12 * ty;
@@ -248,21 +203,11 @@ const ENTITY_DEFS = {
       };
 
       return {
-        type: policyType,
-        memberId: data.memberId,
-        policyHolderId: data.policyHolderId || data.memberId,
-        name: data.name,
-        company: data.company || '',
-        paymentType,
-        paymentMode: pm,
+        type: policyType, memberId: data.memberId, policyHolderId: data.policyHolderId || data.memberId,
+        name: data.name, company: data.company || '', paymentType, paymentMode: pm,
         advanceHolderId: pm === 'advance' ? (data.advanceHolderId || '') : '',
-        firstStartYear: sy,
-        firstStartMonth: sm,
-        totalPolicyYears: ty,
-        totalPolicyPeriods: ty * 12,
-        totalPremium,
-        currentPeriodIndex: cp,
-        account: data.account || '',
+        firstStartYear: sy, firstStartMonth: sm, totalPolicyYears: ty, totalPolicyPeriods: ty * 12,
+        totalPremium, currentPeriodIndex: cp, account: data.account || '',
         monthlyPremium: (policyType === 'fund_insurance' || paymentType === PAYMENT_TYPES.MONTHLY) ? mp : 0,
         annualPremium,
         oncePremium: paymentType === PAYMENT_TYPES.ONCE ? op : 0,
@@ -284,7 +229,6 @@ const ENTITY_DEFS = {
     },
   },
 
-  /* ---------- 4. 基金 ---------- */
   [ENTITY_KEYS.FUND]: {
     key: ENTITY_KEYS.FUND, label: '基金', labelPlural: '基金', icon: 'line-chart',
     db: { create: addFund, update: updateFund, remove: removeFund, delete: null },
@@ -311,7 +255,6 @@ const ENTITY_DEFS = {
     },
   },
 
-  /* ---------- 5. 支出類別 ---------- */
   [ENTITY_KEYS.CATEGORY]: {
     key: ENTITY_KEYS.CATEGORY, label: '支出類別', labelPlural: '支出類別', icon: 'tags',
     db: { create: addCategory, update: updateCategory, remove: removeCategory, delete: null },
@@ -333,7 +276,6 @@ const ENTITY_DEFS = {
     },
   },
 
-  /* ---------- 6. 支出項目 ---------- */
   [ENTITY_KEYS.ITEM]: {
     key: ENTITY_KEYS.ITEM, label: '支出項目', labelPlural: '支出項目', icon: 'list',
     db: { create: addItem, update: updateItem, remove: removeItem, delete: null },
@@ -350,7 +292,6 @@ const ENTITY_DEFS = {
     },
   },
 
-  /* ---------- 7. 支付方式 ---------- */
   [ENTITY_KEYS.PAYMENT]: {
     key: ENTITY_KEYS.PAYMENT, label: '支付方式', labelPlural: '支付方式', icon: 'credit-card',
     db: { create: addPaymentMethod, update: updatePaymentMethod, remove: removePaymentMethod, delete: null },
@@ -372,7 +313,6 @@ const ENTITY_DEFS = {
     },
   },
 
-  /* ---------- 8. 狀態 ---------- */
   [ENTITY_KEYS.STATUS]: {
     key: ENTITY_KEYS.STATUS, label: '狀態', labelPlural: '狀態', icon: 'tag',
     db: { create: addStatus, update: updateStatus, remove: removeStatus, delete: null },
@@ -400,9 +340,6 @@ const ENTITY_DEFS = {
   },
 };
 
-/* ============================================
-   對外 API
-   ============================================ */
 export function getEntityDef(key) { return ENTITY_DEFS[key] || null; }
 export function getAllEntityKeys() { return Object.keys(ENTITY_DEFS); }
 export function getAllEntityDefs() { return { ...ENTITY_DEFS }; }
@@ -414,8 +351,6 @@ export function resolveFieldDefault(field) {
   if (typeof field.defaultValue === 'function') return field.defaultValue();
   return field.defaultValue;
 }
-
-/* 🆕 對外暴露 calcMonthlyExpense 供其他模組使用 */
 export { calcMonthlyExpense, PAYMENT_TYPES };
 
 function _getPeriodRange(fy, fm, pi) {
@@ -427,6 +362,6 @@ function _getPeriodRange(fy, fm, pi) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/entity/entity-definitions.js
-   Version: v103.0.22
-   Batch: B30-7
+   Version: v103.0.24
+   Batch: B30-8
    ═══════════════════════════════════════════ */

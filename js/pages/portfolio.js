@@ -1,11 +1,8 @@
-// portfolio.js — 基金投資表（v103.0.28）
+// portfolio.js — 基金投資表（v103.0.29）
+// v103.0.29（B30-8）：
+//   ✅ 修正基金成本計算：增加反查機制，找不到 policyId 時遍歷所有保單
 // v103.0.28（B30-7）：
-//   ✅ 基金保險的「投入成本」改為動態估算（月供 × 已供月數）
-//   ✅ 統計卡同步使用動態成本
-// v103.0.27（B26-3）：
-//   ✅ 改用 page-controls 渲染（add + year + month）
-//   ✅ 移除 header 內新增按鈕
-//   ✅ 支援年 / 月切換
+//   ✅ 基金保險成本改為動態估算
 // ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
@@ -141,13 +138,26 @@ export default {
 };
 
 /* ============================================
-   🆕 動態成本計算輔助（基金保險用）
+   🆕 反查機制：找出基金對應的保單
+   ============================================ */
+function _findPolicyByFund(fund, policies) {
+  // 1. 直接以 policyId 找
+  if (fund.policyId) {
+    const p = (policies || []).find((x) => x.id === fund.policyId);
+    if (p) return p;
+  }
+  // 2. 反查：遍歷所有保單，看哪個保單的 fundsAllocation 包含該基金 ID
+  return (policies || []).find((p) =>
+    (p.fundsAllocation || []).some((a) => a.fundId === fund.id)
+  ) || null;
+}
+
+/* ============================================
+   動態成本計算輔助
    ============================================ */
 function _resolveCost(fund, policies) {
-  if (fund.type !== 'insurance') {
-    return Number(fund.cost) || 0;
-  }
-  const policy = (policies || []).find((p) => p.id === fund.policyId);
+  if (fund.type !== 'insurance') return Number(fund.cost) || 0;
+  const policy = _findPolicyByFund(fund, policies);
   if (!policy) return Number(fund.cost) || 0;
 
   const ym = AppState.getYearMonth();
@@ -170,7 +180,7 @@ function _paintInsurance(ctx) {
   }
   const policies = ctx.data.policies || [];
   const rows = list.map((f) => {
-    const policy = policies.find((p) => p.id === f.policyId);
+    const policy = _findPolicyByFund(f, policies);
     const alloc = (policy?.fundsAllocation || []).find((a) => a.fundId === f.id);
     const pct = alloc ? alloc.pct : 0;
     const dynamicCost = _resolveCost(f, policies);
@@ -340,12 +350,11 @@ async function _openSnapshotModal(fundId, fundName) {
 }
 
 /* ============================================
-   Stats（🆕 基金保險成本改動態）
+   Stats
    ============================================ */
 function _buildStats(funds, policies) {
   const list = funds || [];
   const pols = policies || [];
-
   let cost = 0;
   list.forEach((f) => {
     if (f.type === 'insurance') {
@@ -370,6 +379,6 @@ function _buildStats(funds, policies) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/portfolio.js
-   Version: v103.0.28
-   Batch: B30-7
+   Version: v103.0.29
+   Batch: B30-8
    ═══════════════════════════════════════════ */
