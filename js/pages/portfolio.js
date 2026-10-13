@@ -1,8 +1,8 @@
-// portfolio.js — 基金投資表（v103.0.29）
+// portfolio.js — 基金投資表（v103.0.30）
+// v103.0.30（B30-8）：
+//   ✅ 修正基金成本計算：乘以該基金在保單中的比例（pct）
 // v103.0.29（B30-8）：
-//   ✅ 修正基金成本計算：增加反查機制，找不到 policyId 時遍歷所有保單
-// v103.0.28（B30-7）：
-//   ✅ 基金保險成本改為動態估算
+//   ✅ 增加反查機制，找不到 policyId 時遍歷所有保單
 // ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
@@ -138,22 +138,20 @@ export default {
 };
 
 /* ============================================
-   🆕 反查機制：找出基金對應的保單
+   反查機制：找出基金對應的保單
    ============================================ */
 function _findPolicyByFund(fund, policies) {
-  // 1. 直接以 policyId 找
   if (fund.policyId) {
     const p = (policies || []).find((x) => x.id === fund.policyId);
     if (p) return p;
   }
-  // 2. 反查：遍歷所有保單，看哪個保單的 fundsAllocation 包含該基金 ID
   return (policies || []).find((p) =>
     (p.fundsAllocation || []).some((a) => a.fundId === fund.id)
   ) || null;
 }
 
 /* ============================================
-   動態成本計算輔助
+   🆕 修正：動態成本計算（乘以基金比例）
    ============================================ */
 function _resolveCost(fund, policies) {
   if (fund.type !== 'insurance') return Number(fund.cost) || 0;
@@ -164,7 +162,15 @@ function _resolveCost(fund, policies) {
   const y = ym.year || String(new Date().getFullYear());
   const m = ym.month === 'all' ? String(new Date().getMonth() + 1).padStart(2, '0') : ym.month;
 
-  return calcFundCostEstimate(policy, y, m);
+  /* 1. 取得整張保單的總投入成本 */
+  const totalPolicyCost = calcFundCostEstimate(policy, y, m);
+
+  /* 2. 取得該基金在保單中的比例 */
+  const alloc = (policy.fundsAllocation || []).find((a) => a.fundId === fund.id);
+  const pct = alloc ? (Number(alloc.pct) || 0) : 0;
+
+  /* 3. 按比例分配成本 */
+  return Math.round(totalPolicyCost * (pct / 100));
 }
 
 /* ============================================
@@ -228,7 +234,7 @@ function _cardHtml({ fund, policyName, pct, dynamicCost }, isInsurance) {
     ? `<div class="policy-company">${esc(policyName)} · 比例 ${pct}%</div>`
     : '';
   const costHint = isInsurance
-    ? '<div class="glass-card-hint" style="margin-top:2px;">月供 × 已供月數（自動）</div>'
+    ? '<div class="glass-card-hint" style="margin-top:2px;">月供 × 已供月數 × 比例（自動）</div>'
     : '';
 
   return `
@@ -379,6 +385,6 @@ function _buildStats(funds, policies) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/portfolio.js
-   Version: v103.0.29
+   Version: v103.0.30
    Batch: B30-8
    ═══════════════════════════════════════════ */
