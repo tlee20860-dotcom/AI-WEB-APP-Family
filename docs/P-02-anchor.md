@@ -1,8 +1,8 @@
 # P-02 專案錨點（家庭財務 Web App）
 
-最後更新：B30-5
-版本：v103.0.38
-批次：B30-5
+最後更新：B30-6
+版本：v103.0.39
+批次：B30-6
 用途：本專案技術架構（通用規則見 C-02）
 
 ---
@@ -18,7 +18,7 @@
 | 登入 | Firebase Auth（自訂帳號 @familyfin.local） |
 | 前端 | 純 HTML + CSS + ES Module JS |
 | 後端 | Cloudflare Pages Functions |
-| 視覺 | 深色科幻霓虹（Cyan / Magenta / Emerald）→ 亮色家庭暖陽（B30-3） |
+| 視覺 | 亮色家庭暖陽（Tailwind 色板，B30-3 起） |
 | 金額 | 四捨五入至整數 |
 
 ---
@@ -201,6 +201,8 @@ Firebase RTDB → data-engine → page-engine → derived → block → DOM
 | functions/api | 10 | _config / _helpers / _admin / _bank / _family / _insurance / _personal / _platform / _summary / [[path]] |
 | CSS | 6 | theme / layout / components / utilities / pages/annual-report / pages/insurance |
 | HTML | 13 | 各頁 + login / register |
+| icons | 1+ | icon.svg / icon.png（PWA + favicon） |
+| docs | 22 | C-00 ~ C-07（8 檔）+ P-01 ~ P-99（15 檔） |
 | 根目錄 | 3 | sw.js / manifest.json / docs/ |
 
 ---
@@ -234,13 +236,18 @@ Firebase RTDB → data-engine → page-engine → derived → block → DOM
 | UI 術語權威 | C-02-rules.md + P-08-uispec.md |
 | 最小改動優先 | C-02-rules.md |
 | Token 不足處理 | C-02-rules.md §零 |
-| **Token 視覺化** | **C-02-rules.md §0.5** |
+| Token 視覺化 | C-02-rules.md §0.5 |
 | backtick 嵌套 | C-02-rules.md §六 |
 | 控制列 | P-02 第七節 + lib/page-controls.js |
 | 側邊欄角色過濾 | P-02 第八節 + constants.js |
 | 頁面 metadata | P-02 第九節 + page-metadata-registry.js |
 | CF Pages env | C-02 §十一 + _config.js initConfig |
 | DB 切換（後端） | _config.js DB_TARGET + CF env |
+| Token 記錄 | C-06-token-log.md |
+| 階段總結 | C-07-summary.md |
+| 對照組 | C-07-summary.md §二 |
+| 路徑前置 | C-07-summary.md §三 |
+| 輕量審視 | C-07-summary.md §四 |
 
 ---
 
@@ -253,6 +260,7 @@ Firebase RTDB → data-engine → page-engine → derived → block → DOM
 | 「需要更新清單」 | 列已交付批次，待確認 |
 | 「有問題」 | 先診斷 + 方案，待確認後修 |
 | 「執行補回」 | 依 C-02-rules §0 分批處理 |
+| 「階段性總結」 | 依 C-07 §一 執行 |
 
 ---
 
@@ -260,7 +268,7 @@ Firebase RTDB → data-engine → page-engine → derived → block → DOM
 
 | 項目 | 值 |
 |---|---|
-| 當前批次 | B30-5（docs 同步中） |
+| 當前批次 | B30-6（docs 同步中） |
 | SW 版本 | family-fin-v141 |
 | 部署 URL | family-financial-management-system.pages.dev |
 | 測試狀態 | B30-5 已部署測試通過 |
@@ -274,15 +282,15 @@ Firebase RTDB → data-engine → page-engine → derived → block → DOM
 | B30-3：主題 Tailwind 色板 | ✅ 完成 |
 | B30-3b：navbar DB 標籤 + 主題切換 | ✅ 完成 |
 | B30-5：後端 DB 切換 | ✅ 完成 |
-| B30-5-docs：docs 同步 | 🔄 本批 |
-| B30 後續：icon 更換 | 📋 待規劃 |
-| B30 後續：docs 版本號統一 | 📋 待規劃 |
+| B30-6：階段總結 + C-06 + C-07 | ✅ 本批 |
+| B31：icon 更換 | 📋 待規劃 |
+| B31：docs 版本號統一 | 📋 待規劃 |
 
 ---
 
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/P-02-anchor.md
-   Version: v103.0.38
-   Batch: B30-5
+   Version: v103.0.39
+   Batch: B30-6
    ═══════════════════════════════════════════ */

@@ -97,6 +97,18 @@
 | 修復批次 | B29-8 |
 | 教訓 | 全站結構改動需完整掃描 |
 
+### P29：後端永遠連舊 DB
+
+| 項目 | 內容 |
+|---|---|
+| 症狀 | superadmin 登入新 DB 後，API 顯示「需要超級管理員權限」 |
+| 原因 A | `_config.js` 寫死舊 DB URL + API Key |
+| 原因 B | CF Pages 不支援 `process.env` → 改用 `context.env` |
+| 原因 C | 移除 `FIREBASE_DB_URL` export → 依賴模組崩潰 |
+| 解決 | `export let` + `initConfig(env)` + handler 傳遞 |
+| 修復批次 | B30-5 |
+| 教訓 | CF Pages env 走 handler 參數；不得移除既有 export |
+
 ---
 
 ## 三、B25：全站修復（P20~P24）

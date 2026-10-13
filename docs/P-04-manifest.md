@@ -1,8 +1,8 @@
 # P-04 檔案清單
 
-最後更新：B30-5
-版本：v103.0.38
-批次：B30-5
+最後更新：B30-6
+版本：v103.0.39
+批次：B30-6
 用途：所有交付檔案版本 + 批次追蹤
 
 ---
@@ -217,22 +217,24 @@
 |---|---|---|
 | sw.js | v103.0.27 | B26-3 |
 | manifest.json | — | 未變 |
-| docs/（21 檔） | v103.0.38 | B30-5 |
+| docs/（22 檔） | v103.0.39 | B30-6 |
 
 ---
 
-## docs/（21 檔）
+## docs/（22 檔）
 
-### C-*（6 檔）
+### C-*（7 檔）
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
 | C-00-startup.md | v1.0 | B29-7 |
 | C-01-profile.md | v1.0 | B29-7 |
-| C-02-rules.md | v1.4 | B30-5 |
+| C-02-rules.md | v1.6 | B30-6 |
 | C-03-guide.md | v1.2 | B29-10a |
-| C-04-delivery.md | v1.2 | B29-10a |
-| C-05-learning.md | v1.2 | B30-5 |
+| C-04-delivery.md | v1.3 | B30-6 |
+| C-05-learning.md | v1.3 | B30-6 |
+| C-06-token-log.md | v1.2 | B30-6 |
+| C-07-summary.md | v1.0 | B30-6 |
 
 ### P-*（15 檔）
 
@@ -240,8 +242,8 @@
 |---|---|---|
 | P-01-index.md | v103.0.36 | B29-8a |
 | P-02-anchor.md | v103.0.38 | B30-5 |
-| P-03-progress.md | v103.0.38 | B30-5 |
-| P-04-manifest.md | v103.0.38 | B30-5 |
+| P-03-progress.md | v103.0.39 | B30-6 |
+| P-04-manifest.md | v103.0.39 | B30-6 |
 | P-05-adr.md | v103.0.36 | B29-8g |
 | P-06-sop.md | v103.0.37 | B29-9c |
 | P-07-pagemap.md | v103.0.36 | B29-8h |
@@ -249,7 +251,7 @@
 | P-09-api.md | v103.0.36 | B29-8f |
 | P-10-data.md | v103.0.37 | B29-9d |
 | P-11-compat.md | v103.0.36 | B29-8c |
-| P-12-incident.md | v103.0.38 | B30-5 |
+| P-12-incident.md | v103.0.39 | B30-6 |
 | P-13-glossary.md | v103.0.36 | B29-8b |
 | P-14-refactor.md | v103.0.37 | B29-9b |
 | P-99-errors-map.md | v103.0.36 | B29-8a |
@@ -275,8 +277,8 @@
 | CSS | 6 |
 | HTML | 13 |
 | 根目錄 | 2 |
-| docs/ | 21 |
-| **總計** | **129** |
+| docs/ | 22 |
+| **總計** | **130** |
 
 ---
 
@@ -300,7 +302,8 @@
 
 | 批次 | 更新 |
 |---|---|
-| B30-5 | 後端 DB 切換（_config / _helpers / [[path]]） |
+| B30-6 | C-07 新建 / C-02 / C-04 / C-05 / C-06 / P-03 / P-12 同步 |
+| B30-5 | 後端 DB 切換 |
 | B30-3b | navbar DB 標籤 + 主題切換 |
 | B30-3d | 主題實色元件 |
 | B30-3-2 | 5 檔 CSS 變數化 |
@@ -311,16 +314,16 @@
 | B29-9 | docs 補回 |
 | B29-8 | P-* 重組 |
 | B29-7 | C-* 6 檔 |
-| B29 | page-controls / column-registry / data-table / 6 頁 JS / page-metadata-registry / db / page-engine / settings / layout.css / components.css / 3 HTML |
-| B26 | page-controls / navbar / constants / sw / 7 JS / 7 HTML / settings / sidebar / admin.html |
-| B25 | 27 檔 + docs |
-| B23 | entity-definitions / entity-modal / entity-funds-allocation / _insurance / db / column-registry / portfolio |
+| B29 | page-controls / column-registry / data-table 等 |
+| B26 | 全站優化 |
+| B25 | 全站修復 |
+| B23 | 基金保險分支 |
 
 ---
 
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/P-04-manifest.md
-   Version: v103.0.38
-   Batch: B30-5
+   Version: v103.0.39
+   Batch: B30-6
    ═══════════════════════════════════════════ */

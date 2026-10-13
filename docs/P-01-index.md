@@ -1,8 +1,8 @@
 # P-01 專案索引（家庭財務 Web App）
 
-最後更新：B29-8a
-版本：v103.0.36
-批次：B29
+最後更新：B30-6
+版本：v103.0.39
+批次：B30-6
 用途：新對話時上傳此檔 + 相關 P-*
 
 ---
@@ -27,7 +27,7 @@
 | 登入 | Firebase Auth（自訂帳號 @familyfin.local） |
 | 前端 | 純 HTML + CSS + ES Module JS |
 | 後端 | Cloudflare Pages Functions |
-| 視覺 | 深色科幻霓虹（Cyan / Magenta / Emerald） |
+| 視覺 | 亮色家庭暖陽（Tailwind 色板，B30-3 起） |
 | 金額 | 四捨五入至整數 |
 
 ---
@@ -36,11 +36,11 @@
 
 | 項目 | 值 |
 |---|---|
-| 版本 | v103.0.36 |
-| 批次 | B29（全完成） |
+| 版本 | v103.0.39 |
+| 批次 | B30-6（docs 同步） |
 | SW 版本 | family-fin-v141 |
 | 部署 URL | family-financial-management-system.pages.dev |
-| 測試狀態 | B29 已部署測試通過 |
+| 測試狀態 | B30-5 已部署測試通過 |
 
 ---
 
@@ -80,6 +80,7 @@
 | js/shared/ | 12 | data-table / data-card / 其他 |
 | js/pages/ | 13 | 純 Schema |
 | functions/api/ | 10 | CF Pages Functions |
+| icons/ | 1+ | icon.svg / icon.png |
 
 **詳細檔案清單**：P-04-manifest.md
 
@@ -102,9 +103,10 @@
 | 11 | P-11-compat.md | 舊資料相容 |
 | 12 | P-12-incident.md | 事故日誌 |
 | 13 | P-13-glossary.md | 業務術語 |
-| 14 | P-99-errors-map.md | 錯誤摘要（交付前必讀） |
+| 14 | P-14-refactor.md | 重構歷程 |
+| 15 | P-99-errors-map.md | 錯誤摘要（交付前必讀） |
 
-**C-* 共用檔**（跨專案）：C-00 ~ C-05
+**C-* 共用檔**（跨專案）：C-00 ~ C-07
 
 ---
 
@@ -120,15 +122,17 @@
 | 4 | C-03-guide.md |
 | 5 | C-04-delivery.md |
 | 6 | C-05-learning.md |
+| 7 | C-06-token-log.md |
+| 8 | C-07-summary.md |
 
 **舊專案啟動時**：
 
 | 順序 | 檔案 |
 |---|---|
-| 7 | P-01-index.md（本檔） |
-| 8 | P-02-anchor.md |
-| 9 | P-03-progress.md |
-| 10 | P-04-manifest.md |
+| 9 | P-01-index.md（本檔） |
+| 10 | P-02-anchor.md |
+| 11 | P-03-progress.md |
+| 12 | P-04-manifest.md |
 
 **按需**：
 
@@ -170,6 +174,7 @@
 | 「有問題」 | 跑 5 問 → 先診斷 |
 | 「新增 X」 | 跑 5 問 → 提供方案 |
 | 「重構 X」 | 跑 5 問 → 提供方案 |
+| 「階段性總結」 | 依 C-07 §一 執行 |
 
 ---
 
@@ -177,6 +182,8 @@
 
 | 項目 | 狀態 |
 |---|---|
+| B31：icon 更換 | 📋 待規劃 |
+| B31：docs 版本號統一 | 📋 待規劃 |
 | 清理 deprecated 檔（v104） | 📋 記錄 |
 | db.js 拆檔（~510 行） | 📋 觀察 |
 | column-registry.js 拆檔（~450 行） | 📋 觀察 |
@@ -198,6 +205,6 @@
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/P-01-index.md
-   Version: v103.0.36
-   Batch: B29-8a
+   Version: v103.0.39
+   Batch: B30-6
    ═══════════════════════════════════════════ */
