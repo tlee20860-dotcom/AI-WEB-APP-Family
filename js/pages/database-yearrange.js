@@ -1,6 +1,10 @@
 // ============================================
-// database-yearrange.js — 年份範圍（v103.0.0）
+// database-yearrange.js — 年份範圍（v103.0.1）
 // 位置：js/pages/database-yearrange.js
+// ============================================
+// v103.0.1（B31-1）：
+//   ✅ 修正：清空「起始年份」不再被誤判為 0
+//      - _parseFormValues 改從 DOM 直接讀 value（避開 number→0）
 // ============================================
 import { listenYearRange, saveYearRange } from '../core/db.js';
 import { getYearRange as getMergedYearRange } from '../config/app-config.js';
@@ -187,10 +191,30 @@ function _refreshPreview() {
   if (window.lucide) window.lucide.createIcons();
 }
 
+/* ============================================
+   🆕 v103.0.1（B31-1）：從 DOM 直接讀 value
+   -------------------------------------------------
+   原因：form-builder 的 getFieldValue / _collectData 對
+        number 欄位會把空字串轉成 0（Number('') === 0）。
+        本頁需要「空字串 → null」的語意。
+   ============================================ */
 function _parseFormValues(data) {
   let rawStart, rawFuture;
-  if (data) { rawStart = data['db-yr-start']; rawFuture = data['db-yr-future']; }
-  else if (_formApi) { rawStart = _formApi.getFieldValue('db-yr-start'); rawFuture = _formApi.getFieldValue('db-yr-future'); }
+
+  const startEl = document.getElementById('db-yr-start');
+  const futureEl = document.getElementById('db-yr-future');
+
+  if (startEl || futureEl) {
+    rawStart = startEl ? startEl.value : '';
+    rawFuture = futureEl ? futureEl.value : '';
+  } else if (data) {
+    rawStart = data['db-yr-start'];
+    rawFuture = data['db-yr-future'];
+  } else if (_formApi) {
+    rawStart = _formApi.getFieldValue('db-yr-start');
+    rawFuture = _formApi.getFieldValue('db-yr-future');
+  }
+
   const startYear = (rawStart === '' || rawStart == null) ? null : Number(rawStart);
   let futureYears = Number(rawFuture);
   if (isNaN(futureYears)) futureYears = LIMITS.YEAR_FUTURE_DEFAULT;
@@ -206,3 +230,10 @@ function _destroy() {
   }
   _container = null;
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: js/pages/database-yearrange.js
+   Version: v103.0.1
+   Batch: B31-1
+   ═══════════════════════════════════════════ */
