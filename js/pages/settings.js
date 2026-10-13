@@ -1,11 +1,12 @@
 // ============================================
-// settings.js — 系統設定（v103.0.34 Page Schema）
+// settings.js — 系統設定（v103.0.35 Page Schema）
 // 位置：js/pages/settings.js
 // ============================================
+// v103.0.35（B31-1）：
+//   ✅ 修正：_load 改用 listenPageMetadata（SSOT）
+//      - 移除硬編碼 Firebase URL 動態 import
 // v103.0.34（B29-5d）：
-//   ✅ 個人化 Tab 加「頁面標題」卡（可編輯 title / subtitleStatic）
-// v103.0.32（B26-5）：
-//   ✅ 遷移卡加家庭選擇器
+//   ✅ 個人化 Tab 加「頁面標題」卡
 // ============================================
 
 import { initTabPanel } from '../ui/tab-panel.js';
@@ -143,7 +144,6 @@ function _initPersonalTab(ctx) {
 
   _injectDebugCard(ctx);
   _injectMigrateCard(ctx);
-  /* 🆕 v103.0.34：頁面標題卡 */
   _injectPageMetadataCard(ctx);
 
   ctx._personalCleanup = () => {
@@ -395,7 +395,7 @@ function _injectMigrateCard(ctx) {
 }
 
 /* ============================================
-   🆕 v103.0.34：頁面標題卡（B29-5d）
+   頁面標題卡
    ============================================ */
 function _injectPageMetadataCard(ctx) {
   const grid = document.querySelector('#settings-panel-personal .settings-personal-grid');
@@ -461,7 +461,7 @@ function _injectPageMetadataCard(ctx) {
 
   let _allMeta = {};
 
-  /* 載入 + 訂閱 */
+  /* 🆕 v103.0.35（B31-1）：改用 listenPageMetadata（SSOT） */
   const _applyFormFromMeta = (pageKey) => {
     const custom = _allMeta[pageKey] || {};
     const def = getDefaultMetadata(pageKey);
@@ -469,13 +469,16 @@ function _injectPageMetadataCard(ctx) {
     subInput.value = (custom.subtitleStatic != null) ? custom.subtitleStatic : (def.subtitleStatic || '');
   };
 
-  const _load = async () => {
+  const _load = () => {
+    if (ctx._pageMetaUnsub) {
+      try { ctx._pageMetaUnsub(); } catch (e) { /* noop */ }
+      ctx._pageMetaUnsub = null;
+    }
     try {
-      const { get } = await import('https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js');
-      const { familyRef } = await import('../core/db.js');
-      const snap = await get(familyRef('settings/page_metadata'));
-      _allMeta = snap.val() || {};
-      _applyFormFromMeta(pageSel.value);
+      ctx._pageMetaUnsub = listenPageMetadata((all) => {
+        _allMeta = all || {};
+        _applyFormFromMeta(pageSel.value);
+      });
     } catch (err) {
       console.warn('[settings] 載入頁面 metadata 失敗：', err);
       _applyFormFromMeta(pageSel.value);
@@ -551,6 +554,6 @@ function _injectPageMetadataCard(ctx) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/settings.js
-   Version: v103.0.34
-   Batch: B29-5d
+   Version: v103.0.35
+   Batch: B31-1
    ═══════════════════════════════════════════ */
