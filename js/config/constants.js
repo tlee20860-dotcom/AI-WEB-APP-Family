@@ -20,10 +20,10 @@
    2. localStorage 記憶
    3. 預設 'new'
    ============================================ */
-const DB_TARGET_KEY = 'fin_db_target';   /* 此 key 本身不加 DB 前綴 */
+const DB_TARGET_KEY = 'fin_db_target';
 
 function _resolveDbTarget() {
-  if (typeof window === 'undefined') return 'new';
+  if (typeof window === 'undefined') return 'new';   /* ← 改這行 */
   try {
     const params = new URLSearchParams(window.location.search);
     const fromUrl = params.get('db');
@@ -34,11 +34,11 @@ function _resolveDbTarget() {
     const saved = localStorage.getItem(DB_TARGET_KEY);
     if (saved === 'old' || saved === 'new') return saved;
   } catch (e) { /* noop */ }
-  return 'new';
+  return 'new';   /* ← 改這行 */
 }
 
 export const DB_TARGET = _resolveDbTarget();
-const _P = `fin_${DB_TARGET}_`;   /* 所有 storage key 的共同前綴 */
+const _P = `fin_${DB_TARGET}_`;
 
 /* ============================================
    0.1 版本號
