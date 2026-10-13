@@ -1,4 +1,7 @@
-// insurance.js — 保險清單表（v103.0.35）
+// insurance.js — 保險清單表（v103.0.36）
+// v103.0.36（B30-8）：
+//   ✅ 保單卡片加「已供款總額」與「剩餘供款」兩欄
+//      - 方便與基金頁的投入成本對比
 // v103.0.35（B29-7a）：
 //   ✅ 刪除 syncSubtitle（動態副標題）
 // ============================================
@@ -52,14 +55,16 @@ export default {
       if (statsRoot) {
         if (_statsApi) { try { _statsApi.destroy(); } catch (e) {} }
         statsRoot.innerHTML = '';
+        const totalPaid = enriched.reduce((s, p) => s + (p._paidTotal || 0), 0);
         _statsApi = renderStatsCards({
           container: 'insurance-stats-root',
           cards: [
             { title: `${targetYear} 年度保單總供款`, value: formatHKD(enriched.reduce((s, p) => s + (p._currentAnnualPremium || 0), 0)), valueClass: 'cyan', hint: `共 ${enriched.length} 張保單`, icon: 'wallet' },
+            { title: '累計已供款總額', value: formatHKD(totalPaid), valueClass: 'emerald', hint: '所有保單的已扣款總和', icon: 'check-circle' },
             { title: '供款中保單', value: `${enriched.filter((p) => !p._isCompleted).length} 張`, valueClass: 'emerald', hint: '未供滿的保單數量', icon: 'shield' },
             { title: '已供滿保單', value: `${enriched.filter((p) => p._isCompleted).length} 張`, valueClass: 'emerald', hint: '已完成供款年期', icon: 'check-circle' },
           ],
-          columns: 3,
+          columns: 4,
         });
       }
 
@@ -145,8 +150,15 @@ export default {
       const done = p.completedPeriods || 0;
       const pct = calcProgress(p);
       const canInput = AppState.getCanInput();
+
+      /* 🆕 已供款總額 / 剩餘供款 */
+      const paidTotal = p._paidTotal || 0;
+      const totalPremium = p._totalPremium || 0;
+      const remaining = Math.max(0, totalPremium - paidTotal);
+
       const actions = canInput ? `<div class="policy-actions"><button type="button" class="btn btn-sm btn-ghost" data-action="edit-policy" data-id="${p.id}"><i data-lucide="pencil" style="width:14px;height:14px;"></i> 編輯</button><button type="button" class="btn btn-sm btn-danger" data-action="delete-policy" data-id="${p.id}"><i data-lucide="trash-2" style="width:14px;height:14px;"></i> 刪除</button></div>` : '';
       const progressHtml = isFund ? '' : `<div class="policy-progress" style="margin-top:12px;"><div class="policy-progress-text"><span>整體供款進度</span><span>${done} / ${total} 期 (${pct}%)</span></div><div class="progress"><div class="progress-bar" style="width:${pct}%;"></div></div></div>`;
+
       return `<div class="policy-header"><div><div class="policy-name">${esc(p.name || '')}</div><div class="policy-company">${esc(p.company || '')} · ${isFund ? '基金保險' : '普通保險'}</div></div></div>
         <div class="policy-info-grid">
           <div class="policy-info-item"><span class="policy-info-label">保單持有人</span><span class="policy-info-value">${esc(holder)}</span></div>
@@ -154,7 +166,11 @@ export default {
         </div>
         <div class="policy-info-grid" style="margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,0.08);">
           <div class="policy-info-item"><span class="policy-info-label">本期年繳</span><span class="policy-info-value text-cyan">${formatHKD(p._currentAnnualPremium)}</span></div>
-          <div class="policy-info-item"><span class="policy-info-label">保單總供款</span><span class="policy-info-value text-magenta">${formatHKD(p._totalPremium)}</span></div>
+          <div class="policy-info-item"><span class="policy-info-label">保單總供款</span><span class="policy-info-value text-magenta">${formatHKD(totalPremium)}</span></div>
+        </div>
+        <div class="policy-info-grid" style="margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,0.08);">
+          <div class="policy-info-item"><span class="policy-info-label">已供款總額</span><span class="policy-info-value text-emerald" style="font-weight:700;">${formatHKD(paidTotal)}</span></div>
+          <div class="policy-info-item"><span class="policy-info-label">剩餘供款</span><span class="policy-info-value">${formatHKD(remaining)}</span></div>
         </div>${progressHtml}${actions}`;
     };
 
@@ -262,6 +278,6 @@ export default {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/insurance.js
-   Version: v103.0.35
-   Batch: B29-7a
+   Version: v103.0.36
+   Batch: B30-8
    ═══════════════════════════════════════════ */
