@@ -1,8 +1,8 @@
 # P-04 檔案清單
 
-最後更新：B30-6
-版本：v103.0.39
-批次：B30-6
+最後更新：B30-9
+版本：v103.0.40
+批次：B30-9
 用途：所有交付檔案版本 + 批次追蹤
 
 ---
@@ -47,7 +47,7 @@
 | lifecycle.js | v103.0.0 | B03 |
 | registry.js | v103.0.0 | B03 |
 | merge.js | v103.0.22 | B25 |
-| insurance.js | v103.0.22 | B25 |
+| insurance.js | v103.0.23 | B30-7 |
 | bank.js | v103.0.22 | B25 |
 | expense-modal.js | v103.0.22 | B25 |
 | income-modal.js | v103.0.18 | B19 |
@@ -105,7 +105,7 @@
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
-| entity-definitions.js | v103.0.21 | B23 |
+| entity-definitions.js | v103.0.24 | B30-8 |
 | entity-helpers.js | v103.0.22 | B25 |
 | entity-modal.js | v103.0.22 | B25 |
 | entity-resolvers.js | v103.0.22 | B25 |
@@ -146,7 +146,7 @@
 | 檔案 | 版本 | 批次 |
 |---|---|---|
 | dashboard.js | v103.0.35 | B29 |
-| portfolio.js | v103.0.27 | B26-3 |
+| portfolio.js | v103.0.32 | B30-8 |
 | annual-report.js | v103.0.29 | B26-3.2 |
 | settings.js | v103.0.34 | B29 |
 | finance-overview.js | v103.0.35 | B29 |
@@ -157,7 +157,7 @@
 | database-dropdowns.js | v103.0.0 | B11 |
 | database-yearrange.js | v103.0.0 | B11 |
 | settlements.js | v103.0.35 | B29 |
-| insurance.js | v103.0.35 | B29 |
+| insurance.js | v103.0.36 | B30-8 |
 
 ---
 
@@ -217,33 +217,33 @@
 |---|---|---|
 | sw.js | v103.0.27 | B26-3 |
 | manifest.json | — | 未變 |
-| docs/（22 檔） | v103.0.39 | B30-6 |
+| docs/（23 檔） | v103.0.40 | B30-9 |
 
 ---
 
-## docs/（22 檔）
+## docs/（23 檔）
 
-### C-*（7 檔）
+### C-*（8 檔）
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
 | C-00-startup.md | v1.0 | B29-7 |
 | C-01-profile.md | v1.0 | B29-7 |
-| C-02-rules.md | v1.6 | B30-6 |
+| C-02-rules.md | v1.7 | B30-9 |
 | C-03-guide.md | v1.2 | B29-10a |
-| C-04-delivery.md | v1.3 | B30-6 |
-| C-05-learning.md | v1.3 | B30-6 |
-| C-06-token-log.md | v1.2 | B30-6 |
+| C-04-delivery.md | v1.4 | B30-6 |
+| C-05-learning.md | v1.4 | B30-9 |
+| C-06-token-log.md | v1.3 | B30-6 |
 | C-07-summary.md | v1.0 | B30-6 |
 
 ### P-*（15 檔）
 
 | 檔案 | 版本 | 批次 |
 |---|---|---|
-| P-01-index.md | v103.0.36 | B29-8a |
-| P-02-anchor.md | v103.0.38 | B30-5 |
-| P-03-progress.md | v103.0.39 | B30-6 |
-| P-04-manifest.md | v103.0.39 | B30-6 |
+| P-01-index.md | v103.0.39 | B30-6 |
+| P-02-anchor.md | v103.0.39 | B30-6 |
+| P-03-progress.md | v103.0.40 | B30-9 |
+| P-04-manifest.md | v103.0.40 | B30-9 |
 | P-05-adr.md | v103.0.36 | B29-8g |
 | P-06-sop.md | v103.0.37 | B29-9c |
 | P-07-pagemap.md | v103.0.36 | B29-8h |
@@ -251,7 +251,7 @@
 | P-09-api.md | v103.0.36 | B29-8f |
 | P-10-data.md | v103.0.37 | B29-9d |
 | P-11-compat.md | v103.0.36 | B29-8c |
-| P-12-incident.md | v103.0.39 | B30-6 |
+| P-12-incident.md | v103.0.40 | B30-9 |
 | P-13-glossary.md | v103.0.36 | B29-8b |
 | P-14-refactor.md | v103.0.37 | B29-9b |
 | P-99-errors-map.md | v103.0.36 | B29-8a |
@@ -277,8 +277,8 @@
 | CSS | 6 |
 | HTML | 13 |
 | 根目錄 | 2 |
-| docs/ | 22 |
-| **總計** | **130** |
+| docs/ | 23 |
+| **總計** | **131** |
 
 ---
 
@@ -292,7 +292,7 @@
 | js/shared/form-handler.js | deprecated（v104 移除） |
 | js/shared/listener-group.js | deprecated（v104 移除） |
 | js/core/utils.js | 過渡期轉接層（v104 移除） |
-| db.js ~510 行 | 觀察（拆檔候選） |
+| db.js ~510 行 | 觀察 |
 | column-registry.js ~450 行 | 觀察 |
 | data-table.js ~330 行 | 觀察 |
 
@@ -302,28 +302,25 @@
 
 | 批次 | 更新 |
 |---|---|
-| B30-6 | C-07 新建 / C-02 / C-04 / C-05 / C-06 / P-03 / P-12 同步 |
-| B30-5 | 後端 DB 切換 |
-| B30-3b | navbar DB 標籤 + 主題切換 |
-| B30-3d | 主題實色元件 |
-| B30-3-2 | 5 檔 CSS 變數化 |
-| B30-3 | theme.css Tailwind 色板 |
-| B30-2 | URL 切 DB + storage 前綴 |
-| B30-1 | settings.html 加 requireFamily:false |
+| B30-9 | C-05 / C-02 / P-12 / P-03 / P-04 |
+| B30-8 | insurance.js / portfolio.js / entity-definitions.js / insurance.js（頁面） |
+| B30-7 | entity-definitions.js / lib/insurance.js |
+| B30-6 | C-07 新建 / C-02 / C-04 / C-05 / C-06 / P-02 / P-01 |
+| B30-5 | functions/api/（3 檔） |
+| B30-3b | state.js / navbar.js / components.css |
+| B30-3d | theme.css / components.css |
+| B30-3 | theme.css |
+| B30-2 | firebase-config.js / constants.js |
+| B30-1 | settings.html |
 | B29-10 | Token 視覺化 |
 | B29-9 | docs 補回 |
 | B29-8 | P-* 重組 |
-| B29-7 | C-* 6 檔 |
-| B29 | page-controls / column-registry / data-table 等 |
-| B26 | 全站優化 |
-| B25 | 全站修復 |
-| B23 | 基金保險分支 |
 
 ---
 
 /* ═══════════════════════════════════════════
    END OF FILE
    File: docs/P-04-manifest.md
-   Version: v103.0.39
-   Batch: B30-6
+   Version: v103.0.40
+   Batch: B30-9
    ═══════════════════════════════════════════ */
