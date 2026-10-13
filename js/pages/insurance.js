@@ -1,14 +1,15 @@
-// insurance.js — 保險清單表（v103.0.36）
+// insurance.js — 保險清單表（v103.0.37）
+// v103.0.37（B31-1）：
+//   ✅ 修正：payments 快取失效 — 改為訂閱 insurance_payments 節點
+//      - 移除 _lastIds id 快取邏輯（按扣款後不刷新）
 // v103.0.36（B30-8）：
 //   ✅ 保單卡片加「已供款總額」與「剩餘供款」兩欄
-//      - 方便與基金頁的投入成本對比
-// v103.0.35（B29-7a）：
-//   ✅ 刪除 syncSubtitle（動態副標題）
 // ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
 import { computeEnrichedPolicies, calcProgress, getPolicyHolderId } from '../lib/insurance.js';
-import { getInsurancePaymentsOnce } from '../core/db.js';
+import { familyRef } from '../core/db.js';
+import { onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 import { resolveName } from '../config/entity-registry.js';
 import { getColumns, getResolvers } from '../config/column-registry.js';
 import { AppState } from '../core/state.js';
@@ -37,7 +38,7 @@ export default {
     let _clickHandler = null;
     let _toggleHandler = null;
     let _controls = null;
-    let _lastIds = '';
+    let _payUnsub = null;
     let _view = 'card';
 
     try {
@@ -151,7 +152,6 @@ export default {
       const pct = calcProgress(p);
       const canInput = AppState.getCanInput();
 
-      /* 🆕 已供款總額 / 剩餘供款 */
       const paidTotal = p._paidTotal || 0;
       const totalPremium = p._totalPremium || 0;
       const remaining = Math.max(0, totalPremium - paidTotal);
@@ -232,34 +232,39 @@ export default {
     const onAddFirst = () => openEntityModal({ entity: ENTITY_KEYS.POLICY, mode: 'add' });
     if (addFirstBtn) addFirstBtn.addEventListener('click', onAddFirst);
 
-    const _loadPayments = async () => {
-      const policies = ctx.data.policies || [];
-      const ids = policies.map((p) => p.id).sort().join(',');
-      if (ids === _lastIds) return;
-      _lastIds = ids;
-      if (policies.length === 0) { _payments = {}; return; }
-      try {
-        const snaps = await Promise.all(policies.map((p) => getInsurancePaymentsOnce(p.id)));
-        _payments = {};
-        policies.forEach((p, i) => { _payments[p.id] = snaps[i]; });
-      } catch (e) { _payments = {}; }
-    };
+    /* ============================================
+       🆕 v103.0.37（B31-1）：訂閱 insurance_payments
+       -------------------------------------------------
+       原因：原本用 _lastIds 快取 policy id 列表，
+            但 insurance_payments 更新時 id 未變，
+            導致「已供款總額 / 剩餘供款」不刷新。
+       解：改為直接訂閱 insurance_payments 節點，
+          任何變更（含 settlements 頁扣款）都觸發。
+       ============================================ */
+    try {
+      _payUnsub = onValue(familyRef('insurance_payments'), (snap) => {
+        _payments = snap.val() || {};
+        render();
+      }, (err) => {
+        console.warn('[insurance] 訂閱 payments 失敗：', err);
+      });
+    } catch (e) {
+      console.warn('[insurance] 無法訂閱 payments：', e);
+    }
 
-    const unsub = ctx.onDataChange(async (key) => {
-      if (key.startsWith('data.policies') || key === '__APP__') {
-        if (key === '__APP__' && _controls) {
-          try { _controls.refresh(); } catch (e) {}
-        }
-        await _loadPayments();
+    const unsub = ctx.onDataChange((key) => {
+      if (key === '__APP__' && _controls) {
+        try { _controls.refresh(); } catch (e) {}
       }
       render();
     });
 
-    _loadPayments().then(render);
+    render();
 
     return {
       destroy: () => {
         unsub();
+        if (_payUnsub) { try { _payUnsub(); } catch (e) {} _payUnsub = null; }
         if (_statsApi) { try { _statsApi.destroy(); } catch (e) {} }
         if (_tableApi) { try { _tableApi.destroy(); } catch (e) {} }
         if (_cardApi) { try { _cardApi.destroy(); } catch (e) {} }
@@ -278,6 +283,6 @@ export default {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/insurance.js
-   Version: v103.0.36
-   Batch: B30-8
+   Version: v103.0.37
+   Batch: B31-1
    ═══════════════════════════════════════════ */
