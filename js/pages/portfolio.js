@@ -1,7 +1,10 @@
-// portfolio.js — 基金投資表（v103.0.32）
-// v103.0.32（B30-8）：
-//   ✅ 修正成本分配邏輯：若保單內有基金手動輸入成本，先從總保額扣除，再將剩餘按比例分配給其他基金
-//   ✅ 保證總投入成本 = 保單總供款，不會重複計算
+// portfolio.js — 基金投資表（v103.0.33）
+// v103.0.33（B33-1）：
+//   ✅ 快照改為以估值日（YYYY-MM-DD）為 key
+//   ✅ 卡片顯示最新一筆快照（單位數 / 價格 USD / 總值 USD / 保單價值 HKD）
+//   ✅ 支援歷史快照展開、可刪除
+//   ✅ 支援任選兩筆快照對比
+//   ✅ 成本累積邏輯不動（由保險保單自動分配）
 // ============================================
 import { formatHKD } from '../lib/format.js';
 import { esc } from '../lib/dom.js';
@@ -10,13 +13,15 @@ import { deleteEntity } from '../entity/entity-helpers.js';
 import { openConfirm, openModal, closeModal } from '../ui/modal.js';
 import { buildForm } from '../ui/form-builder.js';
 import { showToast } from '../ui/toast.js';
-import { saveFundSnapshot, getFundSnapshotsOnce } from '../core/db.js';
+import { saveFundSnapshot, removeFundSnapshot, getFundSnapshotListOnce } from '../core/db.js';
 import { AppState } from '../core/state.js';
 import { renderPageControls } from '../lib/page-controls.js';
 import { ENTITY_KEYS } from '../config/constants.js';
 import { calcFundCostEstimate } from '../lib/insurance.js';
 
 const SNAP_MODAL_ID = 'fund-snapshot-modal';
+const HISTORY_MODAL_ID = 'fund-history-modal';
+const DEFAULT_FX = 7.8;
 
 export default {
   title: '基金投資表',
@@ -109,11 +114,18 @@ export default {
 
     const snapshotHandler = async (e) => {
       const btn = e.target.closest('button[data-action="snapshot"]');
-      if (!btn) return;
-      const fundId = btn.dataset.id;
-      const fundName = btn.dataset.name || '';
-      if (!fundId) return;
-      await _openSnapshotModal(fundId, fundName);
+      if (btn) {
+        const fundId = btn.dataset.id;
+        const fundName = btn.dataset.name || '';
+        if (fundId) await _openSnapshotModal(fundId, fundName, render);
+        return;
+      }
+      const histBtn = e.target.closest('button[data-action="history"]');
+      if (histBtn) {
+        const fundId = histBtn.dataset.id;
+        const fundName = histBtn.dataset.name || '';
+        if (fundId) await _openHistoryModal(fundId, fundName, render);
+      }
     };
 
     const insRoot = document.getElementById('insurance-funds-list');
@@ -150,12 +162,7 @@ function _findPolicyByFund(fund, policies) {
 }
 
 /* ============================================
-   🆕 核心邏輯：為單一保單計算所有基金的投入成本
-   -------------------------------------------------
-   1. 計算該保單的總投入成本（月供 × 已供月數）
-   2. 找出有手動成本的基金（如東方匯理）
-   3. 從總成本扣除手動成本
-   4. 剩餘成本按比例分配給其他基金
+   為單一保單計算所有基金的投入成本（邏輯不動）
    ============================================ */
 function _getCostMapForPolicy(policy, allFunds, targetYear, targetMonth) {
   const costMap = {};
@@ -165,14 +172,10 @@ function _getCostMapForPolicy(policy, allFunds, targetYear, targetMonth) {
   if (policyFunds.length === 0) return costMap;
 
   const totalPolicyCost = calcFundCostEstimate(policy, targetYear, targetMonth);
-
-  /* 分離手動成本基金 */
   const manualFunds = policyFunds.filter((f) => Number(f.cost) > 0);
   const manualTotal = manualFunds.reduce((s, f) => s + Number(f.cost), 0);
-
   manualFunds.forEach((f) => { costMap[f.id] = Number(f.cost); });
 
-  /* 動態分配剩餘成本 */
   const remainingCost = Math.max(0, totalPolicyCost - manualTotal);
   const dynamicFunds = policyFunds.filter((f) => Number(f.cost) <= 0);
   const dynamicTotalPct = dynamicFunds.reduce((s, f) => {
@@ -205,7 +208,6 @@ function _paintInsurance(ctx) {
   const y = ym.year || String(new Date().getFullYear());
   const m = ym.month === 'all' ? String(new Date().getMonth() + 1).padStart(2, '0') : ym.month;
 
-  /* 為每張保單預先計算成本映射表 */
   const costMaps = {};
   policies.forEach((p) => { costMaps[p.id] = _getCostMapForPolicy(p, list, y, m); });
 
@@ -220,6 +222,9 @@ function _paintInsurance(ctx) {
   if (root.__lastHtml === html) return;
   root.__lastHtml = html;
   root.innerHTML = html;
+
+  /* 非同步填充最新快照 */
+  rows.forEach((r) => _fillLatestSnapshot(r.fund.id));
 }
 
 /* ============================================
@@ -241,6 +246,38 @@ function _paintStandalone(ctx) {
   if (root.__lastHtml === html) return;
   root.__lastHtml = html;
   root.innerHTML = html;
+
+  list.forEach((f) => _fillLatestSnapshot(f.id));
+}
+
+/* ============================================
+   非同步填充最新快照（單位數 / 價格 / 總值 / 保單價值）
+   ============================================ */
+async function _fillLatestSnapshot(fundId) {
+  const placeholder = document.querySelector(`[data-snap-latest="${fundId}"]`);
+  if (!placeholder) return;
+  try {
+    const snaps = await getFundSnapshotListOnce(fundId);
+    const latest = snaps[snaps.length - 1];
+    if (!latest) {
+      placeholder.innerHTML = '<div class="snap-empty-hint">尚未輸入任何快照</div>';
+      return;
+    }
+    const shares = Number(latest.shares) || 0;
+    const nav = Number(latest.nav) || 0;
+    const totalUsd = shares * nav;
+    const totalHkd = totalUsd * DEFAULT_FX;
+    placeholder.innerHTML = `
+      <div class="policy-info-grid" style="margin-top:8px;">
+        <div class="policy-info-item"><span class="policy-info-label">單位數目</span><span class="policy-info-value">${shares}</span></div>
+        <div class="policy-info-item"><span class="policy-info-label">基金價格</span><span class="policy-info-value">USD ${nav} <span class="text-muted" style="font-size:11px;">(${esc(latest.dateKey)})</span></span></div>
+        <div class="policy-info-item"><span class="policy-info-label">總價值</span><span class="policy-info-value">USD ${totalUsd.toFixed(2)}</span></div>
+        <div class="policy-info-item"><span class="policy-info-label">保單貨幣價值</span><span class="policy-info-value text-emerald">HKD ${totalHkd.toFixed(2)}</span></div>
+      </div>
+    `;
+  } catch (e) {
+    placeholder.innerHTML = '<div class="snap-empty-hint">快照載入失敗</div>';
+  }
 }
 
 /* ============================================
@@ -257,31 +294,28 @@ function _cardHtml({ fund, policyName, pct, dynamicCost }, isInsurance) {
   const meta = isInsurance
     ? `<div class="policy-company">${esc(policyName)} · 比例 ${pct}%</div>`
     : '';
-  const costHint = isInsurance
-    ? (pct > 0
-        ? '<div class="glass-card-hint" style="margin-top:2px;">月供 × 已供月數 × 比例（自動）</div>'
-        : '<div class="glass-card-hint" style="margin-top:2px;">手動輸入成本</div>')
-    : '';
 
   return `
-    <div class="glass-card policy-card">
+    <div class="glass-card policy-card" data-fund-id="${esc(fund.id)}">
       <div class="policy-header">
         <div style="min-width:0;">
           <div class="policy-name">${esc(fund.name || '（未命名）')}</div>
           ${meta}
         </div>
       </div>
-      <div class="policy-info-grid">
-        <div class="policy-info-item"><span class="policy-info-label">投入成本</span><span class="policy-info-value">${formatHKD(cost)}</span>${costHint}</div>
-        <div class="policy-info-item"><span class="policy-info-label">現時價值</span><span class="policy-info-value text-emerald">${formatHKD(value)}</span></div>
+      <div data-snap-latest="${esc(fund.id)}">
+        <div class="snap-empty-hint">載入中…</div>
       </div>
       <div class="policy-info-grid" style="margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,0.08);">
+        <div class="policy-info-item"><span class="policy-info-label">投入成本</span><span class="policy-info-value">${formatHKD(cost)}</span></div>
         <div class="policy-info-item"><span class="policy-info-label">盈虧</span><span class="policy-info-value ${pnlCls}">${pnlSign}${formatHKD(pnl)} (${pnlPct}%)</span></div>
-        <div class="policy-info-item"><span class="policy-info-label">單位數</span><span class="policy-info-value">${fund.units || '—'}</span></div>
       </div>
       <div class="policy-actions">
         <button type="button" class="btn btn-sm btn-primary" data-action="snapshot" data-id="${esc(fund.id)}" data-name="${esc(fund.name || '')}">
-          <i data-lucide="camera" style="width:14px;height:14px;"></i> 輸入本月快照
+          <i data-lucide="camera" style="width:14px;height:14px;"></i> 輸入快照
+        </button>
+        <button type="button" class="btn btn-sm btn-ghost" data-action="history" data-id="${esc(fund.id)}" data-name="${esc(fund.name || '')}">
+          <i data-lucide="history" style="width:14px;height:14px;"></i> 查看歷史
         </button>
         <button type="button" class="btn btn-sm btn-ghost" data-action="edit-fund" data-id="${esc(fund.id)}">
           <i data-lucide="pencil" style="width:14px;height:14px;"></i> 編輯
@@ -295,9 +329,9 @@ function _cardHtml({ fund, policyName, pct, dynamicCost }, isInsurance) {
 }
 
 /* ============================================
-   快照輸入 Modal
+   快照輸入 Modal（估值日 + USD 價格）
    ============================================ */
-async function _openSnapshotModal(fundId, fundName) {
+async function _openSnapshotModal(fundId, fundName, onDone) {
   document.getElementById(SNAP_MODAL_ID)?.remove();
 
   const overlay = document.createElement('div');
@@ -307,41 +341,30 @@ async function _openSnapshotModal(fundId, fundName) {
   document.body.appendChild(overlay);
   overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(SNAP_MODAL_ID); });
 
-  const { year, month } = AppState.getYearMonth();
-  const y = year || String(new Date().getFullYear());
-  const m = month === 'all' ? String(new Date().getMonth() + 1).padStart(2, '0') : month;
-
-  let snaps = {};
-  try { snaps = await getFundSnapshotsOnce(fundId); } catch (e) {}
-
-  const yearsOpts = [];
-  const curY = new Date().getFullYear();
-  for (let yy = curY - 5; yy <= curY + 1; yy++) yearsOpts.push({ value: String(yy), label: `${yy} 年` });
-  const monthsOpts = [];
-  for (let mm = 1; mm <= 12; mm++) monthsOpts.push({ value: String(mm).padStart(2, '0'), label: `${mm} 月` });
+  const today = new Date().toISOString().slice(0, 10);
 
   buildForm({
     containerId: `${SNAP_MODAL_ID}-form-root`,
     fields: [
-      { type: 'select', id: 'snap-year', label: '年度', required: true, includeEmpty: false, options: yearsOpts, defaultValue: y },
-      { type: 'select', id: 'snap-month', label: '月份', required: true, includeEmpty: false, options: monthsOpts, defaultValue: m },
-      { type: 'number', id: 'snap-shares', label: '股數', required: true, min: 0, step: 0.0001, defaultValue: 0 },
-      { type: 'number', id: 'snap-nav', label: '股價（淨值）', required: true, min: 0, step: 0.0001, defaultValue: 0 },
-      { type: 'number', id: 'snap-value', label: '現值（自動計算）', required: false, disabled: true, defaultValue: 0 },
+      { type: 'date', id: 'snap-date', label: '估值日（截圖上的價格日期）', required: true, defaultValue: today },
+      { type: 'number', id: 'snap-shares', label: '單位數目', required: true, min: 0, step: 0.0001, defaultValue: 0 },
+      { type: 'number', id: 'snap-nav', label: '基金價格 (USD)', required: true, min: 0, step: 0.0001, defaultValue: 0 },
+      { type: 'number', id: 'snap-total-usd', label: '總價值 (USD，自動計算)', required: false, disabled: true, defaultValue: 0 },
+      { type: 'number', id: 'snap-total-hkd', label: '保單貨幣價值 (HKD，自動計算)', required: false, disabled: true, defaultValue: 0 },
     ],
     submitText: '儲存快照',
     showCancel: true,
     cancelText: '取消',
     onSubmit: async (data) => {
       try {
-        const sy = data['snap-year'];
-        const sm = data['snap-month'];
+        const dateKey = data['snap-date'];
         const shares = Number(data['snap-shares']) || 0;
         const nav = Number(data['snap-nav']) || 0;
-        await saveFundSnapshot(fundId, sy, sm, { shares, nav });
-        showToast(`✅ 已儲存 ${sy}-${sm} 快照`, 'success');
+        await saveFundSnapshot(fundId, dateKey, { shares, nav });
+        showToast(`✅ 已儲存 ${dateKey} 快照`, 'success');
         closeModal(SNAP_MODAL_ID);
         overlay.remove();
+        if (typeof onDone === 'function') onDone();
       } catch (err) { showToast('儲存失敗：' + err.message, 'error'); }
     },
     onCancel: () => { closeModal(SNAP_MODAL_ID); overlay.remove(); },
@@ -349,40 +372,161 @@ async function _openSnapshotModal(fundId, fundName) {
 
   const sharesEl = document.getElementById('snap-shares');
   const navEl = document.getElementById('snap-nav');
-  const valueEl = document.getElementById('snap-value');
-  const yearEl = document.getElementById('snap-year');
-  const monthEl = document.getElementById('snap-month');
+  const totalUsdEl = document.getElementById('snap-total-usd');
+  const totalHkdEl = document.getElementById('snap-total-hkd');
 
   const calcValue = () => {
     const s = Number(sharesEl?.value) || 0;
     const n = Number(navEl?.value) || 0;
-    if (valueEl) valueEl.value = Math.round(s * n);
-  };
-  const loadExisting = () => {
-    const sy = yearEl?.value || '';
-    const sm = monthEl?.value || '';
-    const snap = snaps?.[sy]?.[sm];
-    if (snap) {
-      if (sharesEl) sharesEl.value = snap.shares || 0;
-      if (navEl) navEl.value = snap.nav || 0;
-      calcValue();
-    } else {
-      if (sharesEl) sharesEl.value = 0;
-      if (navEl) navEl.value = 0;
-      if (valueEl) valueEl.value = 0;
-    }
+    const usd = s * n;
+    if (totalUsdEl) totalUsdEl.value = usd.toFixed(2);
+    if (totalHkdEl) totalHkdEl.value = (usd * DEFAULT_FX).toFixed(2);
   };
   sharesEl?.addEventListener('input', calcValue);
   navEl?.addEventListener('input', calcValue);
-  yearEl?.addEventListener('change', loadExisting);
-  monthEl?.addEventListener('change', loadExisting);
 
   openModal(SNAP_MODAL_ID);
   if (window.lucide) window.lucide.createIcons();
 }
 
 /* ============================================
-   Stats
+   歷史快照 Modal（列表 + 刪除 + 任選兩筆對比）
+   ============================================ */
+async function _openHistoryModal(fundId, fundName, onDone) {
+  document.getElementById(HISTORY_MODAL_ID)?.remove();
+
+  const snaps = await getFundSnapshotListOnce(fundId);
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = HISTORY_MODAL_ID;
+
+  const rowsHtml = snaps.length === 0
+    ? '<div class="empty-state">尚無任何快照</div>'
+    : snaps.map((s) => {
+        const usd = (Number(s.shares) || 0) * (Number(s.nav) || 0);
+        const hkd = usd * DEFAULT_FX;
+        return `
+          <tr>
+            <td><input type="checkbox" class="hist-cb" data-date="${esc(s.dateKey)}"></td>
+            <td>${esc(s.dateKey)}</td>
+            <td>${s.shares}</td>
+            <td>USD ${s.nav}</td>
+            <td>USD ${usd.toFixed(2)}</td>
+            <td>HKD ${hkd.toFixed(2)}</td>
+            <td><button type="button" class="btn btn-xs btn-danger" data-del-date="${esc(s.dateKey)}">刪除</button></td>
+          </tr>
+        `;
+      }).join('');
+
+  overlay.innerHTML = `
+    <div class="modal" style="max-width:760px;max-height:90vh;overflow-y:auto;">
+      <h2 class="modal-title">歷史快照 — ${esc(fundName)}</h2>
+      <div style="margin-bottom:12px;">
+        <button type="button" class="btn btn-sm btn-primary" id="hist-compare-btn" disabled>對比已勾選的兩筆</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="data-table" style="width:100%;">
+          <thead>
+            <tr>
+              <th style="width:32px;"></th>
+              <th>估值日</th>
+              <th>單位數</th>
+              <th>價格 (USD)</th>
+              <th>總值 (USD)</th>
+              <th>保單價值 (HKD)</th>
+              <th style="width:64px;">操作</th>
+            </tr>
+          </thead>
+          <tbody id="hist-tbody">${rowsHtml}</tbody>
+        </table>
+      </div>
+      <div id="hist-compare-result" style="margin-top:16px;"></div>
+      <div style="margin-top:16px;text-align:right;">
+        <button type="button" class="btn btn-sm" id="hist-close-btn">關閉</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) _closeHistory(); });
+
+  const tbody = document.getElementById('hist-tbody');
+  const compareBtn = document.getElementById('hist-compare-btn');
+  const compareResult = document.getElementById('hist-compare-result');
+
+  const refreshCompareBtn = () => {
+    const checked = tbody.querySelectorAll('.hist-cb:checked');
+    compareBtn.disabled = checked.length !== 2;
+  };
+
+  tbody?.addEventListener('change', (e) => {
+    if (e.target.classList.contains('hist-cb')) {
+      const checked = tbody.querySelectorAll('.hist-cb:checked');
+      if (checked.length > 2) {
+        e.target.checked = false;
+      }
+      refreshCompareBtn();
+    }
+  });
+
+  tbody?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('button[data-del-date]');
+    if (!btn) return;
+    const dateKey = btn.dataset.delDate;
+    const ok = await openConfirm(`確定要刪除 ${dateKey} 的快照嗎？`, { title: '刪除快照', okText: '刪除', okClass: 'btn-danger' });
+    if (!ok) return;
+    try {
+      await removeFundSnapshot(fundId, dateKey);
+      showToast('✅ 已刪除快照', 'success');
+      _closeHistory();
+      if (typeof onDone === 'function') onDone();
+    } catch (err) { showToast('刪除失敗：' + err.message, 'error'); }
+  });
+
+  compareBtn?.addEventListener('click', () => {
+    const checked = Array.from(tbody.querySelectorAll('.hist-cb:checked')).map((cb) => cb.dataset.date);
+    if (checked.length !== 2) return;
+    checked.sort();
+    const a = snaps.find((s) => s.dateKey === checked[0]);
+    const b = snaps.find((s) => s.dateKey === checked[1]);
+    if (!a || !b) return;
+    const aUsd = (Number(a.shares) || 0) * (Number(a.nav) || 0);
+    const bUsd = (Number(b.shares) || 0) * (Number(b.nav) || 0);
+    const aHkd = aUsd * DEFAULT_FX;
+    const bHkd = bUsd * DEFAULT_FX;
+    const diff = (x, y) => {
+      const d = y - x;
+      const pct = x > 0 ? ((d / x) * 100).toFixed(2) : '—';
+      const sign = d >= 0 ? '+' : '';
+      return `${sign}${d.toFixed(4)} (${sign}${pct}%)`;
+    };
+    compareResult.innerHTML = `
+      <div class="glass-card">
+        <div class="policy-name" style="margin-bottom:8px;">對比：${esc(a.dateKey)} → ${esc(b.dateKey)}</div>
+        <div class="policy-info-grid">
+          <div class="policy-info-item"><span class="policy-info-label">單位數</span><span class="policy-info-value">${a.shares} → ${b.shares}</span><span class="policy-info-value text-emerald">${diff(Number(a.shares) || 0, Number(b.shares) || 0)}</span></div>
+          <div class="policy-info-item"><span class="policy-info-label">價格 (USD)</span><span class="policy-info-value">${a.nav} → ${b.nav}</span><span class="policy-info-value text-emerald">${diff(Number(a.nav) || 0, Number(b.nav) || 0)}</span></div>
+          <div class="policy-info-item"><span class="policy-info-label">總值 (USD)</span><span class="policy-info-value">${aUsd.toFixed(2)} → ${bUsd.toFixed(2)}</span><span class="policy-info-value text-emerald">${diff(aUsd, bUsd)}</span></div>
+          <div class="policy-info-item"><span class="policy-info-label">保單價值 (HKD)</span><span class="policy-info-value">${aHkd.toFixed(2)} → ${bHkd.toFixed(2)}</span><span class="policy-info-value text-emerald">${diff(aHkd, bHkd)}</span></div>
+        </div>
+      </div>
+    `;
+  });
+
+  document.getElementById('hist-close-btn')?.addEventListener('click', _closeHistory);
+
+  openModal(HISTORY_MODAL_ID);
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function _closeHistory() {
+  const el = document.getElementById(HISTORY_MODAL_ID);
+  if (el) el.remove();
+  closeModal(HISTORY_MODAL_ID);
+}
+
+/* ============================================
+   Stats（邏輯不動）
    ============================================ */
 function _buildStats(funds, policies) {
   const list = funds || [];
@@ -391,7 +535,6 @@ function _buildStats(funds, policies) {
   const y = ym.year || String(new Date().getFullYear());
   const m = ym.month === 'all' ? String(new Date().getMonth() + 1).padStart(2, '0') : ym.month;
 
-  /* 為每張保單預先計算成本映射表 */
   const costMaps = {};
   pols.forEach((p) => { costMaps[p.id] = _getCostMapForPolicy(p, list, y, m); });
 
@@ -424,6 +567,7 @@ function _buildStats(funds, policies) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/portfolio.js
-   Version: v103.0.32
-   Batch: B30-8
+   Version: v103.0.33
+   Batch: B33-1
+   Writer: A20261013-003#022
    ═══════════════════════════════════════════ */

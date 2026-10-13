@@ -1,8 +1,9 @@
-// db.js — Firebase RTDB 讀寫封裝（v103.0.35）
-// v103.0.35（B31-1）：
-//   ✅ saveInsurancePaymentBatch 改 set → update
-//      - 避免覆蓋既有 paymentMode / advanceHolderId 等欄位
-//      - 加 @deprecated（前端已改用 api.insuranceSync）
+// db.js — Firebase RTDB 讀寫封裝（v103.0.36）
+// v103.0.36（B33-1）：
+//   ✅ 基金快照改為以「估值日（YYYY-MM-DD）」為 key，支援同月多筆
+//   ✅ 新增 getFundSnapshotListOnce() 回傳統一列表
+//   ✅ 保留舊資料兼容（舊 snapshots/{year}/{month} 讀取時自動轉換）
+//   ✅ 移除 saveFundSnapshot 中的 contribution / cumulativeCost（成本改由保單邏輯控制）
 // ============================================
 import { db } from '../config/firebase-config.js';
 import { AppState } from './state.js';
@@ -665,8 +666,6 @@ export async function getInsurancePaymentsOnce(pid) {
  * @deprecated v103.0.35（B31-1）
  * 前端已改用 `api.insuranceSync()`（連動基金 / 代墊 / 銀行）。
  * 本函式保留僅供舊呼叫端相容；新程式碼請勿使用。
- *
- * v103.0.35：set → update（避免覆蓋 paymentMode / advanceHolderId 等欄位）
  */
 export async function saveInsurancePaymentBatch(pid, y, m, d) {
   await update(familyRef(`insurance_payments/${pid}/${y}/${m}`), {
@@ -756,30 +755,60 @@ export async function updateFund(id, p) {
 }
 export async function removeFund(id) { await remove(familyRef(`funds/${id}`)); }
 
-/* 基金快照 */
+/* ============ 基金快照（v103.0.36：以估值日為 key） ============ */
+
+/** 訂閱某基金的所有快照（回傳 {dateKey: {shares, nav, ...}}） */
 export function listenFundSnapshots(fundId, cb, err) {
   return listen(`funds/${fundId}/snapshots`, (snap) => cb(snap.val() || {}), err);
 }
-export async function getFundSnapshotsOnce(fundId) {
+
+/** 取得某基金的所有快照，回傳按日期排序的列表（兼容舊資料） */
+export async function getFundSnapshotListOnce(fundId) {
   const snap = await get(familyRef(`funds/${fundId}/snapshots`));
-  return snap.val() || {};
+  const val = snap.val() || {};
+  const list = [];
+  Object.entries(val).forEach(([key, v]) => {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(key)) {
+      /* 新格式：YYYY-MM-DD */
+      list.push({ dateKey: key, ...v });
+    } else if (/^\d{4}$/.test(key) && v && typeof v === 'object') {
+      /* 舊格式：{year: {month: {...}}} */
+      Object.entries(v).forEach(([month, snap2]) => {
+        if (snap2 && typeof snap2 === 'object' && snap2.shares === undefined) {
+          Object.entries(snap2).forEach(([day, snap3]) => {
+            if (snap3 && typeof snap3 === 'object') {
+              list.push({ dateKey: `${key}-${month}-${String(day).padStart(2, '0')}`, ...snap3 });
+            }
+          });
+        } else if (snap2 && typeof snap2 === 'object') {
+          list.push({ dateKey: `${key}-${month}-01`, ...snap2 });
+        }
+      });
+    }
+  });
+  list.sort((a, b) => a.dateKey.localeCompare(b.dateKey));
+  return list;
 }
-export async function saveFundSnapshot(fundId, y, m, data) {
-  const path = `funds/${fundId}/snapshots/${y}/${String(m).padStart(2, '0')}`;
+
+/** 儲存快照（dateKey 格式：YYYY-MM-DD），同一天覆蓋 */
+export async function saveFundSnapshot(fundId, dateKey, data) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) throw new Error('dateKey 必須是 YYYY-MM-DD 格式');
+  const path = `funds/${fundId}/snapshots/${dateKey}`;
   const existing = await get(familyRef(path));
   const ex = existing.val() || {};
   await set(familyRef(path), {
     shares: Number(data.shares) || 0,
     nav: Number(data.nav) || 0,
     value: roundInt(Number(data.shares || 0) * Number(data.nav || 0)),
-    contribution: roundInt(data.contribution || ex.contribution || 0),
-    cumulativeCost: roundInt(data.cumulativeCost != null ? data.cumulativeCost : ex.cumulativeCost || 0),
     createdAt: ex.createdAt || Date.now(),
     updatedAt: Date.now(),
   });
 }
-export async function removeFundSnapshot(fundId, y, m) {
-  await remove(familyRef(`funds/${fundId}/snapshots/${y}/${String(m).padStart(2, '0')}`));
+
+/** 刪除某一筆快照 */
+export async function removeFundSnapshot(fundId, dateKey) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) throw new Error('dateKey 必須是 YYYY-MM-DD 格式');
+  await remove(familyRef(`funds/${fundId}/snapshots/${dateKey}`));
 }
 
 /* ============ 跨來源改狀態 ============ */
@@ -814,6 +843,7 @@ export async function saveSidebarOrder(order) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/core/db.js
-   Version: v103.0.35
-   Batch: B31-1
+   Version: v103.0.36
+   Batch: B33-1
+   Writer: A20261013-003#021
    ═══════════════════════════════════════════ */
