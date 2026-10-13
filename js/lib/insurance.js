@@ -1,7 +1,10 @@
 // ============================================
-// insurance.js — 保險計算模組（v103.0.22）
+// insurance.js — 保險計算模組（v103.0.23）
 // 位置：js/lib/insurance.js
 // ============================================
+// v103.0.23（B30-7）：
+//   ✅ 加 calcFundCostEstimate（基金成本估算：月供 × 已供月數）
+//   ✅ 加 calcFundCostFromPayments（精確：從 payments 加總）
 // v103.0.22（B25-4）：
 //   ✅ H8：硬編碼 '已扣款' 改走 status-registry 的 isDone
 // ============================================
@@ -162,9 +165,6 @@ export function getPolicyTotalPremium(policy) {
   return total;
 }
 
-/**
- * 🆕 v103.0.22：走 status-registry.isDone（取代硬編碼 '已扣款'）
- */
 export function getPolicyPaidTotal(payments) {
   let total = 0;
   Object.values(payments || {}).forEach((yearData) => {
@@ -177,9 +177,6 @@ export function getPolicyPaidTotal(payments) {
   return total;
 }
 
-/**
- * 🆕 v103.0.22：走 status-registry.isDone（取代硬編碼 '已扣款'）
- */
 export function countCompletedPeriods(payments) {
   let count = 0;
   Object.values(payments || {}).forEach((yearData) => {
@@ -264,9 +261,59 @@ export function calcMonthlyTotalAverage(enriched, year, month) {
   return total;
 }
 
+/* ============================================
+   🆕 v103.0.23：基金成本計算（基金保險用）
+   -------------------------------------------------
+   基金保險的「基金投入成本」= 月供 × 已供月數
+   分兩種情境：
+     1. 估算（依當前年月推算）— calcFundCostEstimate
+     2. 精確（依實際扣款記錄）  — calcFundCostFromPayments
+   ============================================ */
+
+/**
+ * 基金成本估算（依保單起始年月至當前年月）
+ * @param {object} policy - 保單
+ * @param {string|number} year - 當前年
+ * @param {string|number} month - 當前月
+ * @returns {number}
+ */
+export function calcFundCostEstimate(policy, year, month) {
+  if (!policy || policy.type !== 'fund_insurance') return 0;
+
+  const monthly = Number(policy.monthlyPremium) || 0;
+  if (monthly <= 0) return 0;
+
+  const fy = Number(policy.firstStartYear) || 0;
+  const fm = Number(policy.firstStartMonth) || 1;
+  if (!fy) return 0;
+
+  const startDate = new Date(fy, fm - 1, 1);
+  const curDate = new Date(Number(year), Number(month) - 1, 1);
+
+  const diffMonths =
+    (curDate.getFullYear() - startDate.getFullYear()) * 12 +
+    (curDate.getMonth() - startDate.getMonth());
+
+  if (diffMonths < 0) return 0;
+
+  /* 含首尾，例如 2021-10 ~ 2026-10 = 61 期 */
+  const paidMonths = diffMonths + 1;
+
+  return Math.round(monthly * paidMonths);
+}
+
+/**
+ * 基金成本精確（依實際已扣款記錄加總）
+ * @param {object} payments - insurance_payments/{policyId} 節點
+ * @returns {number}
+ */
+export function calcFundCostFromPayments(payments) {
+  return getPolicyPaidTotal(payments);
+}
+
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/lib/insurance.js
-   Version: v103.0.22
-   Batch: B25-4
+   Version: v103.0.23
+   Batch: B30-7
    ═══════════════════════════════════════════ */

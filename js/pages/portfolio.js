@@ -1,4 +1,7 @@
-// portfolio.js — 基金投資表（v103.0.27）
+// portfolio.js — 基金投資表（v103.0.28）
+// v103.0.28（B30-7）：
+//   ✅ 基金保險的「投入成本」改為動態估算（月供 × 已供月數）
+//   ✅ 統計卡同步使用動態成本
 // v103.0.27（B26-3）：
 //   ✅ 改用 page-controls 渲染（add + year + month）
 //   ✅ 移除 header 內新增按鈕
@@ -15,6 +18,7 @@ import { saveFundSnapshot, getFundSnapshotsOnce } from '../core/db.js';
 import { AppState } from '../core/state.js';
 import { renderPageControls } from '../lib/page-controls.js';
 import { ENTITY_KEYS } from '../config/constants.js';
+import { calcFundCostEstimate } from '../lib/insurance.js';
 
 const SNAP_MODAL_ID = 'fund-snapshot-modal';
 
@@ -35,8 +39,8 @@ export default {
       compute: (funds) => (funds || []).filter((f) => f.type !== 'insurance'),
     },
     statsCards: {
-      deps: ['data.funds'],
-      compute: _buildStats,
+      deps: ['data.funds', 'data.policies'],
+      compute: (funds, policies) => _buildStats(funds, policies),
     },
   },
   blocks: [
@@ -63,7 +67,6 @@ export default {
 
     render();
 
-    /* 🆕 v103.0.27：page-controls */
     _controls = renderPageControls({
       containerId: 'page-controls-root',
       items: [
@@ -85,7 +88,6 @@ export default {
       ],
     });
 
-    /* 空狀態內的新增按鈕（保留） */
     const addFirstBtn = document.getElementById('add-first-fund-btn');
     const onAddFirst = () => openEntityModal({ entity: ENTITY_KEYS.FUND, mode: 'add', onSuccess: render });
     if (addFirstBtn) addFirstBtn.addEventListener('click', onAddFirst);
@@ -139,6 +141,23 @@ export default {
 };
 
 /* ============================================
+   🆕 動態成本計算輔助（基金保險用）
+   ============================================ */
+function _resolveCost(fund, policies) {
+  if (fund.type !== 'insurance') {
+    return Number(fund.cost) || 0;
+  }
+  const policy = (policies || []).find((p) => p.id === fund.policyId);
+  if (!policy) return Number(fund.cost) || 0;
+
+  const ym = AppState.getYearMonth();
+  const y = ym.year || String(new Date().getFullYear());
+  const m = ym.month === 'all' ? String(new Date().getMonth() + 1).padStart(2, '0') : ym.month;
+
+  return calcFundCostEstimate(policy, y, m);
+}
+
+/* ============================================
    保險基金區
    ============================================ */
 function _paintInsurance(ctx) {
@@ -154,7 +173,8 @@ function _paintInsurance(ctx) {
     const policy = policies.find((p) => p.id === f.policyId);
     const alloc = (policy?.fundsAllocation || []).find((a) => a.fundId === f.id);
     const pct = alloc ? alloc.pct : 0;
-    return { fund: f, policyName: policy?.name || '（未關聯）', pct };
+    const dynamicCost = _resolveCost(f, policies);
+    return { fund: f, policyName: policy?.name || '（未關聯）', pct, dynamicCost };
   });
   const html = rows.map((r) => _cardHtml(r, true)).join('');
   if (root.__lastHtml === html) return;
@@ -186,8 +206,8 @@ function _paintStandalone(ctx) {
 /* ============================================
    卡片 HTML
    ============================================ */
-function _cardHtml({ fund, policyName, pct }, isInsurance) {
-  const cost = Number(fund.cost) || 0;
+function _cardHtml({ fund, policyName, pct, dynamicCost }, isInsurance) {
+  const cost = isInsurance ? (dynamicCost != null ? dynamicCost : Number(fund.cost) || 0) : (Number(fund.cost) || 0);
   const value = Number(fund.currentValue) || 0;
   const pnl = value - cost;
   const pnlCls = pnl >= 0 ? 'text-emerald' : 'text-red';
@@ -196,6 +216,9 @@ function _cardHtml({ fund, policyName, pct }, isInsurance) {
 
   const meta = isInsurance
     ? `<div class="policy-company">${esc(policyName)} · 比例 ${pct}%</div>`
+    : '';
+  const costHint = isInsurance
+    ? '<div class="glass-card-hint" style="margin-top:2px;">月供 × 已供月數（自動）</div>'
     : '';
 
   return `
@@ -207,7 +230,7 @@ function _cardHtml({ fund, policyName, pct }, isInsurance) {
         </div>
       </div>
       <div class="policy-info-grid">
-        <div class="policy-info-item"><span class="policy-info-label">投入成本</span><span class="policy-info-value">${formatHKD(cost)}</span></div>
+        <div class="policy-info-item"><span class="policy-info-label">投入成本</span><span class="policy-info-value">${formatHKD(cost)}</span>${costHint}</div>
         <div class="policy-info-item"><span class="policy-info-label">現時價值</span><span class="policy-info-value text-emerald">${formatHKD(value)}</span></div>
       </div>
       <div class="policy-info-grid" style="margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,0.08);">
@@ -317,11 +340,20 @@ async function _openSnapshotModal(fundId, fundName) {
 }
 
 /* ============================================
-   Stats
+   Stats（🆕 基金保險成本改動態）
    ============================================ */
-function _buildStats(funds) {
+function _buildStats(funds, policies) {
   const list = funds || [];
-  const cost = list.reduce((s, f) => s + (Number(f.cost) || 0), 0);
+  const pols = policies || [];
+
+  let cost = 0;
+  list.forEach((f) => {
+    if (f.type === 'insurance') {
+      cost += _resolveCost(f, pols);
+    } else {
+      cost += Number(f.cost) || 0;
+    }
+  });
   const value = list.reduce((s, f) => s + (Number(f.currentValue) || 0), 0);
   const pnl = value - cost;
   const pct = cost > 0 ? ((pnl / cost) * 100).toFixed(2) : '0.00';
@@ -338,6 +370,6 @@ function _buildStats(funds) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/portfolio.js
-   Version: v103.0.27
-   Batch: B26-3
+   Version: v103.0.28
+   Batch: B30-7
    ═══════════════════════════════════════════ */
