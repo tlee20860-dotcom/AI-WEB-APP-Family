@@ -1,15 +1,12 @@
 // ============================================
-// modal.js — Modal 開關 + 確認框（v103.0.22）
+// modal.js — Modal 開關 + 確認框（v103.0.23）
 // 位置：js/ui/modal.js
 // ============================================
+// v103.0.23（B31-1）：
+//   ✅ openConfirm 開啟前先 resolve 舊 Promise（false）
+//      - 避免連開時第一個 Promise 永遠 pending
 // v103.0.22（B25-2）：
 //   ✅ openModal 自動呼叫 bindModalEscClose（首次）
-//   ✅ 補 END OF FILE
-// v103.0.0 重構：
-//   ✅ 從 js/shared/modal.js 移入 js/ui/
-//   ✅ 逸出改用 lib/dom.js 的 esc()
-//   ✅ ESC 僅關最上層
-//   ✅ openConfirm 支援 Promise
 // ============================================
 
 import { esc } from '../lib/dom.js';
@@ -35,7 +32,6 @@ export function openModal(target, options = {}) {
     _stack.push(modal);
   }
 
-  /* 🆕 v103.0.22：首次開啟時自動綁定 ESC */
   bindModalEscClose();
 }
 
@@ -119,6 +115,22 @@ export function openConfirm(message, options = {}) {
     cancelText = '取消',
     okClass = 'btn-danger',
   } = options;
+
+  /* 🆕 v103.0.23（B31-1）：
+     若已有開啟中的 confirm，先 resolve 舊 Promise（false）
+     避免舊呼叫端 await 永遠卡住 */
+  const oldOverlay = document.getElementById('__confirm-modal');
+  if (oldOverlay) {
+    if (oldOverlay._cleanup) {
+      try { oldOverlay._cleanup(); } catch (e) { /* noop */ }
+    }
+    oldOverlay.remove();
+    document.body.style.overflow = '';
+    if (_confirmResolve) {
+      try { _confirmResolve(false); } catch (e) { /* noop */ }
+      _confirmResolve = null;
+    }
+  }
 
   return new Promise((resolve) => {
     _confirmResolve = resolve;
@@ -205,6 +217,6 @@ function _resolveElement(target) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/ui/modal.js
-   Version: v103.0.22
-   Batch: B25-2
+   Version: v103.0.23
+   Batch: B31-1
    ═══════════════════════════════════════════ */
