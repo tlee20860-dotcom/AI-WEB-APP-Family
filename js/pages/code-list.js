@@ -1,15 +1,10 @@
 // ============================================
-// code-list.js — 編號對照清單頁（v1.0.0）
+// code-list.js — 編號對照清單頁（v1.0.1）
 // 位置：js/pages/code-list.js
 // ============================================
-// 依 D-031 ~ D-036：
-//   ✅ 單頁 + 篩選器 + 兩區塊（有編號 / 無編號）
-//   ✅ 顯示 code 欄位
-//   ✅ 依 code 排序
-//   ✅ 全部欄位能改
-//   ✅ 直接刪除
-//   ✅ superadmin 權限設定
-//   ✅ 純管理（不新增）
+// v1.0.1（B34-4）：
+//   ✅ 篩選器改 2 欄並排（外層 grid 2 列 + 內層 grid）（Q186 A / Q187 A）
+// v1.0.0（B34-4）：初版
 // ============================================
 
 import { listenEntity } from '../entity/entity-helpers.js';
@@ -22,7 +17,7 @@ import { AppState } from '../core/state.js';
 import { ENTITY_KEYS } from '../config/constants.js';
 
 /* ============================================
-   涵蓋的實體類型（依 D-035 / D-031）
+   涵蓋的實體類型
    ============================================ */
 const ENTITY_TYPES = [
   { key: ENTITY_KEYS.MEMBER,   label: '成員',     prefix: 'MEM' },
@@ -41,16 +36,15 @@ export default {
   data: {},
   state: {
     filterType: 'all',
-    filterCodeState: 'all', /* all | with-code | without-code */
+    filterCodeState: 'all',
   },
   derived: {},
   blocks: [],
 
   customMount: (ctx) => {
-    const allData = {}; /* { entityType: [...] } */
+    const allData = {};
     const unsubs = [];
 
-    /* 初始化：訂閱所有類型 */
     ENTITY_TYPES.forEach((t) => {
       const unsub = listenEntity(
         t.key,
@@ -63,7 +57,6 @@ export default {
       unsubs.push(unsub);
     });
 
-    /* 初始渲染 */
     _renderSkeleton(ctx);
     _bindFilter(ctx);
     _bindListClick(ctx, allData);
@@ -77,33 +70,36 @@ export default {
 };
 
 /* ============================================
-   渲染骨架
+   渲染骨架（v1.0.1：2 欄並排）
    ============================================ */
 function _renderSkeleton(ctx) {
   const filterRoot = document.getElementById('cl-filter-root');
   if (filterRoot) {
     filterRoot.innerHTML = `
-      <div class="glass-card" style="padding:12px; display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
-        <div style="display:flex; align-items:center; gap:6px;">
-          <label style="font-size:12px; color:var(--text-muted);">類型：</label>
-          <select class="select" id="cl-filter-type" style="min-width:140px;">
-            <option value="all">全部</option>
-            ${ENTITY_TYPES.map((t) => `<option value="${esc(t.key)}">${esc(t.label)}</option>`).join('')}
-          </select>
+      <div class="glass-card" style="padding:12px;">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div style="display:grid; grid-template-columns:72px 1fr; gap:8px; align-items:center;">
+            <label style="font-size:12px; color:var(--text-muted); text-align:right;">類型：</label>
+            <select class="select" id="cl-filter-type">
+              <option value="all">全部</option>
+              ${ENTITY_TYPES.map((t) => `<option value="${esc(t.key)}">${esc(t.label)}</option>`).join('')}
+            </select>
+          </div>
+          <div style="display:grid; grid-template-columns:72px 1fr; gap:8px; align-items:center;">
+            <label style="font-size:12px; color:var(--text-muted); text-align:right;">編號狀態：</label>
+            <select class="select" id="cl-filter-code">
+              <option value="all">全部</option>
+              <option value="with-code">有編號</option>
+              <option value="without-code">無編號</option>
+            </select>
+          </div>
         </div>
-        <div style="display:flex; align-items:center; gap:6px;">
-          <label style="font-size:12px; color:var(--text-muted);">編號狀態：</label>
-          <select class="select" id="cl-filter-code" style="min-width:120px;">
-            <option value="all">全部</option>
-            <option value="with-code">有編號</option>
-            <option value="without-code">無編號</option>
-          </select>
-        </div>
-        <div style="flex:1;"></div>
         ${AppState.isSuperAdmin ? `
-          <button type="button" class="btn btn-sm btn-ghost" id="cl-permission-btn">
-            <i data-lucide="shield" style="width:14px;height:14px;"></i> 權限設定
-          </button>
+          <div style="display:flex; justify-content:flex-end; margin-top:12px;">
+            <button type="button" class="btn btn-sm btn-ghost" id="cl-permission-btn">
+              <i data-lucide="shield" style="width:14px;height:14px;"></i> 權限設定
+            </button>
+          </div>
         ` : ''}
       </div>
     `;
@@ -133,7 +129,7 @@ function _bindFilter(ctx) {
 }
 
 /* ============================================
-   綁定列表點擊（編輯 / 刪除）
+   綁定列表點擊
    ============================================ */
 function _bindListClick(ctx, allData) {
   const listRoot = document.getElementById('cl-list-root');
@@ -186,7 +182,6 @@ function _paint(ctx, allData) {
   const filterType = ctx.state.filterType;
   const filterCode = ctx.state.filterCodeState;
 
-  /* 收集 + 篩選 */
   const flatRows = [];
   ENTITY_TYPES.forEach((t) => {
     if (filterType !== 'all' && filterType !== t.key) return;
@@ -205,7 +200,6 @@ function _paint(ctx, allData) {
     });
   });
 
-  /* 排序：依 code，無 code 排到最後；同 code 依名稱 */
   flatRows.sort((a, b) => {
     if (a.code && b.code) return a.code.localeCompare(b.code);
     if (a.code) return -1;
@@ -213,7 +207,6 @@ function _paint(ctx, allData) {
     return a.name.localeCompare(b.name, 'zh-HK');
   });
 
-  /* 渲染 */
   if (flatRows.length === 0) {
     listRoot.innerHTML = '';
     if (emptyRoot) {
@@ -263,7 +256,7 @@ function _paint(ctx, allData) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/code-list.js
-   Version: 1791900700
+   Version: 1791902680
    Batch: B34-4
-   Writer: A20261013-004#079
+   Writer: A20261013-004#121
    ═══════════════════════════════════════════ */
