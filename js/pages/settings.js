@@ -1,10 +1,12 @@
 // ============================================
-// settings.js — 系統設定（v103.0.35 Page Schema）
+// settings.js — 系統設定（v103.0.36 Page Schema）
 // 位置：js/pages/settings.js
 // ============================================
+// v103.0.36（B34-4）：
+//   ✅ 個人化 Tab 加「年份範圍」卡（D-036）
+//   ✅ 從 database-yearrange.js 搬入，改用 js/shared/yearrange-card.js
 // v103.0.35（B31-1）：
-//   ✅ 修正：_load 改用 listenPageMetadata（SSOT）
-//      - 移除硬編碼 Firebase URL 動態 import
+//   ✅ _load 改用 listenPageMetadata（SSOT）
 // v103.0.34（B29-5d）：
 //   ✅ 個人化 Tab 加「頁面標題」卡
 // ============================================
@@ -12,6 +14,7 @@
 import { initTabPanel } from '../ui/tab-panel.js';
 import { initBankAccountManager } from '../shared/bank-account-manager.js';
 import { initEntityListPage } from '../shared/entity-list-page.js';
+import { initYearRangeCard } from '../shared/yearrange-card.js';
 import { AppState } from '../core/state.js';
 import { logout } from '../core/auth.js';
 import { api } from '../core/api.js';
@@ -46,6 +49,7 @@ export default {
     ctx._migrateCleanup = null;
     ctx._pageMetaCleanup = null;
     ctx._pageMetaUnsub = null;
+    ctx._yearRangeApi = null;   /* 🆕 v103.0.36 */
 
     const tabPanel = initTabPanel({
       containerId: 'settings-tabs',
@@ -83,6 +87,7 @@ export default {
         if (ctx._migrateCleanup) { try { ctx._migrateCleanup(); } catch (e) {} ctx._migrateCleanup = null; }
         if (ctx._pageMetaCleanup) { try { ctx._pageMetaCleanup(); } catch (e) {} ctx._pageMetaCleanup = null; }
         if (ctx._pageMetaUnsub) { try { ctx._pageMetaUnsub(); } catch (e) {} ctx._pageMetaUnsub = null; }
+        if (ctx._yearRangeApi) { try { ctx._yearRangeApi.destroy?.(); } catch (e) {} ctx._yearRangeApi = null; }
       },
     };
   },
@@ -145,6 +150,7 @@ function _initPersonalTab(ctx) {
   _injectDebugCard(ctx);
   _injectMigrateCard(ctx);
   _injectPageMetadataCard(ctx);
+  _injectYearRangeCard(ctx);   /* 🆕 v103.0.36（B34-4） */
 
   ctx._personalCleanup = () => {
     if (logoutBtn) logoutBtn.removeEventListener('click', onLogout);
@@ -461,7 +467,6 @@ function _injectPageMetadataCard(ctx) {
 
   let _allMeta = {};
 
-  /* 🆕 v103.0.35（B31-1）：改用 listenPageMetadata（SSOT） */
   const _applyFormFromMeta = (pageKey) => {
     const custom = _allMeta[pageKey] || {};
     const def = getDefaultMetadata(pageKey);
@@ -551,9 +556,38 @@ function _injectPageMetadataCard(ctx) {
   };
 }
 
+/* ============================================
+   🆕 v103.0.36（B34-4）：年份範圍卡（D-036）
+   ============================================ */
+function _injectYearRangeCard(ctx) {
+  const grid = document.querySelector('#settings-panel-personal .settings-personal-grid');
+  if (!grid) return;
+  if (document.getElementById('settings-yearrange-card')) return;
+
+  const card = document.createElement('div');
+  card.className = 'glass-card';
+  card.id = 'settings-yearrange-card';
+  card.style.gridColumn = '1 / -1';
+  card.innerHTML = `
+    <div class="glass-card-title" style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+      <i data-lucide="calendar" style="width:16px;height:16px;color:var(--neon-cyan);"></i>
+      <span>年份範圍</span>
+    </div>
+    <div id="settings-yearrange-root"></div>
+  `;
+  grid.appendChild(card);
+
+  if (window.lucide) window.lucide.createIcons();
+
+  if (!ctx._yearRangeApi) {
+    ctx._yearRangeApi = initYearRangeCard('settings-yearrange-root');
+  }
+}
+
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/settings.js
-   Version: v103.0.35
-   Batch: B31-1
+   Version: 1791901600
+   Batch: B34-4
+   Writer: A20261013-004#096
    ═══════════════════════════════════════════ */

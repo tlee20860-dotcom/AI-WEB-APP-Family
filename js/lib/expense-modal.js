@@ -1,9 +1,10 @@
 // ============================================
-// expense-modal.js — 支出編輯 Modal（v103.0.22）
-// v103.0.22（B25-3a）：
-//   ✅ 加 mode 參數（'data' | 'settle'）— anchor 0.19
-//   ✅ 'data'：member / name / amount / date / category / item
-//   ✅ 'settle'：status / paymentMethod / bank
+// expense-modal.js — 支出編輯 Modal（v103.0.23）
+// v103.0.23（B34-4）：
+//   ✅ m-pay 加 plusEntity: 'payment'
+//   ✅ m-cat 加 plusEntity: 'category' + onPlusReload（類別變更後重載項目）
+//   ✅ m-member 加 plusEntity: 'member' + onPlusReload（保留 shared）
+// v103.0.22（B25-3a）：加 mode 參數（'data' | 'settle'）
 // ============================================
 import { buildForm } from '../ui/form-builder.js';
 import { openModal, closeModal } from '../ui/modal.js';
@@ -40,16 +41,40 @@ export async function openExpenseModal(opts = {}) {
   const memberOptions = [...members, { value: RESERVED_IDS.SHARED_MEMBER, label: '🏠 家庭共用' }];
   const { year, month } = AppState.getYearMonth();
 
+  /* ============================================
+     🆕 v103.0.23：+ 號重載邏輯（呼叫端自訂）
+     ============================================ */
+  const reloadMembers = async (result, api) => {
+    const fresh = await getDynamicOptions('members');
+    const opts = [...fresh, { value: RESERVED_IDS.SHARED_MEMBER, label: '🏠 家庭共用' }];
+    api.updateOptions('m-member', opts, { includeEmpty: false });
+    if (result.id) api.setFieldValue('m-member', result.id);
+  };
+
+  const reloadCategories = async (result, api) => {
+    const fresh = await getDynamicOptions('categories');
+    api.updateOptions('m-cat', fresh, { includeEmpty: true, emptyText: '— 請選擇類別 —' });
+    if (result.id) {
+      api.setFieldValue('m-cat', result.id);
+      /* 類別變更後清空項目 */
+      const itemEl = document.getElementById('m-item');
+      if (itemEl) {
+        itemEl.innerHTML = '<option value="">— 請先選擇類別 —</option>';
+        itemEl.value = '';
+      }
+    }
+  };
+
   const fields = isSettle ? [
     { type: 'select', id: 'm-status', label: '狀態', required: true, includeEmpty: false, options: statusOptions({ source: 'personal' }) },
-    { type: 'select', id: 'm-pay', label: '支付方式', includeEmpty: true, options: payments },
+    { type: 'select', id: 'm-pay', label: '支付方式', includeEmpty: true, options: payments, plusEntity: 'payment' },
     { type: 'select', id: 'm-bank', label: '銀行（可選）', includeEmpty: true, options: banks },
   ] : [
-    { type: 'select', id: 'm-member', label: '成員', required: true, includeEmpty: false, options: memberOptions },
+    { type: 'select', id: 'm-member', label: '成員', required: true, includeEmpty: false, options: memberOptions, plusEntity: 'member', onPlusReload: reloadMembers },
     { type: 'text', id: 'm-name', label: '項目名稱', required: true, maxlength: 60 },
     { type: 'number', id: 'm-amount', label: '金額（HK$）', required: true, min: 0, step: 1 },
     { type: 'text', id: 'm-date', label: '日期（YYYY-MM-DD）' },
-    { type: 'select', id: 'm-cat', label: '類別', includeEmpty: true, options: categories },
+    { type: 'select', id: 'm-cat', label: '類別', includeEmpty: true, options: categories, plusEntity: 'category', onPlusReload: reloadCategories },
     { type: 'select', id: 'm-item', label: '項目', includeEmpty: true, options: [] },
   ];
 
@@ -147,6 +172,7 @@ export async function openExpenseModal(opts = {}) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/lib/expense-modal.js
-   Version: v103.0.22
-   Batch: B25-3a
+   Version: 1791902020
+   Batch: B34-4
+   Writer: A20261013-004#103
    ═══════════════════════════════════════════ */

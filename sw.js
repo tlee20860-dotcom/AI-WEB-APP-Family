@@ -1,13 +1,15 @@
 // ============================================
-// sw.js — Service Worker（v103.0.27）
+// sw.js — Service Worker（v103.0.30）
 // 位置：sw.js
 // ============================================
-// v103.0.27（B26-3）：
-//   ✅ 加 js/lib/page-controls.js
-//   ✅ CACHE_NAME 升版 v140 → v141
+// v103.0.30（B34-4）：
+//   ✅ 加 js/ui/dropdown-plus.js
+//   ✅ CACHE_NAME 升版 v153 → v154
+// v103.0.29（B34-4）：
+//   ✅ 加 yearrange-card.js；移除 4 個 database-*.js
 // ============================================
 
-const CACHE_NAME = 'family-fin-v151';
+const CACHE_NAME = 'family-fin-v154';
 
 const STATIC_ASSETS = [
   './css/theme.css',
@@ -24,6 +26,7 @@ const STATIC_ASSETS = [
   './js/config/entity-registry.js',
   './js/config/label-registry.js',
   './js/config/column-registry.js',
+  './js/config/page-metadata-registry.js',
 
   './js/core/state.js',
   './js/core/auth.js',
@@ -46,6 +49,8 @@ const STATIC_ASSETS = [
   './js/lib/income-modal.js',
   './js/lib/filter-sort.js',
   './js/lib/page-controls.js',
+  './js/lib/code-registry.js',
+  './js/lib/id-resolver.js',
 
   './js/engines/data-engine.js',
   './js/engines/render-engine.js',
@@ -63,6 +68,7 @@ const STATIC_ASSETS = [
   './js/ui/tab-panel.js',
   './js/ui/view-toggle.js',
   './js/ui/collapsible.js',
+  './js/ui/dropdown-plus.js',
 
   './js/layout/navbar.js',
   './js/layout/sidebar.js',
@@ -86,6 +92,7 @@ const STATIC_ASSETS = [
   './js/shared/quick-summary.js',
   './js/shared/select-helpers.js',
   './js/shared/stats-cards.js',
+  './js/shared/yearrange-card.js',
 
   './js/pages/dashboard.js',
   './js/pages/portfolio.js',
@@ -94,10 +101,7 @@ const STATIC_ASSETS = [
   './js/pages/finance-overview.js',
   './js/pages/member-report.js',
   './js/pages/input-center.js',
-  './js/pages/database.js',
-  './js/pages/database-options.js',
-  './js/pages/database-dropdowns.js',
-  './js/pages/database-yearrange.js',
+  './js/pages/code-list.js',
   './js/pages/settlements.js',
   './js/pages/insurance.js',
 
@@ -109,7 +113,7 @@ const STATIC_ASSETS = [
 ];
 
 self.addEventListener('install', (e) => {
-  console.log('[SW] install (v103.0.27, cache=' + CACHE_NAME + ')');
+  console.log('[SW] install (v103.0.30, cache=' + CACHE_NAME + ')');
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) =>
       Promise.all(
@@ -188,6 +192,7 @@ async function _networkFirst(request) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: sw.js
-   Version: v103.0.27
-   Batch: B26-3
+   Version: 1791902140
+   Batch: B34-4
+   Writer: A20261013-004#104
    ═══════════════════════════════════════════ */

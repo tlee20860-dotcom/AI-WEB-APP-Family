@@ -1,10 +1,12 @@
 // ============================================
-// modal.js — Modal 開關 + 確認框（v103.0.23）
+// modal.js — Modal 開關 + 確認框 + 輕量輸入框（v103.0.24）
 // 位置：js/ui/modal.js
 // ============================================
+// v103.0.24（B34-4）：
+//   ✅ 新增 openPrompt（輕量輸入框，D-062 / Q126 / Q136）
+//   ✅ openPrompt 開啟前先 resolve 舊 Promise（null）
 // v103.0.23（B31-1）：
 //   ✅ openConfirm 開啟前先 resolve 舊 Promise（false）
-//      - 避免連開時第一個 Promise 永遠 pending
 // v103.0.22（B25-2）：
 //   ✅ openModal 自動呼叫 bindModalEscClose（首次）
 // ============================================
@@ -190,6 +192,117 @@ function _closeConfirm(result) {
 }
 
 /* ============================================
+   🆕 v103.0.24（B34-4）：輕量輸入框（openPrompt）
+   ============================================
+   用途：簡單實體新增（只輸名稱）
+   回傳：使用者輸入的字串（取消 → null）
+   ============================================ */
+
+let _promptResolve = null;
+
+export function openPrompt(options = {}) {
+  const {
+    title = '請輸入',
+    label = '',
+    placeholder = '',
+    defaultValue = '',
+    okText = '確定',
+    cancelText = '取消',
+    maxlength = 60,
+  } = options;
+
+  /* 開新前先 resolve 舊 Promise（null） */
+  const oldOverlay = document.getElementById('__prompt-modal');
+  if (oldOverlay) {
+    if (oldOverlay._cleanup) {
+      try { oldOverlay._cleanup(); } catch (e) { /* noop */ }
+    }
+    oldOverlay.remove();
+    document.body.style.overflow = '';
+    if (_promptResolve) {
+      try { _promptResolve(null); } catch (e) { /* noop */ }
+      _promptResolve = null;
+    }
+  }
+
+  return new Promise((resolve) => {
+    _promptResolve = resolve;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay active';
+    overlay.id = '__prompt-modal';
+    overlay.innerHTML = `
+      <div class="modal" style="max-width:400px;">
+        <h2 class="modal-title">${esc(title)}</h2>
+        ${label ? `<label class="field-label" style="display:block; margin-bottom:6px;">${esc(label)}</label>` : ''}
+        <input type="text" class="input" id="__prompt-input"
+               placeholder="${esc(placeholder)}" value="${esc(defaultValue)}"
+               maxlength="${maxlength}" style="width:100%; margin-bottom:16px;">
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" data-prompt-action="cancel">${esc(cancelText)}</button>
+          <button type="button" class="btn btn-primary" data-prompt-action="ok">${esc(okText)}</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+
+    const input = overlay.querySelector('#__prompt-input');
+
+    const handleClick = (e) => {
+      const btn = e.target.closest('[data-prompt-action]');
+      if (!btn) {
+        if (e.target === overlay) _closePrompt(null);
+        return;
+      }
+      if (btn.dataset.promptAction === 'cancel') {
+        _closePrompt(null);
+      } else {
+        const v = (input.value || '').trim();
+        if (!v) { input.focus(); return; }
+        _closePrompt(v);
+      }
+    };
+
+    const handleKey = (e) => {
+      if (e.key === 'Escape') _closePrompt(null);
+      if (e.key === 'Enter') {
+        const v = (input.value || '').trim();
+        if (!v) { input.focus(); return; }
+        _closePrompt(v);
+      }
+    };
+
+    overlay.addEventListener('click', handleClick);
+    document.addEventListener('keydown', handleKey, { once: false });
+
+    overlay._cleanup = () => {
+      overlay.removeEventListener('click', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+
+    setTimeout(() => {
+      input.focus();
+      if (defaultValue) input.select();
+    }, 50);
+  });
+}
+
+function _closePrompt(result) {
+  const overlay = document.getElementById('__prompt-modal');
+  if (overlay) {
+    if (overlay._cleanup) overlay._cleanup();
+    overlay.remove();
+  }
+  document.body.style.overflow = '';
+  if (_promptResolve) {
+    _promptResolve(result);
+    _promptResolve = null;
+  }
+}
+
+/* ============================================
    銷毀
    ============================================ */
 
@@ -217,6 +330,7 @@ function _resolveElement(target) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/ui/modal.js
-   Version: v103.0.23
-   Batch: B31-1
+   Version: 1791901420
+   Batch: B34-4
+   Writer: A20261013-004#093
    ═══════════════════════════════════════════ */

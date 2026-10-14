@@ -1,4 +1,8 @@
-// income-modal.js — 收入 Modal（v103.0.18）
+// ============================================
+// income-modal.js — 收入 Modal（v103.0.19）
+// v103.0.19（B34-4）：
+//   ✅ c-member / p-member 加 plusEntity: 'member' + onPlusReload
+// ============================================
 import { buildForm } from '../ui/form-builder.js';
 import { openModal, closeModal } from '../ui/modal.js';
 import { showToast } from '../ui/toast.js';
@@ -8,6 +12,13 @@ import { AppState } from '../core/state.js';
 
 const CONTRIB_ID = 'app-contribution-modal';
 const PERSONAL_ID = 'app-personal-income-modal';
+
+/* 🆕 v103.0.19：成員 + 號重載 */
+async function _reloadMembersInto(selectId, result, api) {
+  const fresh = await getDynamicOptions('members');
+  api.updateOptions(selectId, fresh, { includeEmpty: false });
+  if (result.id) api.setFieldValue(selectId, result.id);
+}
 
 /**
  * 家用轉入 Modal
@@ -30,7 +41,9 @@ export async function openContributionModal(opts = {}) {
   buildForm({
     containerId: `${CONTRIB_ID}-form-root`,
     fields: [
-      { type: 'select', id: 'c-member', label: '成員', required: true, includeEmpty: false, options: members },
+      { type: 'select', id: 'c-member', label: '成員', required: true, includeEmpty: false, options: members,
+        plusEntity: 'member',
+        onPlusReload: (result, api) => _reloadMembersInto('c-member', result, api) },
       { type: 'number', id: 'c-amount', label: '金額（HK$）', required: true, min: 0, step: 1 },
     ],
     submitText: '儲存',
@@ -72,7 +85,9 @@ export async function openPersonalIncomeModal(opts = {}) {
   buildForm({
     containerId: `${PERSONAL_ID}-form-root`,
     fields: [
-      { type: 'select', id: 'p-member', label: '成員', required: true, includeEmpty: false, options: members },
+      { type: 'select', id: 'p-member', label: '成員', required: true, includeEmpty: false, options: members,
+        plusEntity: 'member',
+        onPlusReload: (result, api) => _reloadMembersInto('p-member', result, api) },
       { type: 'number', id: 'p-amount', label: '金額（HK$）', required: true, min: 0, step: 1 },
     ],
     submitText: '儲存',
@@ -92,3 +107,11 @@ export async function openPersonalIncomeModal(opts = {}) {
   openModal(PERSONAL_ID);
   if (window.lucide) window.lucide.createIcons();
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: js/lib/income-modal.js
+   Version: 1791902080
+   Batch: B34-4
+   Writer: A20261013-004#103
+   ═══════════════════════════════════════════ */

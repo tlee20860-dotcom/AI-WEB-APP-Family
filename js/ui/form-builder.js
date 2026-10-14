@@ -1,19 +1,19 @@
 // ============================================
-// form-builder.js — 通用動態表單建構器（v103.0.11）
+// form-builder.js — 通用動態表單建構器（v103.0.13）
 // 位置：js/ui/form-builder.js
 // ============================================
-// v103.0.11 修正：
-//   ✅ [M04] onSubmit(data, api) 簽名文件化
-//           （第二參數 `api` 為 form-builder 自身 API，可選用）
+// v103.0.13（B34-4）：
+//   ✅ plusEntity 支援 f.onPlusReload callback（呼叫端自訂重載邏輯）
+//   ✅ 若同時有 optionsSource 但無 onPlusReload，走預設 getDynamicOptions
+// v103.0.12（B34-4）：
+//   ✅ 支援 f.plusEntity：下拉旁自動生成「+ 號」按鈕
 // ============================================
 
 import { esc } from '../lib/dom.js';
 import { showToast } from './toast.js';
 import { getDynamicOptions } from '../entity/entity-helpers.js';
+import { handlePlusClick } from './dropdown-plus.js';
 
-/* ============================================
-   主函式
-   ============================================ */
 export function buildForm(options) {
   const {
     containerId,
@@ -24,24 +24,6 @@ export function buildForm(options) {
     resetText = '重置',
     showCancel = true,
     showReset = false,
-    /**
-     * 🆕 v103.0.11 [M04]：onSubmit 簽名說明
-     * @param {Object} data - 表單欄位資料（已依 type 轉換型別）
-     * @param {Object} api  - form-builder 自身 API（可選用；多數呼叫端只需 data）
-     *   api 結構：
-     *     - getData()
-     *     - setData(obj)
-     *     - setFieldValue(fieldId, value)
-     *     - getFieldValue(fieldId)
-     *     - getFieldEl(fieldId)
-     *     - reset()
-     *     - setError(fieldId, message)
-     *     - clearErrors()
-     *     - updateOptions(fieldId, options, config)
-     *     - onFieldChange(fieldId, callback)
-     *     - submit()
-     *     - setSubmitting(bool)
-     */
     onSubmit,
     onCancel,
     onReset,
@@ -95,9 +77,7 @@ export function buildForm(options) {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-
     if (_submitting) return;
-
     _clearErrors();
 
     const data = _collectData(fields, fieldIdMap);
@@ -139,7 +119,6 @@ export function buildForm(options) {
 
     _setSubmitting(true);
     try {
-      // 🆕 [M04] 傳入 api 供進階使用；多數呼叫端只需 data
       await onSubmit(data, api);
     } catch (err) {
       console.error('[form-builder] 送出失敗：', err);
@@ -233,6 +212,46 @@ export function buildForm(options) {
           };
           sourceEl.addEventListener('change', handler);
           _dynamicCleanups.push(() => sourceEl.removeEventListener('change', handler));
+        }
+      }
+
+      /* v103.0.13（B34-4）：plusEntity → 綁定 + 號 */
+      if (f.type === 'select' && f.plusEntity) {
+        const finalId = fieldIdMap[f.id] || f.id;
+        const btn = document.getElementById(`${finalId}-extra-btn`);
+        if (btn) {
+          const handler = async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (btn.disabled) return;
+            btn.disabled = true;
+
+            try {
+              const result = await handlePlusClick(f.plusEntity);
+              if (!result) return;
+
+              /* v103.0.13：優先走 onPlusReload（呼叫端自訂） */
+              if (typeof f.onPlusReload === 'function') {
+                await f.onPlusReload(result, api);
+              } else if (f.optionsSource) {
+                /* 預設：重載選項 + 自動選中 */
+                const opts = await getDynamicOptions(f.optionsSource);
+                api.updateOptions(f.id, opts, {
+                  includeEmpty: f.includeEmpty !== false,
+                  emptyText: f.emptyText || '— 請選擇 —',
+                });
+                const valueKey = f.plusValueKey || 'id';
+                const newValue = result[valueKey] || result.id;
+                if (newValue) api.setFieldValue(f.id, newValue);
+              }
+            } catch (err) {
+              console.error('[form-builder] plusEntity 失敗：', err);
+            } finally {
+              btn.disabled = false;
+            }
+          };
+          btn.addEventListener('click', handler);
+          _dynamicCleanups.push(() => btn.removeEventListener('click', handler));
         }
       }
     }
@@ -427,11 +446,16 @@ function _renderField(f, fieldIdMap) {
     return `<input type="hidden" id="${finalId}" value="${esc(f.value || '')}">`;
   }
 
-  const inputWrapper = extraBtn
+  const effectiveExtraBtn = extraBtn
+    || (type === 'select' && f.plusEntity
+      ? { icon: 'plus', title: `新增${esc(label || '')}` }
+      : null);
+
+  const inputWrapper = effectiveExtraBtn
     ? `<div style="display:flex; gap:8px;">
          <div style="flex:1;">${inputHtml}</div>
-         <button type="button" class="btn btn-sm btn-ghost" id="${finalId}-extra-btn" style="padding:0 12px;" title="${esc(extraBtn.title || '')}">
-           <i data-lucide="${esc(extraBtn.icon || 'plus')}" style="width:16px;height:16px;"></i>
+         <button type="button" class="btn btn-sm btn-ghost" id="${finalId}-extra-btn" style="padding:0 12px;" title="${esc(effectiveExtraBtn.title || '')}">
+           <i data-lucide="${esc(effectiveExtraBtn.icon || 'plus')}" style="width:16px;height:16px;"></i>
          </button>
        </div>`
     : inputHtml;
@@ -486,3 +510,11 @@ function _validateRequired(fields, data, fieldIdMap) {
   }
   return null;
 }
+
+/* ═══════════════════════════════════════════
+   END OF FILE
+   File: js/ui/form-builder.js
+   Version: 1791901960
+   Batch: B34-4
+   Writer: A20261013-004#103
+   ═══════════════════════════════════════════ */

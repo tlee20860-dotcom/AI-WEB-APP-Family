@@ -1,11 +1,11 @@
 // ============================================
-// [[path]].js — API Catch-all 路由器（v103.0.44）
+// [[path]].js — API Catch-all 路由器（v103.0.45）
 // 位置：functions/api/[[path]].js
 // ============================================
+// v103.0.45（B34-4）：
+//   ✅ 加 /api/entity-create 分派（D-063）
 // v103.0.44（B30-5）：
 //   ✅ 每個 handler 呼叫 initConfig(env) 支援 DB 切換
-// v103.0.22（B25-6）：
-//   ✅ 加 admin-migrate 分派
 // ============================================
 
 import { initConfig } from './_config.js';
@@ -45,6 +45,9 @@ import {
 } from './_summary.js';
 
 import { handleInsuranceSync } from './_insurance.js';
+
+/* 🆕 v103.0.45（B34-4）：統一實體 CRUD */
+import { handleEntityPost } from './_entity.js';
 
 /* ============================================
    OPTIONS preflight
@@ -123,6 +126,9 @@ export async function onRequestPost({ request, env }) {
 
   if (path === '/api/insurance-sync')      return handleInsuranceSync(request);
 
+  /* 🆕 v103.0.45（B34-4）：統一實體 CRUD（D-063） */
+  if (path === '/api/entity-create')       return handleEntityPost(request);
+
   return new Response(JSON.stringify({ ok: false, error: 'NOT_FOUND', message: `未知的 API：${path}` }), {
     status: 404,
     headers: { 'Content-Type': 'application/json' },
@@ -132,6 +138,7 @@ export async function onRequestPost({ request, env }) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: functions/api/[[path]].js
-   Version: v103.0.44
-   Batch: B30-5
+   Version: 1791900940
+   Batch: B34-4
+   Writer: A20261013-004#083
    ═══════════════════════════════════════════ */

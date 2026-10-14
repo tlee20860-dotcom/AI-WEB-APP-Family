@@ -1,7 +1,10 @@
 // ============================================
-// api.js — Cloudflare Functions 呼叫封裝（v103.0.22）
+// api.js — Cloudflare Functions 呼叫封裝（v103.0.23）
 // 位置：js/core/api.js
 // ============================================
+// v103.0.23（B34-4）：
+//   ✅ 新增 api.entityCreate（統一 CRUD 端點，D-063）
+//   ✅ 加 entityCreate 封裝
 // v103.0.22（B25-6）：
 //   ✅ 加 adminMigrate 封裝
 // ============================================
@@ -126,6 +129,14 @@ export const api = {
       body: JSON.stringify({ ...payload, familyId: getFamilyId(), action: 'delete' }),
     }),
 
+  /* 🆕 v103.0.23（B34-4）：統一實體 CRUD（D-063） */
+  entityCreate: (payload) =>
+    callApi('/api/entity-create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...payload, familyId: getFamilyId() }),
+    }),
+
   adminListFamilies: () =>
     callApi('/api/admin-families?action=list'),
 
@@ -150,7 +161,7 @@ export const api = {
       body: JSON.stringify({ uid }),
     }),
 
-  /* 🆕 v103.0.22：一次性遷移 */
+  /* 一次性遷移 */
   adminMigrate: (familyId) =>
     callApi('/api/admin-migrate', {
       method: 'POST',
@@ -371,6 +382,7 @@ export const api = {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/core/api.js
-   Version: v103.0.22
-   Batch: B25-6
+   Version: 1791900880
+   Batch: B34-4
+   Writer: A20261013-004#082
    ═══════════════════════════════════════════ */

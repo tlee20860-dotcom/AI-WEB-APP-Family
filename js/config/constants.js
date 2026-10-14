@@ -1,29 +1,21 @@
 // ============================================
-// constants.js — 全站常數集中管理（v103.0.38）
+// constants.js — 全站常數集中管理（v103.0.39）
 // 位置：js/config/constants.js
 // ============================================
+// v103.0.39（B34-4）：
+//   ✅ ROUTES 加 CODE_LIST（database.html → code-list.html）
+//   ✅ SIDEBAR_GROUPS 把「基礎資料庫」改為「編號對照清單」
 // v103.0.38（B30-2）：
 //   ✅ [關鍵] 加 DB_TARGET 解析（old / new）
-//   ✅ 所有 STORAGE / SESSION key 加 DB 前綴，避免切 DB 混用
-// v103.0.31（B26-4）：
-//   ✅ SIDEBAR_GROUPS 加 roles 標記
-//   ✅ 加「平台管理」群組（僅 superadmin 可見）
-// v103.0.27（B26-3）：
-//   ✅ 移除 SHOW_YEAR_MONTH_PAGES
 // ============================================
 
 /* ============================================
-   0. DB 目標（決定 storage 前綴 + Firebase 連線）
-   --------------------------------------------
-   優先序：
-   1. URL 參數 ?db=old / ?db=new（會寫入 localStorage）
-   2. localStorage 記憶
-   3. 預設 'new'
+   0. DB 目標
    ============================================ */
 const DB_TARGET_KEY = 'fin_db_target';
 
 function _resolveDbTarget() {
-  if (typeof window === 'undefined') return 'new';   /* ← 改這行 */
+  if (typeof window === 'undefined') return 'new';
   try {
     const params = new URLSearchParams(window.location.search);
     const fromUrl = params.get('db');
@@ -34,7 +26,7 @@ function _resolveDbTarget() {
     const saved = localStorage.getItem(DB_TARGET_KEY);
     if (saved === 'old' || saved === 'new') return saved;
   } catch (e) { /* noop */ }
-  return 'new';   /* ← 改這行 */
+  return 'new';
 }
 
 export const DB_TARGET = _resolveDbTarget();
@@ -43,11 +35,11 @@ const _P = `fin_${DB_TARGET}_`;
 /* ============================================
    0.1 版本號
    ============================================ */
-export const APP_VERSION = 'v103.0.38';
-export const SW_VERSION = 'family-fin-v142';
+export const APP_VERSION = 'v103.0.39';
+export const SW_VERSION = 'family-fin-v152';
 
 /* ============================================
-   1. localStorage Keys（依 DB 隔離）
+   1. localStorage Keys
    ============================================ */
 export const STORAGE_KEYS = {
   YEAR: `${_P}year`,
@@ -76,7 +68,7 @@ export const STORAGE_PREFIXES = {
 };
 
 /* ============================================
-   2. sessionStorage Keys（依 DB 隔離）
+   2. sessionStorage Keys
    ============================================ */
 export const SESSION_KEYS = {
   AUTH_CONTEXT_PREFIX: `${_P}auth_context_`,
@@ -241,6 +233,29 @@ export const ENTITY_KEYS = {
 };
 
 /* ============================================
+   12.1 編號前綴（D-008）
+   ============================================ */
+export const CODE_PREFIXES = {
+  member:      'MEM',
+  bank:        'PAY-BANK',
+  bankAccount: 'PAY-BANK',
+  category:    'CAT',
+  item:        'ITEM',
+  payment:     'PAY',
+  company:     'COMP',
+  policy:      'POL',
+  fund:        'FUND',
+  income:      'INC',
+  bankTxn:     'TXN',
+};
+
+export const POLICY_SUBTYPE_MAP = {
+  normal:         'NORM',
+  fund_insurance: 'FUND',
+  savings:        'SAVE',
+};
+
+/* ============================================
    13. 狀態 badge class 對照
    ============================================ */
 export const STATUS_BADGE_CLASS = {
@@ -269,7 +284,7 @@ export function getPolicyEffectiveMemberId(policy) {
 }
 
 /* ============================================
-   15. 表格欄位設定前綴（依 DB 隔離）
+   15. 表格欄位設定前綴
    ============================================ */
 export const COLUMN_SETTINGS_PREFIX = `${_P}ui_columns_`;
 
@@ -316,8 +331,9 @@ export const DEFAULT_OPTIONS = {
     { value: '一次性',  label: '一次性' },
   ],
   policyTypes: [
-    { value: 'normal',         label: '普通保險（住院 / 人壽 / 意外）' },
-    { value: 'fund_insurance', label: '基金保險（投資型，月供）' },
+    { value: 'normal',         label: '普通類保險（住院 / 人壽 / 意外）' },
+    { value: 'fund_insurance', label: '基金類保險（投資型，月供）' },
+    { value: 'savings',        label: '儲蓄類保險' },
   ],
   insurancePaymentTypes: [
     { value: '年繳',     label: '年繳' },
@@ -352,11 +368,11 @@ export const DEFAULT_MEMBERS = [
 ];
 
 export const DEFAULT_CATEGORIES = [
-  { key: 'cat_medical',   name: '醫療類',     order: 1 },
-  { key: 'cat_school',    name: '學校類',     order: 2 },
-  { key: 'cat_insurance', name: '保險類',     order: 3 },
-  { key: 'cat_fixed',     name: '固定費用類', order: 4 },
-  { key: 'cat_other',     name: '其他',       order: 5 },
+  { key: 'cat_medical',   name: '醫療類',     shortCode: 'MED', order: 1 },
+  { key: 'cat_school',    name: '學校類',     shortCode: 'SCH', order: 2 },
+  { key: 'cat_insurance', name: '保險類',     shortCode: 'INS', order: 3 },
+  { key: 'cat_fixed',     name: '固定費用類', shortCode: 'FIX', order: 4 },
+  { key: 'cat_other',     name: '其他',       shortCode: 'OTH', order: 5 },
 ];
 
 export const DEFAULT_ITEMS = [
@@ -414,7 +430,7 @@ export const SIDEBAR_GROUPS = [
     roles: _ROLES_FAMILY,
     items: [
       { icon: 'pencil',   label: '綜合輸入中心', href: 'input-center.html' },
-      { icon: 'database', label: '基礎資料庫',   href: 'database.html' },
+      { icon: 'database', label: '編號對照清單', href: 'code-list.html' },
     ],
   },
   {
@@ -495,7 +511,8 @@ export const ROUTES = {
   DASHBOARD:        'index.html',
   ADMIN:            'admin.html',
   INPUT_CENTER:     'input-center.html',
-  DATABASE:         'database.html',
+  DATABASE:         'database.html',    /* @deprecated 保留相容 */
+  CODE_LIST:        'code-list.html',   /* 🆕 v103.0.39（B34-4） */
   INSURANCE:        'insurance.html',
   PORTFOLIO:        'portfolio.html',
   SETTLEMENTS:      'settlements.html',
@@ -526,7 +543,7 @@ export const STATUS_CATEGORIES = {
 };
 
 /* ============================================
-   0.2 DB 顯示名稱（依 DB_TARGET 對照）
+   23. DB 顯示名稱
    ============================================ */
 export const DB_LABELS = {
   old: 'family-fin',
@@ -540,6 +557,7 @@ export function getDbLabel() {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/config/constants.js
-   Version: v103.0.38
-   Batch: B30-2
+   Version: 1791901300
+   Batch: B34-4
+   Writer: A20261013-004#091
    ═══════════════════════════════════════════ */

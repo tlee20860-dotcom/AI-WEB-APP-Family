@@ -1,8 +1,7 @@
-// column-registry.js — 表格欄位 SSOT（v103.0.34）
-// v103.0.34（B29-1b）：
-//   ✅ 加 sortable / filterable / filterOptions 屬性
-//   ✅ 加 settlements / insurancePolicies / bankAccounts / bankTransactions / recentExpense
-//   ✅ 從各頁 JS 搬入
+// column-registry.js — 表格欄位 SSOT（v103.0.35）
+// v103.0.35（B34-4）：
+//   ✅ 加 codeList 欄位定義
+// v103.0.34（B29-1b）：既有
 // ============================================
 import { formatHKD, formatNumber } from '../lib/format.js';
 import { esc as escapeHtml } from '../lib/dom.js';
@@ -12,9 +11,6 @@ import { badgeClass as statusBadgeClass, label as statusLabel } from './status-r
 
 /* ============================================
    COLUMNS 定義
-   - sortable: 是否可排序
-   - filterable: 是否可篩選
-   - filterOptions: 篩選選項
    ============================================ */
 export const COLUMNS = {
   members: [
@@ -167,6 +163,23 @@ export const COLUMNS = {
     { id: 'amount', label: '金額', defaultVisible: true, defaultWidth: 110, type: 'number', sortable: true },
     { id: 'status', label: '狀態', defaultVisible: true, defaultWidth: 120, sortable: true, filterable: true },
   ],
+
+  /* 🆕 v103.0.35（B34-4）：編號對照清單（code-list.html） */
+  codeList: [
+    { id: 'code', label: '編號', defaultVisible: true, defaultWidth: 180, sortable: true },
+    { id: 'entityLabel', label: '類型', defaultVisible: true, defaultWidth: 120, sortable: true, filterable: true, filterOptions: [
+      { value: '成員',     label: '成員' },
+      { value: '銀行',     label: '銀行' },
+      { value: '支出類別', label: '支出類別' },
+      { value: '支出項目', label: '支出項目' },
+      { value: '支付方式', label: '支付方式' },
+      { value: '保險公司', label: '保險公司' },
+      { value: '保單',     label: '保單' },
+      { value: '基金',     label: '基金' },
+      { value: '銀行帳號', label: '銀行帳號' },
+    ]},
+    { id: 'name', label: '名稱', defaultVisible: true, defaultWidth: 240, sortable: true },
+  ],
 };
 
 /* ============================================
@@ -318,6 +331,15 @@ export const RESOLVERS = {
     amount: (v) => `<span class="mono text-red">${formatHKD(v)}</span>`,
     status: (v) => `<span class="badge ${v && v.startsWith('已') ? 'badge-success' : 'badge-pending'}">${escapeHtml(v || '—')}</span>`,
   },
+
+  /* 🆕 v103.0.35（B34-4）：編號對照清單 */
+  codeList: {
+    code: (v) => v
+      ? `<span class="mono" style="font-size:12px; color:var(--neon-cyan);">${escapeHtml(v)}</span>`
+      : '<span class="mono" style="font-size:12px; color:var(--text-muted);">—</span>',
+    entityLabel: (v) => `<span class="badge badge-info">${escapeHtml(v || '—')}</span>`,
+    name: (v) => escapeHtml(v || '（未命名）'),
+  },
 };
 
 /* ============================================
@@ -341,6 +363,7 @@ export function getColumnsWith(key, ex = []) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/config/column-registry.js
-   Version: v103.0.34
-   Batch: B29-1b
+   Version: 1791901480
+   Batch: B34-4
+   Writer: A20261013-004#094
    ═══════════════════════════════════════════ */

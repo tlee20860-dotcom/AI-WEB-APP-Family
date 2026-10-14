@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>編號對照清單 | 家庭財務</title>
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <link rel="stylesheet" href="./css/theme.css">
+  <link rel="stylesheet" href="./css/layout.css">
+  <link rel="stylesheet" href="./css/components.css">
+  <link rel="stylesheet" href="./css/utilities.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside id="sidebar-root"></aside>
+    <div class="main-area">
+      <header id="navbar-root"></header>
+      <main class="content content-min-height">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">編號對照清單</h1>
+            <p class="page-subtitle"></p>
+          </div>
+          <div id="page-header-actions"></div>
+        </div>
+
+        <!-- 篩選器（類型 + 編號狀態） -->
+        <div id="cl-filter-root"></div>
+
+        <!-- 主列表區 -->
+        <div id="cl-list-root"></div>
+
+        <!-- 空狀態 -->
+        <div id="cl-empty-state" style="display:none;"></div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.min.js" defer></script>
+
+  <link rel="modulepreload" href="./js/layout/app-shell.js">
+  <link rel="modulepreload" href="./js/engines/page-engine.js">
+  <link rel="modulepreload" href="./js/pages/code-list.js">
+
+  <script type="module">
+    import { initApp } from './js/layout/app-shell.js';
+    import { createPage } from './js/engines/page-engine.js';
+    import schema from './js/pages/code-list.js';
+
+    const user = await initApp({ activeHref: 'code-list.html', title: '編號對照清單' });
+    if (user) {
+      await createPage(schema);
+    }
+  </script>
+</body>
+</html>
+
+<!-- ═══════════════════════════════════════════
+     END OF FILE
+     File: code-list.html
+     Version: 1791900580
+     Batch: B34-4
+     Writer: A20261013-004#077
+     ═══════════════════════════════════════════ -->

@@ -1,14 +1,17 @@
 // ============================================
-// entity-helpers.js — 通用實體 CRUD 輔助（v103.0.22）
+// entity-helpers.js — 通用實體 CRUD 輔助（v103.0.24）
 // 位置：js/entity/entity-helpers.js
 // ============================================
-// v103.0.22（B25-4）：
-//   ✅ M1：_getOnce 移除動態 import Firebase，改用 db.js 靜態 getOnce
+// v103.0.24（B34-4）：
+//   ✅ createEntity 回傳 { id, code }（D-029）
+//   ✅ updateEntity 回傳 { id, code }
+// v103.0.23（B34-4）：
+//   ✅ createEntity / updateEntity / removeEntity 全改走 API
 // ============================================
 
 import {
-  listenMembers, getMembersOnce,
-  listenBanks, getBanksOnce,
+  listenMembers,
+  listenBanks,
   listenFunds,
   listenInsurancePolicies, getInsurancePoliciesOnce,
   listenInsuranceCompanies, getInsuranceCompaniesOnce,
@@ -17,10 +20,14 @@ import {
   listenItems, getItemsOnce,
   listenStatuses,
   listenBankAccounts, getBankAccountsOnce,
+  addMemberAdvance,
+  updateInsurancePolicy,
   updateEntityStatus as dbUpdateEntityStatus,
 } from '../core/db.js';
 
+import { api } from '../core/api.js';
 import { getEntityDef, resolveFieldDefault } from './entity-definitions.js';
+import { generateCodeFor } from '../lib/code-registry.js';
 import { getOptions, getStatusesByCategory } from '../config/app-config.js';
 import { sortMembers } from '../core/utils.js';
 import { esc } from '../lib/dom.js';
@@ -30,13 +37,12 @@ import {
 } from '../config/constants.js';
 
 /* ============================================
-   1. CRUD（薄封裝）
+   1. CRUD（全走 API，D-063；回傳 { id, code }，D-029）
    ============================================ */
 
 export async function createEntity(entityKey, data, allRows = []) {
   const def = getEntityDef(entityKey);
   if (!def) throw new Error(`未知的實體：${entityKey}`);
-  if (!def.db.create) throw new Error(`實體 ${entityKey} 不支援新增`);
 
   let payload = def.fromForm ? def.fromForm(data) : { ...data };
 
@@ -49,13 +55,55 @@ export async function createEntity(entityKey, data, allRows = []) {
     payload = def.beforeCreate(payload, allRows);
   }
 
-  return def.db.create(payload);
+  /* 編號生成 */
+  let code = null;
+  if (def.codePrefix) {
+    const r = await generateCodeFor(entityKey, payload);
+    code = r.code;
+  }
+
+  /* 保單代墊特殊處理 */
+  const needsAdvance = entityKey === 'policy'
+    && payload.paymentMode === 'advance'
+    && payload.advanceHolderId
+    && Number(payload.totalPremium) > 0;
+
+  /* 呼叫統一 API */
+  const result = await api.entityCreate({
+    entityType: entityKey,
+    action: 'create',
+    code,
+    name: payload.name,
+    extra: _extractExtra(entityKey, payload),
+  });
+
+  if (!result?.id) throw new Error('新增失敗');
+
+  /* 保單代墊：建立代墊記錄後回寫 advanceId */
+  if (needsAdvance) {
+    try {
+      const advanceId = await addMemberAdvance(payload.advanceHolderId, {
+        policyId: result.id,
+        totalAmount: Number(payload.totalPremium) || 0,
+        remainingAmount: Number(payload.totalPremium) || 0,
+        startYear: String(payload.firstStartYear || ''),
+        startMonth: String(payload.firstStartMonth || '01').padStart(2, '0'),
+        note: `代墊：${payload.name || ''}`,
+      });
+      if (advanceId) await updateInsurancePolicy(result.id, { advanceId });
+    } catch (err) {
+      console.warn('[entity-helpers] 建立代墊記錄失敗：', err);
+    }
+  }
+
+  /* ✅ 回傳 { id, code } */
+  return { id: result.id, code: result.code || code };
 }
 
 export async function updateEntity(entityKey, id, data, allRows = []) {
   const def = getEntityDef(entityKey);
   if (!def) throw new Error(`未知的實體：${entityKey}`);
-  if (!def.db.update) throw new Error(`實體 ${entityKey} 不支援更新`);
+  if (!id) throw new Error('缺少 id');
 
   let payload = def.fromForm ? def.fromForm(data) : { ...data };
 
@@ -64,23 +112,43 @@ export async function updateEntity(entityKey, id, data, allRows = []) {
     if (err) throw new Error(err.message);
   }
 
-  return def.db.update(id, payload);
+  await api.entityCreate({
+    entityType: entityKey,
+    action: 'update',
+    id,
+    name: payload.name,
+    extra: _extractExtra(entityKey, payload),
+  });
+
+  /* ✅ 回傳 { id, code }（code 由原 row 提供） */
+  const existingRow = (allRows || []).find((r) => r.id === id);
+  return { id, code: existingRow?.code || null };
 }
 
 export async function removeEntity(entityKey, id) {
-  const def = getEntityDef(entityKey);
-  if (!def) throw new Error(`未知的實體：${entityKey}`);
-  if (!def.db.remove) throw new Error(`實體 ${entityKey} 不支援刪除`);
-  return def.db.remove(id);
+  if (!id) throw new Error('缺少 id');
+  await api.entityCreate({
+    entityType: entityKey,
+    action: 'delete',
+    id,
+  });
 }
 
 export async function deleteEntity(entityKey, id, ...args) {
   const def = getEntityDef(entityKey);
-  if (!def) throw new Error(`未知的實體：${entityKey}`);
-  if (!def.db.delete) {
-    return removeEntity(entityKey, id);
+  if (def?.db?.delete) {
+    return def.db.delete(id, ...args);
   }
-  return def.db.delete(id, ...args);
+  return removeEntity(entityKey, id);
+}
+
+function _extractExtra(entityKey, payload) {
+  const extra = {};
+  const commonFields = ['name', 'code', 'createdAt', 'updatedAt'];
+  Object.entries(payload || {}).forEach(([k, v]) => {
+    if (!commonFields.includes(k)) extra[k] = v;
+  });
+  return extra;
 }
 
 /* ============================================
@@ -204,9 +272,7 @@ function _isDoneStatus(statusName, category) {
     const statuses = getStatusesByCategory(category);
     const found = statuses.find((s) => s.name === statusName);
     if (found) return !!found.isDone;
-  } catch (e) {
-    // ignore
-  }
+  } catch (e) {}
   return statusName.startsWith('已');
 }
 
@@ -296,6 +362,7 @@ export function isReservedId(id) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/entity/entity-helpers.js
-   Version: v103.0.22
-   Batch: B25-4
+   Version: 1791901180
+   Batch: B34-4
+   Writer: A20261013-004#089
    ═══════════════════════════════════════════ */
