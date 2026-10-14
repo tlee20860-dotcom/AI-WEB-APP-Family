@@ -1,10 +1,8 @@
-// entity-definitions.js — 實體表單定義 SSOT（v103.0.26）
+// entity-definitions.js — 實體表單定義 SSOT（v103.0.27）
+// v103.0.27（B34-4）：
+//   ✅ 各 select 欄位加 plusEntity / plusValueKey（D-029 / Q164 B / Q165 A）
 // v103.0.26（B34-4）：
-//   ✅ 移除死代碼 _createPolicyWithAdvance（entity-helpers 已改走 API）
-//   ✅ POLICY.db.create 改回 addInsurancePolicy
-// v103.0.25（B34-4）：
-//   ✅ 加 codePrefix 屬性
-//   ✅ 加 POLICY_SUBTYPES（NORM / FUND / SAVE）
+//   ✅ 移除死代碼 _createPolicyWithAdvance
 // ============================================
 import {
   addMember, updateMember, removeMember, deleteMemberAndData,
@@ -24,11 +22,10 @@ const PAYMENT_TYPES = {
   ONCE: '一次付款',
 };
 
-/* 保單子類短碼（D-060） */
 const POLICY_SUBTYPES = {
-  normal:         'NORM',   /* 普通類保險 */
-  fund_insurance: 'FUND',   /* 基金類保險 */
-  savings:        'SAVE',   /* 儲蓄類保險 */
+  normal:         'NORM',
+  fund_insurance: 'FUND',
+  savings:        'SAVE',
 };
 
 function calcMonthlyExpense(data) {
@@ -91,16 +88,15 @@ const ENTITY_DEFS = {
     key: ENTITY_KEYS.POLICY, label: '保單', labelPlural: '保單', icon: 'shield',
     codePrefix: 'POL',
     policySubtypes: POLICY_SUBTYPES,
-    /* ✅ v103.0.26：create 改回 addInsurancePolicy（代墊邏輯已搬到 entity-helpers） */
     db: { create: addInsurancePolicy, update: updateInsurancePolicy, remove: removeInsurancePolicy, delete: deleteInsurancePolicyAndData },
     fields: [
       { id: 'type', label: '保單類型', type: 'select', required: true, optionsSource: 'policyTypes' },
-      { id: 'memberId', label: '受保人', type: 'select', required: true, optionsSource: 'members' },
-      { id: 'policyHolderId', label: '保單持有人', type: 'select', required: false, optionsSource: 'members', emptyText: '— 同受保人 —', hint: '若未選擇，預設與受保人相同' },
+      { id: 'memberId', label: '受保人', type: 'select', required: true, optionsSource: 'members', plusEntity: 'member' },
+      { id: 'policyHolderId', label: '保單持有人', type: 'select', required: false, optionsSource: 'members', emptyText: '— 同受保人 —', hint: '若未選擇，預設與受保人相同', plusEntity: 'member' },
       { id: 'name', label: '保單名稱', type: 'text', required: true, maxlength: 60, placeholder: '例如：危疾+住院' },
-      { id: 'company', label: '保險公司', type: 'select', required: false, optionsSource: 'companies' },
+      { id: 'company', label: '保險公司', type: 'select', required: false, optionsSource: 'companies', plusEntity: 'company', plusValueKey: 'name' },
       { id: 'paymentMode', label: '付款模式', type: 'select', required: true, optionsSource: 'paymentModes', defaultValue: 'direct' },
-      { id: 'advanceHolderId', label: '代墊成員（若為代墊模式）', type: 'select', required: false, optionsSource: 'members', emptyText: '— 請選擇 —', hint: '僅在「代墊模式」時需要' },
+      { id: 'advanceHolderId', label: '代墊成員（若為代墊模式）', type: 'select', required: false, optionsSource: 'members', emptyText: '— 請選擇 —', hint: '僅在「代墊模式」時需要', plusEntity: 'member' },
       { id: 'firstStartYear', label: '保單開始年份', type: 'number-plain', required: true, min: 2000, max: 2100, defaultValue: () => new Date().getFullYear() },
       { id: 'firstStartMonth', label: '保單開始月份', type: 'select', required: true, optionsSource: 'months', defaultValue: '01' },
       { id: 'totalPolicyYears', label: '總供款年期', type: 'number-plain', required: true, min: 1, max: 50, defaultValue: 5 },
@@ -274,7 +270,7 @@ const ENTITY_DEFS = {
     codePrefix: 'ITEM',
     db: { create: addItem, update: updateItem, remove: removeItem, delete: null },
     fields: [
-      { id: 'categoryId', label: '所屬類別', type: 'select', required: true, optionsSource: 'categories' },
+      { id: 'categoryId', label: '所屬類別', type: 'select', required: true, optionsSource: 'categories', plusEntity: 'category' },
       { id: 'name', label: '項目名稱', type: 'text', required: true, maxlength: 30, placeholder: '例如：看病-濕疹' },
     ],
     ui: {
@@ -358,7 +354,7 @@ function _getPeriodRange(fy, fm, pi) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/entity/entity-definitions.js
-   Version: 1791901720
+   Version: 1791901900
    Batch: B34-4
-   Writer: A20261013-004#099
+   Writer: A20261013-004#102
    ═══════════════════════════════════════════ */
