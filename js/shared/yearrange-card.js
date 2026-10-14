@@ -1,10 +1,11 @@
 // ============================================
-// database-yearrange.js — 年份範圍（v103.0.1）
-// 位置：js/pages/database-yearrange.js
+// yearrange-card.js — 年份範圍卡（v103.0.1）
+// 位置：js/shared/yearrange-card.js
 // ============================================
-// v103.0.1（B31-1）：
-//   ✅ 修正：清空「起始年份」不再被誤判為 0
-//      - _parseFormValues 改從 DOM 直接讀 value（避開 number→0）
+// v103.0.1（B34-4）：
+//   ✅ 從 database-yearrange.js 搬移（D-036）
+//   ✅ 函式名 initYearRangeTab → initYearRangeCard
+//   ✅ 供 settings.js 個人化 Tab 使用
 // ============================================
 import { listenYearRange, saveYearRange } from '../core/db.js';
 import { getYearRange as getMergedYearRange } from '../config/app-config.js';
@@ -13,7 +14,7 @@ import { esc } from '../lib/dom.js';
 import { showToast } from '../ui/toast.js';
 import { openConfirm } from '../ui/modal.js';
 import { buildForm } from '../ui/form-builder.js';
-import { createListenerGroup } from '../shared/listener-group.js';
+import { createListenerGroup } from './listener-group.js';
 
 let _container = null;
 let _formApi = null;
@@ -23,7 +24,7 @@ let _resetBtnHandler = null;
 
 const listenerGroup = createListenerGroup();
 
-export function initYearRangeTab(containerId) {
+export function initYearRangeCard(containerId) {
   _container = document.getElementById(containerId);
   if (!_container) return null;
 
@@ -191,16 +192,8 @@ function _refreshPreview() {
   if (window.lucide) window.lucide.createIcons();
 }
 
-/* ============================================
-   🆕 v103.0.1（B31-1）：從 DOM 直接讀 value
-   -------------------------------------------------
-   原因：form-builder 的 getFieldValue / _collectData 對
-        number 欄位會把空字串轉成 0（Number('') === 0）。
-        本頁需要「空字串 → null」的語意。
-   ============================================ */
 function _parseFormValues(data) {
   let rawStart, rawFuture;
-
   const startEl = document.getElementById('db-yr-start');
   const futureEl = document.getElementById('db-yr-future');
 
@@ -233,7 +226,8 @@ function _destroy() {
 
 /* ═══════════════════════════════════════════
    END OF FILE
-   File: js/pages/database-yearrange.js
-   Version: v103.0.1
-   Batch: B31-1
+   File: js/shared/yearrange-card.js
+   Version: 1791902620
+   Batch: B34-4
+   Writer: A20261013-004#118
    ═══════════════════════════════════════════ */
