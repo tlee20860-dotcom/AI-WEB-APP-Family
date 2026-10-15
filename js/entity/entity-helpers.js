@@ -1,17 +1,16 @@
 // ============================================
-// entity-helpers.js — 通用實體 CRUD 輔助（v103.0.24）
+// entity-helpers.js — 通用實體 CRUD 輔助（v103.0.25）
 // 位置：js/entity/entity-helpers.js
 // ============================================
+// v103.0.25（B34-4）：
+//   ✅ [修正] 補回遺漏的 import：getMembersOnce / getBanksOnce
 // v103.0.24（B34-4）：
-//   ✅ createEntity 回傳 { id, code }（D-029）
-//   ✅ updateEntity 回傳 { id, code }
-// v103.0.23（B34-4）：
-//   ✅ createEntity / updateEntity / removeEntity 全改走 API
+//   ✅ createEntity 回傳 { id, code }
 // ============================================
 
 import {
-  listenMembers,
-  listenBanks,
+  listenMembers, getMembersOnce,
+  listenBanks, getBanksOnce,
   listenFunds,
   listenInsurancePolicies, getInsurancePoliciesOnce,
   listenInsuranceCompanies, getInsuranceCompaniesOnce,
@@ -37,7 +36,7 @@ import {
 } from '../config/constants.js';
 
 /* ============================================
-   1. CRUD（全走 API，D-063；回傳 { id, code }，D-029）
+   1. CRUD（全走 API）
    ============================================ */
 
 export async function createEntity(entityKey, data, allRows = []) {
@@ -55,20 +54,17 @@ export async function createEntity(entityKey, data, allRows = []) {
     payload = def.beforeCreate(payload, allRows);
   }
 
-  /* 編號生成 */
   let code = null;
   if (def.codePrefix) {
     const r = await generateCodeFor(entityKey, payload);
     code = r.code;
   }
 
-  /* 保單代墊特殊處理 */
   const needsAdvance = entityKey === 'policy'
     && payload.paymentMode === 'advance'
     && payload.advanceHolderId
     && Number(payload.totalPremium) > 0;
 
-  /* 呼叫統一 API */
   const result = await api.entityCreate({
     entityType: entityKey,
     action: 'create',
@@ -79,7 +75,6 @@ export async function createEntity(entityKey, data, allRows = []) {
 
   if (!result?.id) throw new Error('新增失敗');
 
-  /* 保單代墊：建立代墊記錄後回寫 advanceId */
   if (needsAdvance) {
     try {
       const advanceId = await addMemberAdvance(payload.advanceHolderId, {
@@ -96,7 +91,6 @@ export async function createEntity(entityKey, data, allRows = []) {
     }
   }
 
-  /* ✅ 回傳 { id, code } */
   return { id: result.id, code: result.code || code };
 }
 
@@ -120,7 +114,6 @@ export async function updateEntity(entityKey, id, data, allRows = []) {
     extra: _extractExtra(entityKey, payload),
   });
 
-  /* ✅ 回傳 { id, code }（code 由原 row 提供） */
   const existingRow = (allRows || []).find((r) => r.id === id);
   return { id, code: existingRow?.code || null };
 }
@@ -362,7 +355,7 @@ export function isReservedId(id) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/entity/entity-helpers.js
-   Version: 1791901180
+   Version: 1791902740
    Batch: B34-4
-   Writer: A20261013-004#089
+   Writer: A20261013-004#131
    ═══════════════════════════════════════════ */
