@@ -1,4 +1,10 @@
-// input-center.js — 綜合輸入中心（v103.0.34）
+// ============================================
+// input-center.js — 綜合輸入中心（v103.0.35）
+// ============================================
+// v103.0.35（B35-0）：
+//   ✅ 移除頂部「新增保單 / 新增基金」按鈕對應的 case（D-XXX）
+//      - 入口改由「保險 / 基金 Tab」內的 entity-list-page 提供
+//      - 移除已無用的 openEntityModal import
 // v103.0.34（B29-4a）：
 //   ✅ 刪除支出 Tab 內 banner
 // v103.0.34（B29-3）：
@@ -10,7 +16,6 @@ import { renderDataTable } from '../shared/data-table.js';
 import { renderDataCard } from '../shared/data-card.js';
 import { openExpenseModal } from '../lib/expense-modal.js';
 import { openContributionModal, openPersonalIncomeModal } from '../lib/income-modal.js';
-import { openEntityModal } from '../entity/entity-modal.js';
 import { openConfirm } from '../ui/modal.js';
 import { showToast } from '../ui/toast.js';
 import { initViewToggle } from '../ui/view-toggle.js';
@@ -159,8 +164,6 @@ export default {
           case 'add-expense': openExpenseModal({ onSuccess: _loadExpenses }); break;
           case 'add-contribution': openContributionModal({ onSuccess: _loadExpenses }); break;
           case 'add-personal-income': openPersonalIncomeModal(); break;
-          case 'add-policy': openEntityModal({ entity: ENTITY_KEYS.POLICY, mode: 'add' }); break;
-          case 'add-fund': openEntityModal({ entity: ENTITY_KEYS.FUND, mode: 'add' }); break;
         }
       };
       btnRoot.addEventListener('click', _btnH);
@@ -179,6 +182,7 @@ export default {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/pages/input-center.js
-   Version: v103.0.34
-   Batch: B29-4a
+   Version: 1792200000
+   Batch: B35-0
+   Writer: A20261016-001#002
    ═══════════════════════════════════════════ */
