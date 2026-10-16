@@ -9,12 +9,13 @@ on:
   push:
     branches: [main, master]
     paths:
-      - 'js/**'
-      - 'functions/**'
-      - 'css/**'
-      - '*.html'
-      - '*.js'
-      - '*.json'
+      - 'docs/**'
+      - '**/*.md'
+      - '**/*.js'
+      - '**/*.html'
+      - '**/*.css'
+      - '**/*.json'
+      - '**/*.yml'
 
 jobs:
   notify:
@@ -31,7 +32,7 @@ jobs:
 
 # ═══ EOF ═══
 # F: WEB-APP-Family/.github/workflows/notify.yml
-# V: 1791907060
-# B: B34-4
-# W: A20261016-001
+# V: 1791915000
+# B: B34-5
+# W: ai-system-20261016-003#041
 # ═══ EOF ═══
