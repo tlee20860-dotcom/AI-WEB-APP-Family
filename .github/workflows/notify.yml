@@ -1,9 +1,9 @@
 # ============================================
-# notify.yml — v2.Family 變更時通知 AI-training-files
-# 位置：v2.Family/.github/workflows/notify.yml
+# notify.yml — WEB-APP-Family 變更時通知 AI-General
+# 位置：WEB-APP-Family/.github/workflows/notify.yml
 # ============================================
 
-name: Notify AI-training-files
+name: Notify AI-General
 
 on:
   push:
@@ -11,20 +11,27 @@ on:
     paths:
       - 'js/**'
       - 'functions/**'
+      - 'css/**'
       - '*.html'
       - '*.js'
       - '*.json'
-      - 'css/**'
 
 jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger AI-training-files build
+      - name: Trigger AI-General build
         run: |
           curl -X POST \
             -H "Accept: application/vnd.github.v3+json" \
             -H "Authorization: token ${{ secrets.CROSS_REPO_PAT }}" \
-            https://api.github.com/repos/tlee20860-dotcom/AI-training-files/dispatches \
-            -d '{"event_type":"v2-family-updated"}'
-          echo "已通知 AI-training-files 重新建置"
+            https://api.github.com/repos/tlee20860-dotcom/AI-General/dispatches \
+            -d '{"event_type":"web-app-family-updated"}'
+          echo "已通知 AI-General 重新建置"
+
+# ═══ EOF ═══
+# F: WEB-APP-Family/.github/workflows/notify.yml
+# V: 1791907060
+# B: B34-4
+# W: A20261016-001
+# ═══ EOF ═══
