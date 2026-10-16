@@ -1,9 +1,12 @@
-// db.js — Firebase RTDB 讀寫封裝（v103.0.36）
+// db.js — Firebase RTDB 讀寫封裝（v103.0.37）
+// v103.0.37（B35-1）：
+//   ✅ getFundSnapshotListOnce 每筆附 _rawPath（實際儲存路徑）
+//   ✅ removeFundSnapshot 支援 rawPath 參數（修舊格式刪除失效）
 // v103.0.36（B33-1）：
-//   ✅ 基金快照改為以「估值日（YYYY-MM-DD）」為 key，支援同月多筆
+//   ✅ 基金快照改為以「估值日（YYYY-MM-DD）」為 key
 //   ✅ 新增 getFundSnapshotListOnce() 回傳統一列表
 //   ✅ 保留舊資料兼容（舊 snapshots/{year}/{month} 讀取時自動轉換）
-//   ✅ 移除 saveFundSnapshot 中的 contribution / cumulativeCost（成本改由保單邏輯控制）
+//   ✅ 移除 saveFundSnapshot 中的 contribution / cumulativeCost
 // ============================================
 import { db } from '../config/firebase-config.js';
 import { AppState } from './state.js';
@@ -755,14 +758,22 @@ export async function updateFund(id, p) {
 }
 export async function removeFund(id) { await remove(familyRef(`funds/${id}`)); }
 
-/* ============ 基金快照（v103.0.36：以估值日為 key） ============ */
+/* ============ 基金快照（v103.0.37：附 _rawPath） ============ */
 
 /** 訂閱某基金的所有快照（回傳 {dateKey: {shares, nav, ...}}） */
 export function listenFundSnapshots(fundId, cb, err) {
   return listen(`funds/${fundId}/snapshots`, (snap) => cb(snap.val() || {}), err);
 }
 
-/** 取得某基金的所有快照，回傳按日期排序的列表（兼容舊資料） */
+/**
+ * 取得某基金的所有快照，回傳按日期排序的列表
+ * 每筆附 `_rawPath`（實際儲存路徑），供刪除時精確定位
+ *
+ * 相容兩種格式：
+ *   新：{ 'YYYY-MM-DD': {...} }        → _rawPath = 'YYYY-MM-DD'
+ *   舊：{ 'YYYY': { 'MM': {...} } }   → _rawPath = 'YYYY/MM'
+ *   舊：{ 'YYYY': { 'MM': { 'DD': {...} } } } → _rawPath = 'YYYY/MM/DD'
+ */
 export async function getFundSnapshotListOnce(fundId) {
   const snap = await get(familyRef(`funds/${fundId}/snapshots`));
   const val = snap.val() || {};
@@ -770,18 +781,28 @@ export async function getFundSnapshotListOnce(fundId) {
   Object.entries(val).forEach(([key, v]) => {
     if (/^\d{4}-\d{2}-\d{2}$/.test(key)) {
       /* 新格式：YYYY-MM-DD */
-      list.push({ dateKey: key, ...v });
+      list.push({ dateKey: key, _rawPath: key, ...v });
     } else if (/^\d{4}$/.test(key) && v && typeof v === 'object') {
       /* 舊格式：{year: {month: {...}}} */
       Object.entries(v).forEach(([month, snap2]) => {
         if (snap2 && typeof snap2 === 'object' && snap2.shares === undefined) {
+          /* {year: {month: {day: {...}}}} */
           Object.entries(snap2).forEach(([day, snap3]) => {
             if (snap3 && typeof snap3 === 'object') {
-              list.push({ dateKey: `${key}-${month}-${String(day).padStart(2, '0')}`, ...snap3 });
+              list.push({
+                dateKey: `${key}-${month}-${String(day).padStart(2, '0')}`,
+                _rawPath: `${key}/${month}/${day}`,
+                ...snap3,
+              });
             }
           });
         } else if (snap2 && typeof snap2 === 'object') {
-          list.push({ dateKey: `${key}-${month}-01`, ...snap2 });
+          /* {year: {month: {...}}} */
+          list.push({
+            dateKey: `${key}-${month}-01`,
+            _rawPath: `${key}/${month}`,
+            ...snap2,
+          });
         }
       });
     }
@@ -805,10 +826,19 @@ export async function saveFundSnapshot(fundId, dateKey, data) {
   });
 }
 
-/** 刪除某一筆快照 */
-export async function removeFundSnapshot(fundId, dateKey) {
+/**
+ * 刪除某一筆快照
+ * v103.0.37：加第 3 參數 rawPath（實際儲存路徑），支援舊格式刪除
+ * @param {string} fundId
+ * @param {string} dateKey - 顯示用日期（YYYY-MM-DD）
+ * @param {string} [rawPath] - 實際儲存路徑（由 getFundSnapshotListOnce 附帶）
+ * @returns {Promise<boolean>}
+ */
+export async function removeFundSnapshot(fundId, dateKey, rawPath) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) throw new Error('dateKey 必須是 YYYY-MM-DD 格式');
-  await remove(familyRef(`funds/${fundId}/snapshots/${dateKey}`));
+  const path = rawPath || dateKey;
+  await remove(familyRef(`funds/${fundId}/snapshots/${path}`));
+  return true;
 }
 
 /* ============ 跨來源改狀態 ============ */
@@ -843,7 +873,7 @@ export async function saveSidebarOrder(order) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: js/core/db.js
-   Version: v103.0.36
-   Batch: B33-1
-   Writer: A20261013-003#021
+   Version: 1792203600
+   Batch: B35-1
+   Writer: A20261016-001#003
    ═══════════════════════════════════════════ */

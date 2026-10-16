@@ -1,7 +1,9 @@
 // ============================================
-// sw.js — Service Worker（v103.0.31）
+// sw.js — Service Worker（v103.0.32）
 // 位置：sw.js
 // ============================================
+// v103.0.32（B35-3）：
+//   ✅ CACHE_NAME 升版 v155 → v156（配合 portfolio 快照修正 + 導入功能）
 // v103.0.31（B35-0）：
 //   ✅ CACHE_NAME 升版 v154 → v155（配合 input-center 入口調整）
 // v103.0.30（B34-4）：
@@ -11,7 +13,7 @@
 //   ✅ 加 yearrange-card.js；移除 4 個 database-*.js
 // ============================================
 
-const CACHE_NAME = 'family-fin-v155';
+const CACHE_NAME = 'family-fin-v156';
 
 const STATIC_ASSETS = [
   './css/theme.css',
@@ -115,7 +117,7 @@ const STATIC_ASSETS = [
 ];
 
 self.addEventListener('install', (e) => {
-  console.log('[SW] install (v103.0.31, cache=' + CACHE_NAME + ')');
+  console.log('[SW] install (v103.0.32, cache=' + CACHE_NAME + ')');
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) =>
       Promise.all(
@@ -194,7 +196,7 @@ async function _networkFirst(request) {
 /* ═══════════════════════════════════════════
    END OF FILE
    File: sw.js
-   Version: 1792200000
-   Batch: B35-0
-   Writer: A20261016-001#002
+   Version: 1792210800
+   Batch: B35-3
+   Writer: A20261016-001#006
    ═══════════════════════════════════════════ */
