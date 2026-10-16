@@ -8,14 +8,15 @@ name: Notify AI-General
 on:
   push:
     branches: [main, master]
-    paths:
-      - 'docs/**'
-      - '**/*.md'
-      - '**/*.js'
-      - '**/*.html'
-      - '**/*.css'
-      - '**/*.json'
-      - '**/*.yml'
+    paths-ignore:
+      - '**/*.png'
+      - '**/*.jpg'
+      - '**/*.jpeg'
+      - '**/*.gif'
+      - '**/*.svg'
+      - '**/*.ico'
+      - '.gitignore'
+      - 'LICENSE'
 
 jobs:
   notify:
@@ -32,7 +33,7 @@ jobs:
 
 # ═══ EOF ═══
 # F: WEB-APP-Family/.github/workflows/notify.yml
-# V: 1791915000
+# V: 1791936000
 # B: B34-5
-# W: ai-system-20261016-003#041
+# W: ai-system-20261016-003#135
 # ═══ EOF ═══
