@@ -1,97 +1,80 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-apply_patch.py
-用途：解析 .github/workflows/PATCH.md，對多個檔案執行批次替換。
-規則：
-1. 每個 FILE 區塊可含多個 OLD/NEW 配對。
-2. OLD 在目標檔案中必須唯一（0 次或 >1 次皆報錯）。
-3. 若 OLD 為 0 次，但 NEW 已存在，視為已套用，冪等跳過。
-4. 任一錯誤則 exit 1，不寫入任何未完成變更。
-5. 執行成功後，自動將 PATCH.md 重置為預設提示字。
-"""
-
-import re
 import sys
-from pathlib import Path
+import os
+import re
 
-ROOT = Path(__file__).resolve().parents[2]
-PATCH_FILE = ROOT / ".github" / "workflows" / "PATCH.md"
+patch_file = ".github/PATCH.md"
 
-FILE_RE = re.compile(r"^## FILE:\s*(.+?)\s*$", re.M)
-PAIR_RE = re.compile(
-    r"<<<<<<< OLD\n(.*?)\n=======\n(.*?)\n>>>>>>> NEW",
-    re.S,
-)
+if not os.path.exists(patch_file):
+    print("PATCH.md not found")
+    sys.exit(0)
 
+with open(patch_file, "r", encoding="utf-8") as f:
+    text = f.read()
 
-def fail(msg: str) -> None:
-    print(f"[ERROR] {msg}")
-    sys.exit(1)
+if "## FILE:" not in text:
+    print("PATCH.md is empty or reset. Exiting safely.")
+    sys.exit(0)
 
+pattern = re.compile(r"## FILE:\s*(.*?)\n(.*?)(?=## FILE:|\Z)", re.S)
+matches = pattern.findall(text)
 
-def main() -> None:
-    if not PATCH_FILE.exists():
-        fail(f"找不到 {PATCH_FILE}")
+planned = []
+errors = []
 
-    text = PATCH_FILE.read_text(encoding="utf-8")
-    file_matches = list(FILE_RE.finditer(text))
-    if not file_matches:
-        fail("PATCH.md 內找不到任何 '## FILE:' 區塊")
-
-    planned = []
-    errors = []
-
-    for idx, match in enumerate(file_matches):
-        rel_path = match.group(1).strip()
-        start = match.end()
-        end = file_matches[idx + 1].start() if idx + 1 < len(file_matches) else len(text)
-        block = text[start:end]
-
-        pairs = PAIR_RE.findall(block)
-        if not pairs:
-            errors.append(f"{rel_path}: 找不到 OLD/NEW 配對")
-            continue
-
-        target = (ROOT / rel_path).resolve()
-        if not target.is_file():
-            errors.append(f"{rel_path}: 目標檔案不存在")
-            continue
-
-        content = target.read_text(encoding="utf-8")
-        new_content = content
-
-        for old, new in pairs:
+for rel_path, content_block in matches:
+    rel_path = rel_path.strip()
+    if not os.path.exists(rel_path):
+        errors.append(f"{rel_path}: File not found")
+        continue
+        
+    with open(rel_path, "r", encoding="utf-8") as f:
+        content = f.read()
+        
+    new_content = content
+    
+    pairs = re.findall(r"<<<<<<< (OLD|REGEX)\n(.*?)\n=======\n(.*?)\n>>>>>>> NEW", content_block, re.S)
+    if not pairs:
+        errors.append(f"{rel_path}: No OLD/REGEX pairs found")
+        continue
+        
+    for mode, old, new in pairs:
+        if mode == "REGEX":
+            new_content, count = re.subn(old, new, new_content, count=1)
+            if count == 1:
+                print(f"[OK] {rel_path}: Regex replaced 1 instance")
+            elif count == 0:
+                if re.search(new, new_content):
+                    print(f"[SKIP] {rel_path}: Already applied")
+                else:
+                    errors.append(f"{rel_path}: Regex OLD not found, NEW not present")
+            else:
+                errors.append(f"{rel_path}: Regex OLD matched multiple times")
+        else:
             count = new_content.count(old)
             if count == 1:
                 new_content = new_content.replace(old, new, 1)
-                print(f"[OK] {rel_path}: 替換 1 處")
+                print(f"[OK] {rel_path}: Replaced 1 instance")
             elif count == 0:
                 if new in new_content:
-                    print(f"[SKIP] {rel_path}: OLD 不存在，但 NEW 已存在（冪等跳過）")
+                    print(f"[SKIP] {rel_path}: Already applied")
                 else:
-                    errors.append(f"{rel_path}: OLD 出現 0 次，且 NEW 不存在")
+                    errors.append(f"{rel_path}: OLD not found, NEW not present")
             else:
-                errors.append(f"{rel_path}: OLD 出現 {count} 次，非唯一")
+                errors.append(f"{rel_path}: OLD found {count} times (not unique)")
+            
+    if new_content != content:
+        planned.append((rel_path, new_content))
 
-        if new_content != content:
-            planned.append((target, new_content, rel_path))
+if errors:
+    for e in errors:
+        print(f"[ERROR] {e}")
+    sys.exit(1)
 
-    if errors:
-        for e in errors:
-            print(f"[ERROR] {e}")
-        sys.exit(1)
+for rel_path, new_content in planned:
+    with open(rel_path, "w", encoding="utf-8") as f:
+        f.write(new_content)
+    print(f"[WRITE] {rel_path}")
 
-    for target, new_content, rel_path in planned:
-        target.write_text(new_content, encoding="utf-8")
-        print(f"[WRITE] {rel_path}")
-
-    print(f"[DONE] 共寫入 {len(planned)} 個檔案")
-    
-    # 重置 PATCH.md
-    PATCH_FILE.write_text("# 請在此貼上新的替換指令\n", encoding="utf-8")
-    print(f"[RESET] {PATCH_FILE.relative_to(ROOT)} 已重置")
-
-
-if __name__ == "__main__":
-    main()
+with open(patch_file, "w", encoding="utf-8") as f:
+    f.write("# 請在此貼上新的替換指令\n")
+print("[RESET] PATCH.md reset")
