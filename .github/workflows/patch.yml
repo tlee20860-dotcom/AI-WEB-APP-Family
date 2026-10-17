@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - ".github/workflows/PATCH.md"
+      - ".github/PATCH.md"
 
 permissions:
   contents: write
@@ -23,7 +23,7 @@ jobs:
           python-version: "3.x"
 
       - name: Apply patch
-        run: python .github/scripts/apply_patch.py
+        run: python3 .github/scripts/apply_patch.py
 
       - name: Commit and push
         run: |
@@ -31,5 +31,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git diff --cached --quiet && exit 0
-          git commit -m "Apply PATCH.md and Reset"
+          git commit -m "Apply PATCH.md [skip ci]"
           git push
