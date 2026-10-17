@@ -1,9 +1,18 @@
+---
+name: web-app-family
+display: 家庭 webapp
+code: webapp
+domain: W
+package_no: 90
+repo: tlee20860-dotcom/WEB-APP-Family
+---
+
 # P-01 專案索引 + 技術架構
 
-最後更新：B34-4
-Version: 1791903940
-Batch: B34-4
-Writer: A20261013-004#172
+最後更新：ai-system-20261017-004
+Version: 1792222800
+Batch: B34-5
+Writer: ai-system-20261017-004#027
 用途：專案索引（技術架構已抽至 W-*）
 
 ---
@@ -23,8 +32,6 @@ Writer: A20261013-004#172
 | 後端 | Cloudflare Pages Functions |
 | 視覺 | 亮色家庭暖陽 |
 | 金額 | 四捨五入至整數 |
-
-**Repo 清單**：詳見 R-01 §三之一。
 
 ---
 
@@ -138,13 +145,13 @@ Writer: A20261013-004#172
 | 交接快照 | P-13-handoff.md |
 | 重組計畫 | P-15-reorg-plan.md |
 | Web App 技能包 | W-00 ~ W-05 |
-| Repo 清單 | R-01 §三之一 |
+| 機械記錄 | STATE-INDEX.md |
 
 ---
 
 /* ═══ EOF ═══
 F: docs/P-01-index.md
-V: 1791903940
-B: B34-4
-W: A20261013-004#172
+V: 1792222800
+B: B34-5
+W: ai-system-20261017-004#027
 ═══ */
