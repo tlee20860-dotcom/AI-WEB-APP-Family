@@ -277,6 +277,6 @@ P01 CF Functions 路由 500 / P02 HTML 缺 .html 匹配 .js / P03 _redirects 循
 /* ═══ EOF ═══
 F: docs/P-10-incident.md
 V: 1791899200
-B: B34-3
+B(歷史): B34-3
 W: A20261013-004#061
 ═══ */

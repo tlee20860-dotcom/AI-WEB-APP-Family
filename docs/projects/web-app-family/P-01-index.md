@@ -152,6 +152,6 @@ Writer: ai-system-20261017-004#027
 /* ═══ EOF ═══
 F: docs/P-01-index.md
 V: 1792222800
-B: B34-5
+B(歷史): B34-5
 W: ai-system-20261017-004#027
 ═══ */

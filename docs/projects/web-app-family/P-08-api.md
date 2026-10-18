@@ -632,6 +632,6 @@ members / banks / bankAccounts / categories / items / payments / statuses / comp
 /* ═══ EOF ═══
 F: docs/P-08-api.md
 V: 1791904360
-B: B34-4
+B(歷史): B34-4
 W: A20261013-004#180
 ═══ */
