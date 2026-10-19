@@ -1,4 +1,6 @@
 {
   "domain": "W",
-  "pkg_no": "90"
+  "pkg_no": "90",
+  "code": "webapp",
+  "display": "家庭 webapp"
 }
