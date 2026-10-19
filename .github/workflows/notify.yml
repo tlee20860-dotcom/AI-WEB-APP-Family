@@ -1,9 +1,7 @@
 # ============================================
-# notify.yml — WEB-APP-Family 變更時通知 AI-General
-# 位置：WEB-APP-Family/.github/workflows/notify.yml
+# notify.yml — 專案變更時通知 AI-infra
 # ============================================
-
-name: Notify AI-General
+name: Notify AI-infra
 
 on:
   push:
@@ -22,18 +20,17 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger AI-General build
+      - name: Trigger AI-infra build
         run: |
           curl -X POST \
             -H "Accept: application/vnd.github.v3+json" \
             -H "Authorization: token ${{ secrets.CROSS_REPO_PAT }}" \
-            https://api.github.com/repos/tlee20860-dotcom/AI-General/dispatches \
-            -d '{"event_type":"web-app-family-updated"}'
-          echo "已通知 AI-General 重新建置"
+            https://api.github.com/repos/tlee20860-dotcom/AI-infra/dispatches \
+            -d '{"event_type":"project-updated"}'
+          echo "已通知 AI-infra 重新建置"
 
 # ═══ EOF ═══
-# F: WEB-APP-Family/.github/workflows/notify.yml
-# V: 1791936000
-# B: B34-5
-# W: ai-system-20261016-003#135
+# F: AI-WEB-APP-Family/.github/workflows/notify.yml
+# V: 1792357000
+# W: ai-system-20261019-010#085
 # ═══ EOF ═══
