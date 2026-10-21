@@ -1,19 +1,9 @@
----
-name: web-app-family
-display: 家庭 webapp
-code: webapp
-domain: W
-package_no: 90
-repo: tlee20860-dotcom/WEB-APP-Family
----
-
 # P-01 專案索引 + 技術架構
 
-最後更新：ai-system-20261017-004
-Version: 1792222800
-Batch: B34-5
-Writer: ai-system-20261017-004#027
-用途：專案索引（技術架構已抽至 W-*）
+最後更新：2026-10-21
+Version: 1792581016
+Writer: ai-system-20261021-004#16
+用途：專案索引與專屬技術架構（通用架構已抽至 W-*）
 
 ---
 
@@ -39,10 +29,10 @@ Writer: ai-system-20261017-004#027
 
 | 項目 | 值 |
 |---|---|
-| 當前批次 | B34-4（完成 + 測試通過） |
+| 當前批次 | B34-5（體系對齊中） |
 | 部署 URL | family-financial-management-system-v2.pages.dev |
-| 測試狀態 | 5 組全通過 |
-| 下一步 | 執行 P-15 重組計畫 |
+| 測試狀態 | B34-4 5 組全通過 |
+| 下一步 | 執行 P-15 重組與 Actions 觸發 |
 
 ---
 
@@ -55,53 +45,21 @@ Writer: ai-system-20261017-004#027
 | Cloudflare Pages Functions | W-02-functions.md |
 | 純前端 ES Module 架構 | W-03-esmodule.md |
 | PWA + Service Worker | W-04-pwa.md |
-| Page Schema | W-05-schema.md |
+| Page Schema 與 UI 規範 | W-05-schema.md |
+| 通用任務 SOP | W-06-sop.md |
+| 通用錯誤防呆 | W-07-errors.md |
 
 > **技術架構完整內容已抽至 W-* 層。**
 
 ---
 
-## 四、docs 目錄結構（P-15 重組後）
+## 四、本專案檔案結構（專屬實作）
 
-### 4.1 AI-training-files repo
+> **通用目錄規範（如 js/config, js/engines 等配置）已抽離至 `W-03-esmodule.md` §八。以下僅列本專案特有之實作與檔數。**
 
-| 層級 | 路徑 | 說明 |
+| 目錄 | 檔數 | 內容（專案特有補充） |
 |---|---|---|
-| 1 | AI-training-files/ | repo 根 |
-| 2 | docs/common/ | C-00 ~ C-10 |
-| 2 | docs/skills/W/ | W-00 ~ W-05 |
-| 2 | docs/records/ | R-01 |
-| 2 | docs/projects/family-fin/ | P-01 ~ P-99 |
-| 2 | .github/workflows/ | Actions |
-| 1 | STARTUP-core-webapp.md | 自動產 |
-| 1 | STARTUP-project-family-fin.md | 自動產 |
-| 1 | INDEX.md | 自動產 |
-
-### 4.2 v2.Family repo（程式碼）
-
-| 層級 | 路徑 | 說明 |
-|---|---|---|
-| 1 | js/config/ | constants / registry |
-| 1 | js/core/ | state / db / api / auth |
-| 1 | js/lib/ | 通用 lib |
-| 1 | js/engines/ | page / data / render |
-| 1 | js/blocks/ | 5 大 block |
-| 1 | js/ui/ | UI 元件 |
-| 1 | js/layout/ | navbar / sidebar / app-shell |
-| 1 | js/entity/ | entity 相關 |
-| 1 | js/shared/ | 共用元件 |
-| 1 | js/pages/ | 純 Schema |
-| 1 | functions/api/ | CF Functions |
-| 1 | css/ | 6 檔 |
-| 1 | *.html | 13 檔 |
-
----
-
-## 五、本專案檔案結構（實作）
-
-| 目錄 | 檔數 | 內容 |
-|---|---|---|
-| js/config | 8+1 | constants / firebase-config / app-config / 4 Registry / page-metadata-registry /（待）code-registry |
+| js/config | 8+1 | 4 Registry / page-metadata-registry /（待）code-registry |
 | js/core | 8 | state / api / db / auth / auth-guard / utils / pwa / debug |
 | js/lib | 14 | dom / async / lifecycle / registry / merge / insurance / bank / format / expense-modal / income-modal / filter-sort / page-controls / code-registry / id-resolver |
 | js/engines | 3 | page / data / render |
@@ -120,7 +78,7 @@ Writer: ai-system-20261017-004#027
 
 ---
 
-## 六、編號系統（已交付）
+## 五、編號系統（已交付）
 
 | 模組 | 職責 |
 |---|---|
@@ -129,29 +87,25 @@ Writer: ai-system-20261017-004#027
 | code-list.html + js/pages/code-list.js | 編號對照清單頁（取代 database.html） |
 | POST /api/entity-create | 統一新增端點（含 action 參數） |
 
-**詳細**：P-12 §議題 5 / 6
+**詳細**：參見 `WF-CONCLUSION.md` §二 議題 5 / 6
 
 ---
 
-## 七、關聯檔案
+## 六、關聯檔案
 
 | 主題 | 檔案 |
 |---|---|
-| 進度 | P-02-progress.md |
-| 檔案清單 | P-03-manifest.md |
-| 決策 | P-04-decisions.md |
-| 常見任務 | P-05-sop.md |
-| 議題結論 | P-12-conclusion.md |
-| 交接快照 | P-13-handoff.md |
+| 進度 | WF-PROGRESS.md |
+| 檔案清單 | WF-STATE-INDEX.md |
+| 議題與決策 | WF-CONCLUSION.md |
+| 交接快照 | WF-HANDOFF.md |
 | 重組計畫 | P-15-reorg-plan.md |
-| Web App 技能包 | W-00 ~ W-05 |
-| 機械記錄 | STATE-INDEX.md |
+| Web App 技能包 | W-00 ~ W-07 |
 
 ---
 
 /* ═══ EOF ═══
-F: docs/P-01-index.md
-V: 1792222800
-B(歷史): B34-5
-W: ai-system-20261017-004#027
+F: P-01-index.md
+V: 1792581016
+W: ai-system-20261021-004#16
 ═══ */
