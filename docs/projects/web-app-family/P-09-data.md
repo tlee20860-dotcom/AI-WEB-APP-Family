@@ -1,9 +1,8 @@
 # P-09 Firebase RTDB 資料結構
 
-最後更新：B34-3
-Version: 1791899140
-Batch: B34-3
-Writer: A20261013-004#060
+最後更新：2026-10-21
+Version: 1792581021
+Writer: ai-system-20261021-004#21
 用途：本專案實際資料節點
 
 ---
@@ -336,13 +335,12 @@ Writer: A20261013-004#060
 | Firebase RTDB 原則 | W-01-firebase.md |
 | API 契約 | P-08-api.md |
 | 專案索引 | P-01-index.md |
-| 決策 | P-04-decisions.md |
+| 決策 | P-04-adr-index.md |
 
 ---
 
 /* ═══ EOF ═══
-F: docs/P-09-data.md
-V: 1791899140
-B(歷史): B34-3
-W: A20261013-004#060
+F: P-09-data.md
+V: 1792581021
+W: ai-system-20261021-004#21
 ═══ */
