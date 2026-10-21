@@ -15,6 +15,7 @@ on:
       - '**/*.ico'
       - '.gitignore'
       - 'LICENSE'
+      - 'docs/projects/**/WF-STATE-INDEX.md' # 👈 新增這行，避免自動生成的索引檔觸發通知
 
 jobs:
   notify:
@@ -28,9 +29,3 @@ jobs:
             https://api.github.com/repos/tlee20860-dotcom/AI-infra/dispatches \
             -d '{"event_type":"project-updated"}'
           echo "已通知 AI-infra 重新建置"
-
-# ═══ EOF ═══
-# F: AI-WEB-APP-Family/.github/workflows/notify.yml
-# V: 1792357000
-# W: ai-system-20261019-010#085
-# ═══ EOF ═══
