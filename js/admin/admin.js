@@ -1,463 +1,695 @@
 // ============================================
-// _admin.js — 平台管理 lib（v103.0.23）
-// 位置：functions/api/_admin.js
+// admin.js — 平台管理頁面入口（前端）
+// 位置：js/admin/admin.js
 // ============================================
-// v103.0.23（B31-1）：
-//   ✅ 移除 _migrate_check_expenses 死代碼
-//   ✅ 3 個 POST handler 權限驗證提前（避免資訊洩漏）
-// v103.0.22（B25-6）：
-//   ✅ 加 handleAdminMigrate
+// 職責：
+//   1. 綁定登出按鈕
+//   2. 渲染 3 個 Tab（家庭列表 / 帳號管理 / 預設資料庫）
+//   3. 家庭 CRUD（新增 / 刪除 / 初始化）
+//   4. 成員帳號 CRUD（新增 / 還原 / 編輯 / 移除）
+//   5. 預設資料庫編輯（轉交 initPlatformDefaults）
+//
+// 依賴契約（詳見 P-08）：
+//   - api.adminListFamilies / adminAddFamily / adminRemoveFamily / adminInitFamily
+//   - api.familyAccounts.list / create / restore / update / remove
+//   - initPlatformDefaults(containerId)
+//   - initTabPanel / buildForm / openConfirm / openPrompt / openModal / closeModal
+//   - showToast / logout / esc
 // ============================================
-import { dbGet, dbPut, dbDelete } from './_config.js';
-import {
-  authenticate, errorResponse, handleError,
-  successResponse, requireFields,
-} from './_helpers.js';
 
-const LEGACY_STATUS_MAP = {
-  '未處理': 'pending',
-  '未還款': 'pending',
-  '未付款': 'pending',
-  '未扣款': 'pending',
-  '未轉入': 'pending',
-  '已處理': 'done',
-  '已還款': 'done',
-  '已付款': 'done',
-  '已扣款': 'done',
-  '已轉入': 'done',
-  '不適用': 'skipped',
-};
+import { api } from '../core/api.js';
+import { logout } from '../core/auth.js';
+import { initTabPanel } from '../ui/tab-panel.js';
+import { initPlatformDefaults } from './platform-defaults.js';
+import { showToast } from '../ui/toast.js';
+import { openConfirm, openPrompt, openModal, closeModal } from '../ui/modal.js';
+import { buildForm } from '../ui/form-builder.js';
+import { esc } from '../lib/dom.js';
 
-function _normalizeStatus(raw) {
-  if (raw == null || raw === '') return 'pending';
-  if (raw === 'pending' || raw === 'done' || raw === 'skipped') return raw;
-  return LEGACY_STATUS_MAP[raw] || 'pending';
-}
+const TABS = [
+  { key: 'families', label: '家庭列表', icon: 'home',     panelId: 'admin-panel-families' },
+  { key: 'accounts', label: '帳號管理', icon: 'users',    panelId: 'admin-panel-accounts' },
+  { key: 'defaults', label: '預設資料庫', icon: 'database', panelId: 'admin-panel-defaults' },
+];
 
-const FALLBACK = {
-  members: {
-    mem_husband:  { name: '成員1', role: 'husband', order: 0 },
-    mem_wife:     { name: '成員2', role: 'wife',    order: 1 },
-    mem_son:      { name: '成員3', role: 'child',   order: 2 },
-    mem_daughter: { name: '成員4', role: 'child',   order: 3 },
-  },
-  banks: {},
-  insurance_companies: {
-    comp_ftlife:     { name: '富通', order: 1 },
-    comp_prudential: { name: '保誠', order: 2 },
-    comp_fwd:        { name: 'FWD',  order: 3 },
-    comp_aia:        { name: 'AIA',  order: 4 },
-    comp_manulife:   { name: '宏利', order: 5 },
-    comp_axa:        { name: 'AXA',  order: 6 },
-  },
-  payment_methods: {
-    pm_cash:   { name: '現金',   order: 1 },
-    pm_boc:    { name: '中銀',   order: 2 },
-    pm_hsbc:   { name: '匯豐',   order: 3 },
-    pm_hangs:  { name: '恆生',   order: 4 },
-    pm_credit: { name: '信用卡', order: 5 },
-  },
-  expense_categories: {
-    cat_medical:   { name: '醫療類',     order: 1 },
-    cat_school:    { name: '學校類',     order: 2 },
-    cat_insurance: { name: '保險類',     order: 3 },
-    cat_fixed:     { name: '固定費用類', order: 4 },
-    cat_other:     { name: '其他',       order: 5 },
-  },
-  expense_items: {
-    item_med_01: { categoryKey: 'cat_medical',   name: '看病-一般' },
-    item_med_02: { categoryKey: 'cat_medical',   name: '看病-專科' },
-    item_med_03: { categoryKey: 'cat_medical',   name: '牙醫' },
-    item_med_04: { categoryKey: 'cat_medical',   name: '藥費' },
-    item_sch_01: { categoryKey: 'cat_school',    name: '學費' },
-    item_sch_02: { categoryKey: 'cat_school',    name: '功課輔導班' },
-    item_sch_03: { categoryKey: 'cat_school',    name: '興趣班' },
-    item_sch_04: { categoryKey: 'cat_school',    name: '書本費' },
-    item_sch_05: { categoryKey: 'cat_school',    name: '校車費' },
-    item_ins_01: { categoryKey: 'cat_insurance', name: '住院保險' },
-    item_ins_02: { categoryKey: 'cat_insurance', name: '人壽保險' },
-    item_ins_03: { categoryKey: 'cat_insurance', name: '意外保險' },
-    item_fix_01: { categoryKey: 'cat_fixed',     name: '水費' },
-    item_fix_02: { categoryKey: 'cat_fixed',     name: '電費' },
-    item_fix_03: { categoryKey: 'cat_fixed',     name: '煤氣費' },
-    item_fix_04: { categoryKey: 'cat_fixed',     name: '管理費' },
-    item_fix_05: { categoryKey: 'cat_fixed',     name: '房租' },
-    item_oth_01: { categoryKey: 'cat_other',     name: '其他' },
-  },
-  statuses: {
-    status_untreated: { name: '未處理', category: 'personal',  isDone: false, order: 1 },
-    status_done:      { name: '已處理', category: 'personal',  isDone: true,  order: 2 },
-    status_unrepaid:  { name: '未還款', category: 'personal',  isDone: false, order: 3 },
-    status_repaid:    { name: '已還款', category: 'personal',  isDone: true,  order: 4 },
-    status_unpaid:    { name: '未付款', category: 'fixed',     isDone: false, order: 5 },
-    status_paid:      { name: '已付款', category: 'fixed',     isDone: true,  order: 6 },
-    status_na:        { name: '不適用', category: 'fixed',     isDone: true,  order: 7 },
-    status_unbilled:  { name: '未扣款', category: 'insurance', isDone: false, order: 8 },
-    status_billed:    { name: '已扣款', category: 'insurance', isDone: true,  order: 9 },
-  },
-  options: {
-    memberRoles: [
-      { value: 'husband', label: '老公 / 丈夫' },
-      { value: 'wife',    label: '老婆 / 妻子' },
-      { value: 'child',   label: '子女' },
-      { value: 'other',   label: '其他' },
-    ],
-    cycles: [
-      { value: '每月',    label: '每月' },
-      { value: '每2個月', label: '每2個月' },
-      { value: '每季',    label: '每季' },
-      { value: '每年',    label: '每年' },
-      { value: '一次性',  label: '一次性' },
-    ],
-    policyTypes: [
-      { value: 'normal',         label: '普通保險（住院 / 人壽 / 意外）' },
-      { value: 'fund_insurance', label: '基金保險（投資型，月供）' },
-    ],
-    insurancePaymentTypes: [
-      { value: '年繳',     label: '年繳' },
-      { value: '月繳',     label: '月繳' },
-      { value: '一次付款', label: '一次付款' },
-    ],
-    categoryOrder: ['銀行類', '醫療類', '學校類', '保險類', '固定費用類', '交通類', '其他'],
-  },
-  year_range: { startYear: null, futureYears: 5 },
-  ui_constants: { nameMaxLenDesktop: 12, nameMaxLenMobile: 6, toastDuration: 2000 },
-};
+let _tabPanel = null;
+let _defaultsApi = null;
+let _familiesCache = [];
+let _accountsCache = {};
+let _selectedFamilyId = '';
+let _cleanups = [];
 
 /* ============================================
-   Handler 1：admin-families
+   主入口
    ============================================ */
-export async function handleAdminFamiliesGet(request) {
-  try {
-    const auth = await authenticate(request, { needSuperAdmin: true });
-    if (auth instanceof Response) return auth;
-    const { token } = auth;
-
-    const list = await dbGet('platform/families', token);
-    const families = Object.entries(list || {}).map(([uid, data]) => ({ uid, ...data }));
-    families.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-    return successResponse({ families });
-  } catch (err) {
-    return handleError(err);
-  }
-}
-
-export async function handleAdminFamiliesPost(request) {
-  try {
-    /* 🆕 v103.0.23：權限驗證提前 */
-    const auth = await authenticate(request, { needSuperAdmin: true });
-    if (auth instanceof Response) return auth;
-    const { token } = auth;
-
-    const body = await request.json();
-    const { action, uid, name, email } = body || {};
-
-    if (action === 'add') {
-      const missing = requireFields(body, ['uid', 'name']);
-      if (missing) return errorResponse('MISSING_FIELDS', '缺少 uid 或 name');
-
-      const success = await dbPut(`platform/families/${uid}`, {
-        name: String(name).trim(),
-        ownerEmail: email ? String(email).trim() : '',
-        createdAt: Date.now(),
-      }, token);
-
-      if (!success) return errorResponse('INTERNAL', 'Firebase 寫入失敗');
-      return successResponse();
-    }
-
-    if (action === 'remove') {
-      const missing = requireFields(body, ['uid']);
-      if (missing) return errorResponse('MISSING_FIELDS', '缺少 uid');
-
-      let accounts = null;
-      try { accounts = await dbGet(`platform/families/${uid}/memberAccounts`, token); } catch (e) {}
-      const cleanups = [];
-      if (accounts && typeof accounts === 'object') {
-        Object.entries(accounts).forEach(([memberUid, acc]) => {
-          cleanups.push(dbDelete(`platform/uid_index/${memberUid}`, token).catch(() => false));
-          if (acc && acc.account) {
-            cleanups.push(dbDelete(`platform/email_index/${acc.account}`, token).catch(() => false));
-          }
-        });
-      }
-      await Promise.all(cleanups);
-
-      const ok1 = await dbDelete(`platform/families/${uid}`, token);
-      const ok2 = await dbDelete(`families/${uid}`, token);
-      if (!ok1 && !ok2) return errorResponse('INTERNAL', '刪除失敗');
-
-      return successResponse({
-        deletedPlatform: ok1,
-        deletedFamilyData: ok2,
-        cleanedIndexes: cleanups.length,
-      });
-    }
-
-    return errorResponse('BAD_REQUEST', '未知的 action');
-  } catch (err) {
-    return handleError(err);
-  }
+export function initAdminPage() {
+  _cleanups = [];
+  _bindLogout();
+  _initTabs();
+  if (window.lucide) window.lucide.createIcons();
 }
 
 /* ============================================
-   Handler 2：admin-init-family
+   錯誤橫幅
    ============================================ */
-export async function handleAdminInitFamily(request) {
-  try {
-    /* 🆕 v103.0.23：權限驗證提前 */
-    const auth = await authenticate(request, { needSuperAdmin: true });
-    if (auth instanceof Response) return auth;
-    const { token } = auth;
+function _showError(msg) {
+  const el = document.getElementById('admin-error');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = 'block';
+}
 
-    const body = await request.json();
-    const { uid } = body || {};
-    const missing = requireFields(body, ['uid']);
-    if (missing) return errorResponse('MISSING_FIELDS', '缺少 uid');
-
-    const basePath = `families/${uid}`;
-    const existing = await dbGet(`${basePath}/members`, token);
-    if (existing && Object.keys(existing).length > 0) {
-      return successResponse({ skipped: true, message: '此家庭已有資料' });
-    }
-
-    const defaults = await _loadPlatformDefaults(token);
-    const now = Date.now();
-    const results = {
-      members: false, banks: false, insurance_companies: false,
-      payment_methods: false, expense_categories: false, expense_items: false,
-      statuses: false, options: false, year_range: false, ui_constants: false,
-    };
-
-    const membersData = _withTimestamps(defaults.members, now);
-    results.members = Object.keys(membersData).length > 0
-      ? await dbPut(`${basePath}/members`, membersData, token) : true;
-
-    results.banks = Object.keys(defaults.banks).length > 0
-      ? await dbPut(`${basePath}/banks`, _withTimestamps(defaults.banks, now), token) : true;
-    results.insurance_companies = Object.keys(defaults.insurance_companies).length > 0
-      ? await dbPut(`${basePath}/insurance_companies`, _withTimestamps(defaults.insurance_companies, now), token) : true;
-    results.payment_methods = Object.keys(defaults.payment_methods).length > 0
-      ? await dbPut(`${basePath}/payment_methods`, _withTimestamps(defaults.payment_methods, now), token) : true;
-    results.expense_categories = Object.keys(defaults.expense_categories).length > 0
-      ? await dbPut(`${basePath}/expense_categories`, _withTimestamps(defaults.expense_categories, now), token) : true;
-
-    const itemsData = _buildItemsWithCategoryId(defaults.expense_items, now);
-    results.expense_items = Object.keys(itemsData).length > 0
-      ? await dbPut(`${basePath}/expense_items`, itemsData, token) : true;
-
-    results.statuses = Object.keys(defaults.statuses).length > 0
-      ? await dbPut(`${basePath}/statuses`, _withTimestamps(defaults.statuses, now), token) : true;
-
-    results.options = (defaults.options && Object.keys(defaults.options).length > 0)
-      ? await dbPut(`${basePath}/settings/options`, defaults.options, token) : true;
-    results.year_range = defaults.year_range
-      ? await dbPut(`${basePath}/settings/year_range`, defaults.year_range, token) : true;
-    results.ui_constants = defaults.ui_constants
-      ? await dbPut(`${basePath}/settings/ui_constants`, defaults.ui_constants, token) : true;
-
-    const failedSteps = Object.entries(results).filter(([, ok]) => ok === false).map(([k]) => k);
-    if (failedSteps.length > 0) {
-      return successResponse({ created: true, partial: true, failedSteps, results });
-    }
-    return successResponse({ created: true, results });
-  } catch (err) {
-    return handleError(err);
-  }
+function _clearError() {
+  const el = document.getElementById('admin-error');
+  if (!el) return;
+  el.textContent = '';
+  el.style.display = 'none';
 }
 
 /* ============================================
-   Handler 3：admin-migrate
+   登出
    ============================================ */
-export async function handleAdminMigrate(request) {
-  try {
-    /* 🆕 v103.0.23：權限驗證提前 */
-    const auth = await authenticate(request, { needSuperAdmin: true });
-    if (auth instanceof Response) return auth;
-    const { token } = auth;
-
-    const body = await request.json();
-    const { familyId, confirm } = body || {};
-    if (!familyId) return errorResponse('MISSING_FIELDS', '缺少 familyId');
-    if (confirm !== 'MIGRATE_ALL') {
-      return errorResponse('BAD_REQUEST', '必須提供確認參數 confirm="MIGRATE_ALL"');
-    }
-
-    const basePath = `families/${familyId}`;
-    const summary = {
-      expenses:    { scanned: 0, normalized: 0 },
-      payments:    { scanned: 0, normalized: 0 },
-      policies:    { scanned: 0, patched: 0 },
-      funds:       { scanned: 0, patched: 0 },
-    };
-
-    /* ---------- 1. 遷移 expenses 狀態 ---------- */
-    try {
-      const expensesSnap = await dbGet(`${basePath}/expenses`, token);
-      const expensesUpd = {};
-      if (expensesSnap && typeof expensesSnap === 'object') {
-        Object.entries(expensesSnap).forEach(([y, months]) => {
-          Object.entries(months || {}).forEach(([m, monthData]) => {
-            Object.entries(monthData?.member_expenses || {}).forEach(([mid, items]) => {
-              Object.entries(items || {}).forEach(([eid, e]) => {
-                if (!e || typeof e !== 'object') return;
-                summary.expenses.scanned++;
-
-                const patch = {};
-                const newStatus = _normalizeStatus(e.status);
-                if (e.status !== newStatus) {
-                  patch.status = newStatus;
-                }
-                if (e.isAutoLinked === undefined) {
-                  patch.isAutoLinked = !!e.policyId;
-                }
-                if (Object.keys(patch).length > 0) {
-                  expensesUpd[`${basePath}/expenses/${y}/${m}/member_expenses/${mid}/${eid}`] = { ...e, ...patch };
-                  summary.expenses.normalized++;
-                }
-              });
-            });
-          });
-        });
-        /* 🆕 v103.0.23：移除死代碼 _migrate_check_expenses */
-        for (const [path, data] of Object.entries(expensesUpd)) {
-          await dbPut(path, data, token);
-        }
-      }
-    } catch (err) {
-      console.warn('[admin-migrate] expenses 遷移失敗：', err);
-    }
-
-    /* ---------- 2. 遷移 insurance_payments 狀態 ---------- */
-    try {
-      const paymentsSnap = await dbGet(`${basePath}/insurance_payments`, token);
-      if (paymentsSnap && typeof paymentsSnap === 'object') {
-        for (const [pid, years] of Object.entries(paymentsSnap)) {
-          for (const [y, months] of Object.entries(years || {})) {
-            for (const [m, p] of Object.entries(months || {})) {
-              if (!p || typeof p !== 'object') continue;
-              summary.payments.scanned++;
-              const newStatus = _normalizeStatus(p.status);
-              if (p.status !== newStatus) {
-                await dbPut(`${basePath}/insurance_payments/${pid}/${y}/${m}`, { ...p, status: newStatus }, token);
-                summary.payments.normalized++;
-              }
-            }
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('[admin-migrate] payments 遷移失敗：', err);
-    }
-
-    /* ---------- 3. 遷移 insurance_policies ---------- */
-    try {
-      const policiesSnap = await dbGet(`${basePath}/insurance_policies`, token);
-      if (policiesSnap && typeof policiesSnap === 'object') {
-        for (const [pid, p] of Object.entries(policiesSnap)) {
-          if (!p || typeof p !== 'object') continue;
-          summary.policies.scanned++;
-          const patch = {};
-          if (!Array.isArray(p.fundsAllocation)) patch.fundsAllocation = [];
-          if (p.type === undefined) patch.type = 'normal';
-          if (Object.keys(patch).length > 0) {
-            await dbPut(`${basePath}/insurance_policies/${pid}`, { ...p, ...patch }, token);
-            summary.policies.patched++;
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('[admin-migrate] policies 遷移失敗：', err);
-    }
-
-    /* ---------- 4. 遷移 funds ---------- */
-    try {
-      const fundsSnap = await dbGet(`${basePath}/funds`, token);
-      if (fundsSnap && typeof fundsSnap === 'object') {
-        for (const [fid, f] of Object.entries(fundsSnap)) {
-          if (!f || typeof f !== 'object') continue;
-          summary.funds.scanned++;
-          const patch = {};
-          if (f.type === undefined) patch.type = 'standalone';
-          if (f.policyId === undefined) patch.policyId = '';
-          if (f.initialYear === undefined) patch.initialYear = '';
-          if (f.initialMonth === undefined) patch.initialMonth = '';
-          if (Object.keys(patch).length > 0) {
-            await dbPut(`${basePath}/funds/${fid}`, { ...f, ...patch }, token);
-            summary.funds.patched++;
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('[admin-migrate] funds 遷移失敗：', err);
-    }
-
-    return successResponse({ migrated: true, familyId, summary });
-  } catch (err) {
-    return handleError(err);
-  }
+function _bindLogout() {
+  const btn = document.getElementById('admin-logout-btn');
+  if (!btn) return;
+  const handler = () => logout();
+  btn.addEventListener('click', handler);
+  _cleanups.push(() => btn.removeEventListener('click', handler));
 }
 
 /* ============================================
-   內部工具
+   Tabs 初始化
    ============================================ */
-async function _loadPlatformDefaults(token) {
-  const [members, banks, companies, payments, categories, items, statuses, options, yearRange, uiConstants] =
-    await Promise.all([
-      dbGet('platform/defaults/members', token),
-      dbGet('platform/defaults/banks', token),
-      dbGet('platform/defaults/insurance_companies', token),
-      dbGet('platform/defaults/payment_methods', token),
-      dbGet('platform/defaults/expense_categories', token),
-      dbGet('platform/defaults/expense_items', token),
-      dbGet('platform/defaults/statuses', token),
-      dbGet('platform/defaults/options', token),
-      dbGet('platform/defaults/year_range', token),
-      dbGet('platform/defaults/ui_constants', token),
-    ]);
+function _initTabs() {
+  _tabPanel = initTabPanel({
+    containerId: 'admin-tabs',
+    tabs: TABS,
+    defaultKey: 'families',
+    storageKey: 'admin-tab',
+    wrap: true,
+    onChange: (key) => _activateTab(key),
+  });
+}
 
-  return {
-    members:             members    && Object.keys(members).length    ? members    : FALLBACK.members,
-    banks:               banks      && Object.keys(banks).length      ? banks      : FALLBACK.banks,
-    insurance_companies: companies  && Object.keys(companies).length  ? companies  : FALLBACK.insurance_companies,
-    payment_methods:     payments   && Object.keys(payments).length   ? payments   : FALLBACK.payment_methods,
-    expense_categories:  categories && Object.keys(categories).length ? categories : FALLBACK.expense_categories,
-    expense_items:       items      && Object.keys(items).length      ? items      : FALLBACK.expense_items,
-    statuses:            statuses   && Object.keys(statuses).length   ? statuses   : FALLBACK.statuses,
-    options:             options    && Object.keys(options).length    ? options    : FALLBACK.options,
-    year_range:          yearRange  || FALLBACK.year_range,
-    ui_constants:        uiConstants || FALLBACK.ui_constants,
+async function _activateTab(key) {
+  _clearError();
+  if (key === 'families') return _renderFamiliesTab();
+  if (key === 'accounts') return _renderAccountsTab();
+  if (key === 'defaults') return _renderDefaultsTab();
+}
+
+/* ============================================
+   Tab 1：家庭列表
+   ============================================ */
+async function _renderFamiliesTab() {
+  const panel = document.getElementById('admin-panel-families');
+  if (!panel) return;
+
+  panel.innerHTML = `
+    <div class="flex flex-between items-center flex-wrap gap-12 mb-16">
+      <div class="text-muted" style="font-size:13px;">共 <span id="admin-families-count">0</span> 個家庭</div>
+      <button type="button" class="btn btn-primary" id="admin-add-family-btn">
+        <i data-lucide="plus" style="width:14px;height:14px;"></i> 新增家庭
+      </button>
+    </div>
+    <div id="admin-families-list"></div>
+  `;
+
+  const addBtn = document.getElementById('admin-add-family-btn');
+  if (addBtn) addBtn.addEventListener('click', _openAddFamilyModal);
+
+  await _loadFamilies();
+  if (window.lucide) window.lucide.createIcons();
+}
+
+async function _loadFamilies() {
+  const listEl = document.getElementById('admin-families-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<div class="glass-card"><div class="empty-state">載入中…</div></div>';
+
+  try {
+    const result = await api.adminListFamilies();
+    _familiesCache = result.families || [];
+    const countEl = document.getElementById('admin-families-count');
+    if (countEl) countEl.textContent = String(_familiesCache.length);
+    _paintFamiliesList();
+  } catch (err) {
+    _showError('載入家庭列表失敗：' + (err.message || err));
+    listEl.innerHTML = '<div class="glass-card"><div class="empty-state text-red">載入失敗</div></div>';
+  }
+}
+
+function _paintFamiliesList() {
+  const listEl = document.getElementById('admin-families-list');
+  if (!listEl) return;
+
+  if (_familiesCache.length === 0) {
+    listEl.innerHTML = '<div class="glass-card"><div class="empty-state">尚無家庭</div></div>';
+    return;
+  }
+
+  listEl.innerHTML = `
+    <div class="glass-card" style="padding:0;">
+      <div class="data-table-scroll-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th style="width:220px;">UID</th>
+              <th>名稱</th>
+              <th style="width:200px;">擁有者 Email</th>
+              <th style="width:170px;">建立時間</th>
+              <th style="width:200px;">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${_familiesCache.map((f) => `
+              <tr>
+                <td><span class="mono" style="font-size:12px;">${esc(f.uid)}</span></td>
+                <td>${esc(f.name || '（未命名）')}</td>
+                <td><span class="mono" style="font-size:12px; color:var(--text-muted);">${esc(f.ownerEmail || '—')}</span></td>
+                <td><span class="mono" style="font-size:12px; color:var(--text-muted);">${_formatTimestamp(f.createdAt)}</span></td>
+                <td>
+                  <button type="button" class="btn btn-sm btn-ghost" data-action="init" data-uid="${esc(f.uid)}">
+                    <i data-lucide="refresh-cw" style="width:12px;height:12px;"></i> 初始化
+                  </button>
+                  <button type="button" class="btn btn-sm btn-danger" data-action="remove" data-uid="${esc(f.uid)}">
+                    <i data-lucide="trash-2" style="width:12px;height:12px;"></i> 刪除
+                  </button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  if (window.lucide) window.lucide.createIcons();
+
+  const handler = async (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    const uid = btn.dataset.uid;
+    const family = _familiesCache.find((f) => f.uid === uid);
+    if (!family) return;
+
+    if (btn.dataset.action === 'init') await _handleInitFamily(family);
+    else if (btn.dataset.action === 'remove') await _handleRemoveFamily(family);
   };
+  listEl.addEventListener('click', handler);
+  _cleanups.push(() => listEl.removeEventListener('click', handler));
 }
 
-function _withTimestamps(data, baseTs) {
-  const out = {};
-  let i = 0;
-  Object.entries(data || {}).forEach(([key, val]) => {
-    out[key] = { ...val, createdAt: val.createdAt || (baseTs + i) };
-    i++;
-  });
-  return out;
+async function _handleInitFamily(family) {
+  const ok = await openConfirm(
+    `要對家庭「${family.name || family.uid}」執行初始化嗎？\n\n` +
+    `將寫入平台預設資料（成員 / 類別 / 項目 / 狀態等）。\n` +
+    `若家庭已有資料，將自動跳過。`,
+    { title: '初始化家庭', okText: '初始化', okClass: 'btn-primary' }
+  );
+  if (!ok) return;
+
+  try {
+    const result = await api.adminInitFamily(family.uid);
+    if (result.skipped) {
+      showToast('此家庭已有資料，已跳過', 'info');
+      return;
+    }
+    if (result.partial) {
+      const failed = (result.failedSteps || []).join(', ');
+      _showError(`初始化部分失敗，未完成的步驟：${failed || '(未知)'}`);
+      showToast('初始化部分完成', 'warning');
+    } else {
+      showToast('✅ 家庭初始化完成', 'success');
+    }
+  } catch (err) {
+    _showError('初始化失敗：' + (err.message || err));
+    showToast('初始化失敗', 'error');
+  }
 }
 
-function _buildItemsWithCategoryId(items, baseTs) {
-  const out = {};
-  let i = 0;
-  Object.entries(items || {}).forEach(([key, val]) => {
-    const categoryId = val.categoryKey || val.categoryId || '';
-    out[key] = {
-      name: val.name || '',
-      categoryId,
-      createdAt: val.createdAt || (baseTs + i),
-    };
-    i++;
+async function _handleRemoveFamily(family) {
+  const ok = await openConfirm(
+    `⚠️ 確定要刪除家庭「${family.name || family.uid}」嗎？\n\n` +
+    `將一併刪除：\n` +
+    `• 平台記錄（platform/families）\n` +
+    `• 家庭所有資料（families/{uid}）\n` +
+    `• 所有成員帳號索引\n\n` +
+    `此操作不可逆。`,
+    { title: '刪除家庭', okText: '下一步', okClass: 'btn-danger' }
+  );
+  if (!ok) return;
+
+  const input = await openPrompt({
+    title: '確認刪除',
+    label: `請輸入 UID「${family.uid}」以確認：`,
+    placeholder: family.uid,
+    okText: '刪除',
+    cancelText: '取消',
   });
-  return out;
+  if (input !== family.uid) {
+    showToast('UID 不符，已取消', 'warning');
+    return;
+  }
+
+  try {
+    const result = await api.adminRemoveFamily(family.uid);
+    showToast(`✅ 已刪除（清理 ${result.cleanedIndexes || 0} 個索引）`, 'success');
+    await _loadFamilies();
+  } catch (err) {
+    _showError('刪除失敗：' + (err.message || err));
+    showToast('刪除失敗', 'error');
+  }
+}
+
+async function _openAddFamilyModal() {
+  const MODAL_ID = 'admin-add-family-modal';
+  document.getElementById(MODAL_ID)?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = MODAL_ID;
+  overlay.innerHTML = `
+    <div class="modal" style="max-width:480px;">
+      <h2 class="modal-title">新增家庭</h2>
+      <div id="${MODAL_ID}-form-root"></div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  buildForm({
+    containerId: `${MODAL_ID}-form-root`,
+    fields: [
+      { type: 'text', id: 'uid', label: 'Family UID', required: true, maxlength: 80, hint: '通常為擁有者的 Firebase Auth uid' },
+      { type: 'text', id: 'name', label: '家庭名稱', required: true, maxlength: 40 },
+      { type: 'text', id: 'email', label: '擁有者 Email（可選）', maxlength: 80 },
+    ],
+    submitText: '新增', showCancel: true, cancelText: '取消',
+    onSubmit: async (data) => {
+      try {
+        await api.adminAddFamily(
+          String(data.uid || '').trim(),
+          String(data.name || '').trim(),
+          String(data.email || '').trim()
+        );
+        showToast('✅ 已新增家庭', 'success');
+        closeModal(MODAL_ID);
+        overlay.remove();
+        await _loadFamilies();
+      } catch (err) {
+        _showError('新增失敗：' + (err.message || err));
+        showToast('新增失敗', 'error');
+      }
+    },
+    onCancel: () => { closeModal(MODAL_ID); overlay.remove(); },
+  });
+
+  openModal(MODAL_ID);
+  if (window.lucide) window.lucide.createIcons();
+}
+
+/* ============================================
+   Tab 2：帳號管理
+   ============================================ */
+async function _renderAccountsTab() {
+  const panel = document.getElementById('admin-panel-accounts');
+  if (!panel) return;
+
+  if (_familiesCache.length === 0) {
+    try {
+      const result = await api.adminListFamilies();
+      _familiesCache = result.families || [];
+    } catch (err) { /* noop */ }
+  }
+
+  panel.innerHTML = `
+    <div class="glass-card" style="padding:12px; margin-bottom:16px;">
+      <div class="flex items-center gap-12 flex-wrap">
+        <div class="flex items-center gap-8">
+          <label class="field-label" style="margin:0;">選擇家庭：</label>
+          <select class="select" id="admin-accounts-family" style="min-width:240px; width:auto;">
+            <option value="">— 請選擇 —</option>
+            ${_familiesCache.map((f) => `<option value="${esc(f.uid)}" ${f.uid === _selectedFamilyId ? 'selected' : ''}>${esc(f.name || f.uid)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="flex items-center gap-8" style="margin-left:auto;">
+          <button type="button" class="btn btn-ghost" id="admin-restore-account-btn" ${!_selectedFamilyId ? 'disabled' : ''}>
+            <i data-lucide="rotate-ccw" style="width:14px;height:14px;"></i> 還原帳號
+          </button>
+          <button type="button" class="btn btn-primary" id="admin-add-account-btn" ${!_selectedFamilyId ? 'disabled' : ''}>
+            <i data-lucide="plus" style="width:14px;height:14px;"></i> 新增帳號
+          </button>
+        </div>
+      </div>
+    </div>
+    <div id="admin-accounts-list"></div>
+  `;
+
+  const sel = document.getElementById('admin-accounts-family');
+  if (sel) {
+    sel.addEventListener('change', async () => {
+      _selectedFamilyId = sel.value;
+      _updateAccountButtons();
+      if (_selectedFamilyId) await _loadAccounts(_selectedFamilyId);
+      else _showAccountsPrompt();
+    });
+  }
+
+  const addBtn = document.getElementById('admin-add-account-btn');
+  if (addBtn) addBtn.addEventListener('click', () => {
+    if (_selectedFamilyId) _openAddAccountModal(_selectedFamilyId);
+  });
+
+  const restoreBtn = document.getElementById('admin-restore-account-btn');
+  if (restoreBtn) restoreBtn.addEventListener('click', () => {
+    if (_selectedFamilyId) _openRestoreAccountModal(_selectedFamilyId);
+  });
+
+  if (_selectedFamilyId) await _loadAccounts(_selectedFamilyId);
+  else _showAccountsPrompt();
+
+  if (window.lucide) window.lucide.createIcons();
+}
+
+function _updateAccountButtons() {
+  const addBtn = document.getElementById('admin-add-account-btn');
+  const restoreBtn = document.getElementById('admin-restore-account-btn');
+  const disabled = !_selectedFamilyId;
+  if (addBtn) addBtn.disabled = disabled;
+  if (restoreBtn) restoreBtn.disabled = disabled;
+}
+
+function _showAccountsPrompt() {
+  const listEl = document.getElementById('admin-accounts-list');
+  if (listEl) listEl.innerHTML = '<div class="glass-card"><div class="empty-state">請先選擇家庭</div></div>';
+}
+
+async function _loadAccounts(familyId) {
+  const listEl = document.getElementById('admin-accounts-list');
+  if (!listEl) return;
+  listEl.innerHTML = '<div class="glass-card"><div class="empty-state">載入中…</div></div>';
+
+  try {
+    const result = await api.familyAccounts.list(familyId);
+    _accountsCache[familyId] = result.accounts || [];
+    _paintAccountsList(familyId);
+  } catch (err) {
+    _showError('載入帳號列表失敗：' + (err.message || err));
+    listEl.innerHTML = '<div class="glass-card"><div class="empty-state text-red">載入失敗</div></div>';
+  }
+}
+
+function _paintAccountsList(familyId) {
+  const listEl = document.getElementById('admin-accounts-list');
+  if (!listEl) return;
+  const accounts = _accountsCache[familyId] || [];
+
+  if (accounts.length === 0) {
+    listEl.innerHTML = '<div class="glass-card"><div class="empty-state">此家庭尚無帳號</div></div>';
+    return;
+  }
+
+  listEl.innerHTML = `
+    <div class="glass-card" style="padding:0;">
+      <div class="data-table-scroll-wrapper">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>帳號</th>
+              <th>顯示名稱</th>
+              <th style="width:100px;">角色</th>
+              <th style="width:90px;">可輸入</th>
+              <th style="width:160px;">成員 ID</th>
+              <th style="width:180px;">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${accounts.map((a) => `
+              <tr>
+                <td><span class="mono" style="font-size:12px;">${esc(a.account || '—')}</span></td>
+                <td>${esc(a.displayName || '—')}</td>
+                <td>${a.role === 'owner' ? '<span class="badge badge-info">擁有者</span>' : '<span class="badge badge-muted">成員</span>'}</td>
+                <td>${a.canInput !== false ? '<span class="badge badge-success">是</span>' : '<span class="badge badge-muted">否</span>'}</td>
+                <td><span class="mono" style="font-size:12px; color:var(--text-muted);">${esc(a.memberId || '—')}</span></td>
+                <td>
+                  <button type="button" class="btn btn-sm btn-ghost" data-action="edit" data-uid="${esc(a.id)}">
+                    <i data-lucide="pencil" style="width:12px;height:12px;"></i> 編輯
+                  </button>
+                  ${a.role !== 'owner' ? `
+                    <button type="button" class="btn btn-sm btn-danger" data-action="remove" data-uid="${esc(a.id)}">
+                      <i data-lucide="trash-2" style="width:12px;height:12px;"></i> 移除
+                    </button>
+                  ` : ''}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  if (window.lucide) window.lucide.createIcons();
+
+  const handler = async (e) => {
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    const uid = btn.dataset.uid;
+    const account = accounts.find((a) => a.id === uid);
+    if (!account) return;
+
+    if (btn.dataset.action === 'edit') await _openEditAccountModal(familyId, account);
+    else if (btn.dataset.action === 'remove') await _handleRemoveAccount(familyId, account);
+  };
+  listEl.addEventListener('click', handler);
+  _cleanups.push(() => listEl.removeEventListener('click', handler));
+}
+
+async function _openAddAccountModal(familyId) {
+  const MODAL_ID = 'admin-add-account-modal';
+  document.getElementById(MODAL_ID)?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = MODAL_ID;
+  overlay.innerHTML = `
+    <div class="modal" style="max-width:520px; max-height:90vh; overflow-y:auto;">
+      <h2 class="modal-title">新增成員帳號</h2>
+      <div id="${MODAL_ID}-form-root"></div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  buildForm({
+    containerId: `${MODAL_ID}-form-root`,
+    fields: [
+      { type: 'text', id: 'account', label: '帳號（小寫英文數字 . _ -）', required: true, maxlength: 40 },
+      { type: 'text', id: 'password', label: '密碼（至少 6 位）', required: true, maxlength: 60 },
+      { type: 'text', id: 'displayName', label: '顯示名稱', required: true, maxlength: 40 },
+      { type: 'select', id: 'role', label: '角色', required: true, includeEmpty: false,
+        options: [{ value: 'member', label: '成員' }, { value: 'owner', label: '擁有者' }],
+        defaultValue: 'member' },
+      { type: 'select', id: 'canInput', label: '可輸入', required: true, includeEmpty: false,
+        options: [{ value: 'true', label: '是' }, { value: 'false', label: '否（只讀）' }],
+        defaultValue: 'true' },
+      { type: 'text', id: 'memberId', label: '成員 ID（可選，留空自動匹配）', maxlength: 40 },
+    ],
+    submitText: '新增', showCancel: true, cancelText: '取消',
+    onSubmit: async (data) => {
+      try {
+        await api.familyAccounts.create(familyId, {
+          account: String(data.account || '').trim().toLowerCase(),
+          password: String(data.password || ''),
+          displayName: String(data.displayName || '').trim(),
+          role: data.role,
+          canInput: data.canInput === 'true',
+          memberId: String(data.memberId || '').trim(),
+        });
+        showToast('✅ 已新增帳號', 'success');
+        closeModal(MODAL_ID);
+        overlay.remove();
+        await _loadAccounts(familyId);
+      } catch (err) {
+        _showError('新增帳號失敗：' + (err.message || err));
+        showToast('新增失敗', 'error');
+      }
+    },
+    onCancel: () => { closeModal(MODAL_ID); overlay.remove(); },
+  });
+
+  openModal(MODAL_ID);
+  if (window.lucide) window.lucide.createIcons();
+}
+
+async function _openRestoreAccountModal(familyId) {
+  const MODAL_ID = 'admin-restore-account-modal';
+  document.getElementById(MODAL_ID)?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = MODAL_ID;
+  overlay.innerHTML = `
+    <div class="modal" style="max-width:520px; max-height:90vh; overflow-y:auto;">
+      <h2 class="modal-title">還原成員帳號</h2>
+      <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">
+        用於 Firebase Auth 已存在、但平台記錄缺失的帳號。
+      </p>
+      <div id="${MODAL_ID}-form-root"></div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  buildForm({
+    containerId: `${MODAL_ID}-form-root`,
+    fields: [
+      { type: 'text', id: 'account', label: '帳號（小寫英文數字 . _ -）', required: true, maxlength: 40 },
+      { type: 'text', id: 'password', label: '舊密碼（用於驗證身份）', required: true, maxlength: 60 },
+      { type: 'text', id: 'displayName', label: '顯示名稱', required: true, maxlength: 40 },
+      { type: 'select', id: 'role', label: '角色', required: true, includeEmpty: false,
+        options: [{ value: 'member', label: '成員' }, { value: 'owner', label: '擁有者' }],
+        defaultValue: 'member' },
+      { type: 'select', id: 'canInput', label: '可輸入', required: true, includeEmpty: false,
+        options: [{ value: 'true', label: '是' }, { value: 'false', label: '否（只讀）' }],
+        defaultValue: 'true' },
+      { type: 'text', id: 'memberId', label: '成員 ID（可選）', maxlength: 40 },
+    ],
+    submitText: '還原', showCancel: true, cancelText: '取消',
+    onSubmit: async (data) => {
+      try {
+        await api.familyAccounts.restore(familyId, {
+          account: String(data.account || '').trim().toLowerCase(),
+          password: String(data.password || ''),
+          displayName: String(data.displayName || '').trim(),
+          role: data.role,
+          canInput: data.canInput === 'true',
+          memberId: String(data.memberId || '').trim(),
+        });
+        showToast('✅ 已還原帳號', 'success');
+        closeModal(MODAL_ID);
+        overlay.remove();
+        await _loadAccounts(familyId);
+      } catch (err) {
+        _showError('還原失敗：' + (err.message || err));
+        showToast('還原失敗', 'error');
+      }
+    },
+    onCancel: () => { closeModal(MODAL_ID); overlay.remove(); },
+  });
+
+  openModal(MODAL_ID);
+  if (window.lucide) window.lucide.createIcons();
+}
+
+async function _openEditAccountModal(familyId, account) {
+  const MODAL_ID = 'admin-edit-account-modal';
+  document.getElementById(MODAL_ID)?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = MODAL_ID;
+  overlay.innerHTML = `
+    <div class="modal" style="max-width:480px;">
+      <h2 class="modal-title">編輯帳號</h2>
+      <p style="font-size:12px; color:var(--text-muted); margin-bottom:12px;">
+        帳號「${esc(account.account || account.id)}」不可修改，僅可編輯以下欄位。
+      </p>
+      <div id="${MODAL_ID}-form-root"></div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  buildForm({
+    containerId: `${MODAL_ID}-form-root`,
+    fields: [
+      { type: 'text', id: 'displayName', label: '顯示名稱', required: true, maxlength: 40 },
+      { type: 'select', id: 'role', label: '角色', required: true, includeEmpty: false,
+        options: [{ value: 'member', label: '成員' }, { value: 'owner', label: '擁有者' }] },
+      { type: 'select', id: 'canInput', label: '可輸入', required: true, includeEmpty: false,
+        options: [{ value: 'true', label: '是' }, { value: 'false', label: '否（只讀）' }] },
+      { type: 'text', id: 'memberId', label: '成員 ID', maxlength: 40 },
+    ],
+    initialData: {
+      displayName: account.displayName || '',
+      role: account.role === 'owner' ? 'owner' : 'member',
+      canInput: account.canInput !== false ? 'true' : 'false',
+      memberId: account.memberId || '',
+    },
+    submitText: '儲存', showCancel: true, cancelText: '取消',
+    onSubmit: async (data) => {
+      try {
+        await api.familyAccounts.update(familyId, account.id, {
+          displayName: String(data.displayName || '').trim(),
+          role: data.role,
+          canInput: data.canInput === 'true',
+          memberId: String(data.memberId || '').trim(),
+        });
+        showToast('✅ 已更新', 'success');
+        closeModal(MODAL_ID);
+        overlay.remove();
+        await _loadAccounts(familyId);
+      } catch (err) {
+        _showError('更新失敗：' + (err.message || err));
+        showToast('更新失敗', 'error');
+      }
+    },
+    onCancel: () => { closeModal(MODAL_ID); overlay.remove(); },
+  });
+
+  openModal(MODAL_ID);
+  if (window.lucide) window.lucide.createIcons();
+}
+
+async function _handleRemoveAccount(familyId, account) {
+  const ok = await openConfirm(
+    `確定要移除帳號「${account.displayName || account.account}」嗎？\n\n` +
+    `將移除平台記錄與索引（Firebase Auth 帳號本身不會刪除）。`,
+    { title: '移除帳號', okText: '移除', okClass: 'btn-danger' }
+  );
+  if (!ok) return;
+
+  try {
+    await api.familyAccounts.remove(familyId, account.id);
+    showToast('✅ 已移除帳號', 'success');
+    await _loadAccounts(familyId);
+  } catch (err) {
+    _showError('移除失敗：' + (err.message || err));
+    showToast('移除失敗', 'error');
+  }
+}
+
+/* ============================================
+   Tab 3：預設資料庫
+   ============================================ */
+function _renderDefaultsTab() {
+  if (_defaultsApi) {
+    try { _defaultsApi.refresh?.(); } catch (e) { /* noop */ }
+    return;
+  }
+  _defaultsApi = initPlatformDefaults('admin-defaults-root');
+}
+
+/* ============================================
+   工具
+   ============================================ */
+function _formatTimestamp(ts) {
+  if (!ts || !Number.isFinite(Number(ts))) return '—';
+  try {
+    const d = new Date(Number(ts));
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return `${y}-${m}-${dd} ${hh}:${mm}`;
+  } catch (e) {
+    return '—';
+  }
 }
 
 /* ═══════════════════════════════════════════
    END OF FILE
-   File: functions/api/_admin.js
-   Version: v103.0.23
-   Batch: B31-1
+   File: js/admin/admin.js
+   Version: 1792620000
+   Batch: B34-5
+   Writer: ai-system-20261021-005#1
    ═══════════════════════════════════════════ */
