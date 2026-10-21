@@ -1,9 +1,8 @@
 # P-06 頁面 → 檔案對照表
 
-最後更新：B34-4
-Version: 1791904480
-Batch: B34-4
-Writer: A20261013-004#183
+最後更新：2026-10-21
+Version: 1792581020
+Writer: ai-system-20261021-004#20
 用途：改某功能時，快速查哪些頁面受影響
 
 ---
@@ -25,10 +24,6 @@ Writer: A20261013-004#183
 | 年度報表 | annual-report.html | annual-report.js | stats |
 | 成員報表 | member-report.html | member-report.js | stats |
 | 系統設定 | settings.html | settings.js | — |
-
-**變更**：
-- database.html → code-list.html（已交付）
-- database-*.js → 全部廢棄（已完成）
 
 ---
 
@@ -182,15 +177,14 @@ Writer: A20261013-004#183
 |---|---|
 | UI 術語 | P-07-uispec.md |
 | 專案索引 | P-01-index.md |
-| 檔案清單 | P-03-manifest.md |
-| 議題結論 | P-12-conclusion.md |
+| 檔案清單 | WF-STATE-INDEX.md |
+| 議題結論 | WF-CONCLUSION.md |
 | 重組計畫 | P-15-reorg-plan.md |
 
 ---
 
 /* ═══ EOF ═══
-F: docs/P-06-pagemap.md
-V: 1791904480
-B(歷史): B34-4
-W: A20261013-004#183
+F: P-06-pagemap.md
+V: 1792581020
+W: ai-system-20261021-004#20
 ═══ */
