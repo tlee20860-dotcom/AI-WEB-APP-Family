@@ -1,9 +1,8 @@
 # P-10 事故日誌
 
-最後更新：B34-3
-Version: 1791899200
-Batch: B34-3
-Writer: A20261013-004#061
+最後更新：2026-10-21
+Version: 1792581022
+Writer: ai-system-20261021-004#22
 用途：記錄歷史問題，避免重複犯錯
 
 ---
@@ -266,17 +265,16 @@ P01 CF Functions 路由 500 / P02 HTML 缺 .html 匹配 .js / P03 _redirects 循
 | 主題 | 檔案 |
 |---|---|
 | 錯誤摘要 | P-99-errors-map.md |
-| 學習日誌 | C-05-learning.md |
-| 通用規則 | C-02-rules.md |
-| 決策 | P-04-decisions.md |
+| 學習日誌 | 體系 R-04-learning.md |
+| 通用規則 | 體系 R-00-rules.md |
+| 決策 | P-04-adr-index.md |
 | CF Pages 規則 | W-02-functions.md |
 | PWA 規則 | W-04-pwa.md |
 
 ---
 
 /* ═══ EOF ═══
-F: docs/P-10-incident.md
-V: 1791899200
-B(歷史): B34-3
-W: A20261013-004#061
+F: P-10-incident.md
+V: 1792581022
+W: ai-system-20261021-004#22
 ═══ */
