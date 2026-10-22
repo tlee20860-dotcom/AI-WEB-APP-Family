@@ -313,23 +313,61 @@ function pageSettings(root) {
     const el = document.getElementById('st-panel-personal');
     if (!el) return;
     const acc = AppState.getMemberAccount() || {};
-    el.innerHTML = `<div class="glass-card" style="margin-bottom:16px;">
-      <div class="glass-card-title" style="margin-bottom:12px;">帳號資訊</div>
-      <div class="form-stack">
-        <div class="field"><label class="field-label">登入帳號</label><input class="input mono" disabled value="${esc(acc.account || AppState.currentUser?.email?.split('@')[0] || '')}"></div>
-        <div class="field"><label class="field-label">角色</label><input class="input mono" disabled value="${esc(AppState.getRole() || '')}"></div>
-        <div class="field"><label class="field-label">家庭名稱</label><input class="input" disabled value="${esc(AppState.getFamilyName() || '')}"></div>
+    const savedMode = localStorage.getItem(`fin_${DB_TARGET}_ui_stats_mode`) || 'auto';
+    
+    el.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(360px, 1fr));gap:16px;align-items:start;">
+      <div class="glass-card">
+        <div class="glass-card-title" style="margin-bottom:12px;">帳號資訊</div>
+        <div class="form-stack">
+          <div class="field"><label class="field-label">登入帳號</label><input class="input mono" disabled value="${esc(acc.account || AppState.currentUser?.email?.split('@')[0] || '')}"></div>
+          <div class="field"><label class="field-label">角色</label><input class="input mono" disabled value="${esc(AppState.getRole() || '')}"></div>
+          <div class="field"><label class="field-label">家庭名稱</label><input class="input" disabled value="${esc(AppState.getFamilyName() || '')}"></div>
+        </div>
+        <div style="margin-top:16px;text-align:right;"><button type="button" class="btn btn-danger" id="st-logout"><i data-lucide="log-out"></i> 登出</button></div>
       </div>
-      <div style="margin-top:16px;text-align:right;"><button type="button" class="btn btn-danger" id="st-logout"><i data-lucide="log-out"></i> 登出</button></div>
-    </div>
-    <div class="glass-card">
-      <div class="glass-card-title" style="margin-bottom:12px;">家庭成員</div>
-      <div id="st-members"></div>
+
+      <div class="glass-card">
+        <div class="glass-card-title" style="margin-bottom:12px;">統計卡顯示模式</div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">調整頁面頂部統計卡的顯示樣式</p>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px;border-radius:6px;background:rgba(255,255,255,0.03);">
+            <input type="radio" name="stats-mode" value="auto" ${savedMode === 'auto' ? 'checked' : ''} style="width:auto;cursor:pointer;">
+            <span style="font-size:13px;">自動（依裝置 / 檢視模式）</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px;border-radius:6px;background:rgba(255,255,255,0.03);">
+            <input type="radio" name="stats-mode" value="integrated" ${savedMode === 'integrated' ? 'checked' : ''} style="width:auto;cursor:pointer;">
+            <span style="font-size:13px;">整合卡（單一大卡）</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px;border-radius:6px;background:rgba(255,255,255,0.03);">
+            <input type="radio" name="stats-mode" value="compact" ${savedMode === 'compact' ? 'checked' : ''} style="width:auto;cursor:pointer;">
+            <span style="font-size:13px;">緊湊卡（多個小卡）</span>
+          </label>
+        </div>
+        <div style="margin-top:16px;text-align:right;">
+          <button type="button" class="btn btn-primary" id="save-stats-mode"><i data-lucide="check" style="width:14px;height:14px;"></i> 儲存顯示模式</button>
+        </div>
+      </div>
+
+      <div class="glass-card" style="grid-column:1/-1;">
+        <div class="glass-card-title" style="margin-bottom:12px;">家庭成員</div>
+        <div id="st-members"></div>
+      </div>
     </div>`;
+
     document.getElementById('st-logout')?.addEventListener('click', async () => {
       const ok = await openConfirm('確定要登出嗎？', { title: '登出', okText: '登出', okClass: 'btn-danger' });
       if (ok) logout();
     });
+
+    document.getElementById('save-stats-mode')?.addEventListener('click', () => {
+      const selected = document.querySelector('input[name="stats-mode"]:checked');
+      if (selected) {
+        localStorage.setItem(`fin_${DB_TARGET}_ui_stats_mode`, selected.value);
+        toast('✅ 已儲存顯示模式', 'success');
+      }
+    });
+
     renderTable({ container: 'st-members', rows: getList('members'),
       columns: [{ id: 'name', label: '名稱', type: 'text' }, { id: 'role', label: '角色', width: 120 }],
       resolvers: { role: (v) => esc(v || '—') },
@@ -415,6 +453,6 @@ export { pageFinance, pageAnnualReport, pageMemberReport, pageSettings, pageAdmi
 
 /* ═══ EOF ═══
 F: js/app-pages-reports.js
-V: 1792670005
-W: webapp-20261022-027#1
+V: 1792670008
+W: webapp-20261022-034#1
 ═══ */
