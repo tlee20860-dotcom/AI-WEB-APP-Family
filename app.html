@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>家庭財務 | FAMILY.FIN</title>
+  <title>家庭財務 | FAMILY.FIN V2</title>
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <link rel="stylesheet" href="./app.css">
@@ -11,7 +11,7 @@
   <meta name="theme-color" content="#E2E8F0">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="FAMILY.FIN">
+  <meta name="apple-mobile-web-app-title" content="FAMILY.FIN V2">
 </head>
 <body>
 
@@ -20,7 +20,7 @@
      ============================================ -->
 <div id="auth-view" class="auth-page" style="display:none;">
   <div class="glass-card auth-card">
-    <h1 class="auth-title">◈ FAMILY.FIN</h1>
+    <h1 class="auth-title">◈ FAMILY.FIN V2</h1>
     <p class="auth-subtitle">家庭財務與固定供款管理</p>
     <form id="login-form">
       <div class="field">
@@ -45,7 +45,7 @@
      ============================================ -->
 <div id="loading-view" class="auth-page" style="display:none;">
   <div class="glass-card auth-card" style="text-align:center;">
-    <h1 class="auth-title">◈ FAMILY.FIN</h1>
+    <h1 class="auth-title">◈ FAMILY.FIN V2</h1>
     <p class="auth-subtitle" id="loading-message">載入中…</p>
   </div>
 </div>
@@ -56,7 +56,7 @@
 <div id="app-view" class="app-shell" style="display:none;">
   <aside id="sidebar-root" class="sidebar">
     <div class="sidebar-header">
-      <div class="sidebar-logo">◈ FAMILY.FIN</div>
+      <div class="sidebar-logo">◈ FAMILY.FIN V2</div>
     </div>
     <nav class="sidebar-nav" id="sidebar-nav"></nav>
   </aside>
@@ -79,7 +79,7 @@
     </header>
 
     <main class="content content-min-height" id="page-content">
-      <!-- 頁面由 app-core.js 動態渲染 -->
+      <!-- 頁面由 app-core.js 與 app-pages-*.js 動態渲染 -->
     </main>
   </div>
 </div>
@@ -98,12 +98,15 @@
 
 <script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.min.js" defer></script>
 <script type="module" src="./js/app-core.js"></script>
+
+<!-- 第 4 回新增的頁面模組 -->
 <script type="module" src="./js/app-pages-core.js"></script>
+
 </body>
 </html>
 
 <!-- ═══ EOF ═══
 F: app.html
 V: 1792670003
-W: webapp-20261022-023#1
+W: webapp-20261022-025#1
 ═══ -->
