@@ -563,3 +563,13 @@ button { font-family: inherit; cursor: pointer; }
   .modal { padding: 16px; max-height: 85vh; overflow-y: auto; }
   .tab-bar .tab-btn { padding: 7px 10px; font-size: 12px; min-width: 80px; }
 }
+
+/* ================= V2 專屬顏色覆蓋 ================= */
+.sidebar-logo { color: var(--accent-warm) !important; }
+.auth-title { color: var(--accent-warm) !important; }
+
+/* ═══ EOF ═══
+F: app.css
+V: 1792670004
+W: webapp-20261022-025#2
+═══ */
