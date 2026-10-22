@@ -4,7 +4,7 @@
 // ============================================
 
 import { AppState, registerPage, logout, isSuperAdmin } from './app-core.js';
-import { toast, openConfirm, buildForm, openModal, closeModal, openPrompt, esc, formatHKD } from './app-ui.js';
+import { toast, openConfirm, buildForm, openModal, closeModal, openPrompt, initTabPanel, esc, formatHKD } from './app-ui.js';
 import { api, listen, listenList, getList, resolveName, statusLabel, statusBadgeClass, statusIsDone } from './app-data.js';
 import { renderStats, renderTable, renderControls } from './app-widgets.js';
 import { openEntityModal } from './app-entities.js';
@@ -107,7 +107,7 @@ function pageFinance(root) {
     });
   };
 
-  _tab = require('./app-ui.js').initTabPanel?.({
+  _tab = initTabPanel({
     containerId: 'fin-tabs', defaultKey: 'banks',
     tabs: [{ key: 'banks', label: '銀行清單', icon: 'landmark', panelId: 'fin-panel-banks' }, { key: 'txns', label: '交易記錄', icon: 'list', panelId: 'fin-panel-txns' }],
     onChange: (k) => {
@@ -115,6 +115,8 @@ function pageFinance(root) {
       document.getElementById('fin-panel-txns').style.display = k === 'txns' ? 'block' : 'none';
     },
   });
+  document.getElementById('fin-panel-banks').style.display = 'block';
+  document.getElementById('fin-panel-txns').style.display = 'none';
 
   const unsubs = [listen('bank_accounts', (snap) => {
     const v = snap.val() || {};
@@ -343,10 +345,11 @@ function pageSettings(root) {
     }
   };
 
-  _tab = (await import('./app-ui.js')).initTabPanel?.({
+  _tab = initTabPanel({
     containerId: 'st-tabs', tabs, defaultKey: isSuper ? 'platform' : 'banks',
     onChange: (k) => loadTab(k),
   });
+  loadTab(isSuper ? 'platform' : 'banks');
 
   return { destroy: () => { _tab?.destroy?.(); if (_bankUnsub) _bankUnsub(); if (_memberUnsub) _memberUnsub(); } };
 }
@@ -412,6 +415,6 @@ export { pageFinance, pageAnnualReport, pageMemberReport, pageSettings, pageAdmi
 
 /* ═══ EOF ═══
 F: js/app-pages-reports.js
-V: 1792670002
-W: webapp-20261022-022#3
+V: 1792670005
+W: webapp-20261022-027#1
 ═══ */
