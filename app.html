@@ -14,79 +14,41 @@
   <meta name="apple-mobile-web-app-title" content="FAMILY.FIN V2">
 </head>
 <body>
-
-<!-- ============================================
-     A. 登入視圖（未登入時顯示）
-     ============================================ -->
 <div id="auth-view" class="auth-page" style="display:none;">
   <div class="glass-card auth-card">
     <h1 class="auth-title">◈ FAMILY.FIN V2</h1>
     <p class="auth-subtitle">家庭財務與固定供款管理</p>
     <form id="login-form">
-      <div class="field">
-        <label class="field-label" for="account">帳號</label>
-        <input class="input" type="text" id="account" required placeholder="例如：superadmin" autocomplete="username">
-      </div>
-      <div class="field">
-        <label class="field-label" for="password">密碼</label>
-        <input class="input" type="password" id="password" required minlength="6" placeholder="至少 6 位" autocomplete="current-password">
-      </div>
+      <div class="field"><label class="field-label" for="account">帳號</label><input class="input" type="text" id="account" required placeholder="例如：superadmin" autocomplete="username"></div>
+      <div class="field"><label class="field-label" for="password">密碼</label><input class="input" type="password" id="password" required minlength="6" placeholder="至少 6 位" autocomplete="current-password"></div>
       <div id="login-error" class="banner banner-magenta" style="display:none;"></div>
       <button class="btn btn-primary" type="submit" id="login-btn" style="width:100%; justify-content:center;">登入</button>
     </form>
-    <p style="margin-top:16px; font-size:13px; color:var(--text-muted); text-align:center;">
-      沒有帳號？請聯繫平台管理員開通
-    </p>
+    <p style="margin-top:16px; font-size:13px; color:var(--text-muted); text-align:center;">沒有帳號？請聯繫平台管理員開通</p>
   </div>
 </div>
-
-<!-- ============================================
-     B. 載入視圖（已登入，正在初始化）
-     ============================================ -->
 <div id="loading-view" class="auth-page" style="display:none;">
   <div class="glass-card auth-card" style="text-align:center;">
     <h1 class="auth-title">◈ FAMILY.FIN V2</h1>
     <p class="auth-subtitle" id="loading-message">載入中…</p>
   </div>
 </div>
-
-<!-- ============================================
-     C. 主應用視圖（登入且初始化完成）
-     ============================================ -->
 <div id="app-view" class="app-shell" style="display:none;">
-  <aside id="sidebar-root" class="sidebar">
-    <div class="sidebar-header">
-      <div class="sidebar-logo">◈ FAMILY.FIN V2</div>
-    </div>
-    <nav class="sidebar-nav" id="sidebar-nav"></nav>
-  </aside>
-
+  <aside id="sidebar-root" class="sidebar"><div class="sidebar-header"><div class="sidebar-logo">◈ FAMILY.FIN V2</div></div><nav class="sidebar-nav" id="sidebar-nav"></nav></aside>
   <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
-
   <div class="main-area">
     <header id="navbar-root" class="navbar">
-      <button type="button" class="hamburger" id="hamburger-btn" aria-label="切換選單">
-        <i data-lucide="menu"></i>
-      </button>
+      <button type="button" class="hamburger" id="hamburger-btn" aria-label="切換選單"><i data-lucide="menu"></i></button>
       <div class="navbar-title" id="navbar-title"></div>
       <div class="navbar-right">
         <span class="navbar-db-tag" id="navbar-db-tag" title="當前連線資料庫">DB: —</span>
-        <button type="button" class="navbar-theme-btn" id="navbar-theme-btn" aria-label="切換主題">
-          <i data-lucide="moon"></i>
-        </button>
+        <button type="button" class="navbar-theme-btn" id="navbar-theme-btn" aria-label="切換主題"><i data-lucide="moon"></i></button>
         <div class="navbar-user" id="navbar-user"></div>
       </div>
     </header>
-
-    <main class="content content-min-height" id="page-content">
-      <!-- 頁面由 app-core.js 與 app-pages-*.js 動態渲染 -->
-    </main>
+    <main class="content content-min-height" id="page-content"></main>
   </div>
 </div>
-
-<!-- ============================================
-     D. 錯誤視圖（初始化失敗）
-     ============================================ -->
 <div id="error-view" class="auth-page" style="display:none;">
   <div class="glass-card auth-card" style="text-align:center;">
     <h1 class="auth-title" style="color:var(--danger);">⚠️</h1>
@@ -95,18 +57,14 @@
     <button type="button" class="btn btn-primary" id="error-retry-btn" style="width:100%; justify-content:center;">重試</button>
   </div>
 </div>
-
 <script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.min.js" defer></script>
 <script type="module" src="./js/app-core.js"></script>
-
-<!-- 第 4 回新增的頁面模組 -->
 <script type="module" src="./js/app-pages-core.js"></script>
-
 </body>
 </html>
 
 <!-- ═══ EOF ═══
 F: app.html
 V: 1792670003
-W: webapp-20261022-025#1
+W: webapp-20261022-041#3
 ═══ -->
