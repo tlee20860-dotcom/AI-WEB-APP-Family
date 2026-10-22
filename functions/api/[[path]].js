@@ -25,3 +25,9 @@ export async function onRequestPost(context) {
   initConfig(context.env);
   return handleRequest(context.request, 'POST');
 }
+
+/* ═══ EOF ═══
+F: functions/api/[[path]].js
+V: 1792670010
+W: webapp-20261022-041#2
+═══ */
