@@ -1,57 +1,8 @@
 // ============================================
-// [[path]].js — API Catch-all 路由器（v103.0.45）
-// 位置：functions/api/[[path]].js
+// [[path]].js — API Catch-all 路由器 (v2.0.1)
 // ============================================
-// v103.0.45（B34-4）：
-//   ✅ 加 /api/entity-create 分派（D-063）
-// v103.0.44（B30-5）：
-//   ✅ 每個 handler 呼叫 initConfig(env) 支援 DB 切換
-// ============================================
+import { initConfig, handleRequest } from './_api-core.js';
 
-import { initConfig } from './_config.js';
-
-import {
-  handleLookupFamily,
-  handleFamilySettingsGet, handleFamilySettingsPost,
-  handleFamilyAccountsGet, handleFamilyAccountsPost,
-} from './_family.js';
-
-import {
-  handleAdminFamiliesGet, handleAdminFamiliesPost,
-  handleAdminInitFamily,
-  handleAdminMigrate,
-} from './_admin.js';
-
-import {
-  handleBankAccountsGet, handleBankAccountsPost,
-  handleBankTransactionsGet, handleBankTransactionsPost,
-  handleClearBankBalances,
-} from './_bank.js';
-
-import {
-  handlePersonalIncomeGet, handlePersonalIncomePost,
-  handleMemberAdvancesGet, handleMemberAdvancesPost,
-} from './_personal.js';
-
-import {
-  handlePlatformSettingsGet, handlePlatformSettingsPost,
-  handlePlatformDefaultsGet, handlePlatformDefaultsPost,
-} from './_platform.js';
-
-import {
-  handleSummary,
-  handleAnnualSummary,
-  handleSettlementsYear,
-} from './_summary.js';
-
-import { handleInsuranceSync } from './_insurance.js';
-
-/* 🆕 v103.0.45（B34-4）：統一實體 CRUD */
-import { handleEntityPost } from './_entity.js';
-
-/* ============================================
-   OPTIONS preflight
-   ============================================ */
 export async function onRequestOptions({ env }) {
   initConfig(env);
   return new Response(null, {
@@ -65,80 +16,12 @@ export async function onRequestOptions({ env }) {
   });
 }
 
-/* ============================================
-   GET 分派
-   ============================================ */
-export async function onRequestGet({ request, env }) {
-  initConfig(env);
-  const url = new URL(request.url);
-  const path = url.pathname;
-
-  if (path === '/api/family-settings') return handleFamilySettingsGet(request);
-  if (path === '/api/family-accounts') return handleFamilyAccountsGet(request);
-
-  if (path === '/api/admin-families') return handleAdminFamiliesGet(request);
-
-  if (path === '/api/summary')            return handleSummary(request);
-  if (path === '/api/annual-summary')     return handleAnnualSummary(request);
-  if (path === '/api/settlements-year')   return handleSettlementsYear(request);
-
-  if (path === '/api/platform-settings')  return handlePlatformSettingsGet(request);
-  if (path === '/api/platform-defaults')  return handlePlatformDefaultsGet(request);
-
-  if (path === '/api/bank-accounts')      return handleBankAccountsGet(request);
-  if (path === '/api/bank-transactions')  return handleBankTransactionsGet(request);
-
-  if (path === '/api/personal-income')    return handlePersonalIncomeGet(request);
-  if (path === '/api/member-advances')    return handleMemberAdvancesGet(request);
-
-  return new Response(JSON.stringify({ ok: false, error: 'NOT_FOUND', message: `未知的 API：${path}` }), {
-    status: 404,
-    headers: { 'Content-Type': 'application/json' },
-  });
+export async function onRequestGet(context) {
+  initConfig(context.env);
+  return handleRequest(context.request, 'GET');
 }
 
-/* ============================================
-   POST 分派
-   ============================================ */
-export async function onRequestPost({ request, env }) {
-  initConfig(env);
-  const url = new URL(request.url);
-  const path = url.pathname;
-
-  if (path === '/api/lookup-family') return handleLookupFamily(request);
-
-  if (path === '/api/family-settings') return handleFamilySettingsPost(request);
-  if (path === '/api/family-accounts') return handleFamilyAccountsPost(request);
-
-  if (path === '/api/admin-families')      return handleAdminFamiliesPost(request);
-  if (path === '/api/admin-init-family')   return handleAdminInitFamily(request);
-  if (path === '/api/admin-migrate')       return handleAdminMigrate(request);
-
-  if (path === '/api/platform-settings')   return handlePlatformSettingsPost(request);
-  if (path === '/api/platform-defaults')   return handlePlatformDefaultsPost(request);
-
-  if (path === '/api/bank-accounts')       return handleBankAccountsPost(request);
-  if (path === '/api/bank-transactions')   return handleBankTransactionsPost(request);
-  if (path === '/api/clear-bank-balances') return handleClearBankBalances(request);
-
-  if (path === '/api/personal-income')     return handlePersonalIncomePost(request);
-  if (path === '/api/member-advances')     return handleMemberAdvancesPost(request);
-
-  if (path === '/api/insurance-sync')      return handleInsuranceSync(request);
-
-  /* 🆕 v103.0.45（B34-4）：統一實體 CRUD（D-063） */
-  if (path === '/api/entity-create')       return handleEntityPost(request);
-
-  return new Response(JSON.stringify({ ok: false, error: 'NOT_FOUND', message: `未知的 API：${path}` }), {
-    status: 404,
-    headers: { 'Content-Type': 'application/json' },
-  });
+export async function onRequestPost(context) {
+  initConfig(context.env);
+  return handleRequest(context.request, 'POST');
 }
-
-/* ═══════════════════════════════════════════
-   END OF FILE
-   File: functions/api/[[path]].js
-   Version: 1791900940
-   Batch: B34-4
-   Writer: A20261013-004#083
-   ═══════════════════════════════════════════ */
