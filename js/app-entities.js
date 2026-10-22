@@ -1,19 +1,15 @@
 // ============================================
 // app-entities.js — 9 種實體定義 SSOT
-// 職責：fields / ui / validate / fromForm / toForm / codePrefix
-// 契約：沿用舊 entity-definitions.js 的欄位與驗證
+// 職責：fields / ui / validate / fromForm / toForm / codePrefix / openEntityModal
 // ============================================
 
 import { api, generateCodeFor, resolveName } from './app-data.js';
-import { esc, formatHKD, formatNumber } from './app-ui.js';
+import { esc, formatHKD, formatNumber, buildForm, openModal, closeModal, toast } from './app-ui.js';
 
 const LIMITS = { NAME_MAX: 60, ORDER_MIN: 0 };
 const PAYMENT_TYPES = { ANNUAL: '年繳', MONTHLY: '月繳', ONCE: '一次付款' };
 const POLICY_SUBTYPES = { normal: 'NORM', fund_insurance: 'FUND', savings: 'SAVE' };
 
-/* ============================================
-   1. 公用：表單值 → 送出 payload
-   ============================================ */
 function _stripCommon(payload) {
   const extra = {};
   ['name', 'code', 'createdAt', 'updatedAt'].forEach(() => {});
@@ -23,9 +19,6 @@ function _stripCommon(payload) {
   return extra;
 }
 
-/* ============================================
-   2. 實體定義表
-   ============================================ */
 export const ENTITIES = {
   member: {
     key: 'member', label: '成員', icon: 'users', codePrefix: 'MEM',
@@ -186,9 +179,6 @@ export const ENTITIES = {
   },
 };
 
-/* ============================================
-   3. CRUD 統一入口（全走 API）
-   ============================================ */
 export async function createEntity(entityKey, data, allRows = []) {
   const def = ENTITIES[entityKey];
   if (!def) throw new Error(`未知實體：${entityKey}`);
@@ -228,9 +218,6 @@ export async function removeEntity(entityKey, id) {
   await api.entityCreate({ entityType: entityKey, action: 'delete', id });
 }
 
-/* ============================================
-   4. 動態選項
-   ============================================ */
 export async function getDynamicOptions(source, ctx = {}) {
   if (!source) return [];
   switch (source) {
@@ -271,9 +258,6 @@ export async function getDynamicOptions(source, ctx = {}) {
   }
 }
 
-/* ============================================
-   5. 依 entityKey 取實體定義
-   ============================================ */
 export function getEntityDef(key) { return ENTITIES[key] || null; }
 export function getAllEntityKeys() { return Object.keys(ENTITIES); }
 export function getEntityUi(key) {
@@ -282,8 +266,90 @@ export function getEntityUi(key) {
   return { primaryColumn: d.primaryColumn, listColumns: d.listColumns, cardFields: d.cardFields };
 }
 
+/* ============================================
+   🆕 補齊缺失的 openEntityModal
+   ============================================ */
+export async function openEntityModal(entityKey, mode = 'add', options = {}) {
+  const { id, allRows = [], onSuccess, onCancel } = options;
+  const def = ENTITIES[entityKey];
+  if (!def) {
+    toast(`未知的實體：${entityKey}`, 'error');
+    return;
+  }
+
+  const MODAL_ID = `entity-modal-${entityKey}-${Date.now()}`;
+  const o = document.createElement('div');
+  o.className = 'modal-overlay active';
+  o.id = MODAL_ID;
+  o.innerHTML = `<div class="modal" style="max-width:560px;max-height:90vh;overflow-y:auto;">
+    <h2 class="modal-title">${mode === 'edit' ? '編輯' : '新增'}${def.label}</h2>
+    <div id="${MODAL_ID}-form"></div>
+  </div>`;
+  document.body.appendChild(o);
+  document.body.style.overflow = 'hidden';
+
+  let initialData = {};
+  if (mode === 'edit' && id) {
+    const row = allRows.find((r) => r.id === id);
+    if (row) {
+      initialData = def.toForm ? def.toForm(row) : { ...row };
+    }
+  }
+
+  // 動態解析 optionsSource 為真正的 options
+  const formFields = [];
+  for (const f of def.fields) {
+    const field = { ...f };
+    if (field.optionsSource && !field.options) {
+      field.options = await getDynamicOptions(field.optionsSource);
+    }
+    formFields.push(field);
+  }
+
+  buildForm({
+    containerId: `${MODAL_ID}-form`,
+    fields: formFields,
+    submitText: mode === 'edit' ? '儲存' : `新增${def.label}`,
+    showCancel: true,
+    cancelText: '取消',
+    initialData: initialData,
+    beforeSubmit: (data) => {
+      if (def.validate) {
+        const err = def.validate(data, allRows, id);
+        if (err) return err;
+      }
+      return true;
+    },
+    onSubmit: async (data) => {
+      try {
+        if (mode === 'edit' && id) {
+          await updateEntity(entityKey, id, data, allRows);
+          toast(`✅ 已更新${def.label}`, 'success');
+        } else {
+          await createEntity(entityKey, data, allRows);
+          toast(`✅ 已新增${def.label}`, 'success');
+        }
+        closeModal(o);
+        o.remove();
+        document.body.style.overflow = '';
+        if (typeof onSuccess === 'function') onSuccess();
+      } catch (err) {
+        toast(err.message || '操作失敗', 'error');
+      }
+    },
+    onCancel: () => {
+      closeModal(o);
+      o.remove();
+      document.body.style.overflow = '';
+      if (typeof onCancel === 'function') onCancel();
+    },
+  });
+
+  openModal(o);
+}
+
 /* ═══ EOF ═══
 F: js/app-entities.js
-V: 1792670000
-W: webapp-20261022-022#1
+V: 1792670006
+W: webapp-20261022-028#1
 ═══ */
