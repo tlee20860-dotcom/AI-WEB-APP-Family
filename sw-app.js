@@ -1,11 +1,11 @@
 // ============================================
-// sw-app.js — Service Worker (智能機械 v2)
+// sw-app.js — Service Worker (智能機械 v2.1)
 // ============================================
 
-const CACHE_NAME = 'family-fin-mecha-v1';
+const CACHE_NAME = 'family-fin-mecha-v2';
 
 const STATIC_ASSETS = [
-  './app.html',
+  './index.html',
   './app.css',
   './manifest-app.json',
   
@@ -14,6 +14,7 @@ const STATIC_ASSETS = [
   './js/app-data.js',
   './js/app-domain.js',
   './js/app-ui.js',
+  './js/app-pages-loader.js',
   
   // Components
   './js/components/data-table.js',
@@ -39,8 +40,6 @@ const STATIC_ASSETS = [
   './js/pages/member-report.js',
   './js/pages/settings.js',
   './js/pages/admin.js',
-  
-  // Loader (若您需要路由自動載入，可在此加入)
 ];
 
 self.addEventListener('install', (e) => {
@@ -90,15 +89,9 @@ async function _networkFirst(request) {
     const cached = await caches.match(request);
     if (cached) return cached;
     if (isHtml) {
-      const fallback = await caches.match('./app.html');
+      const fallback = await caches.match('./index.html');
       if (fallback) return fallback;
     }
     return new Response('離線中，請稍後再試', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
   }
 }
-
-/* ═══ EOF ═══
-F: sw-app.js
-V: 1792800100
-W: webapp-20261023-001#45
-═══ */
