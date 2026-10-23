@@ -1,5 +1,5 @@
 // ============================================
-// app-pages-loader.js — 頁面路由註冊器
+// app-pages-loader.js — 路由頁面註冊
 // ============================================
 
 import { registerPage } from './app-core.js';
@@ -30,6 +30,6 @@ registerPage('/admin', mountAdmin);
 
 /* ═══ EOF ═══
 F: js/app-pages-loader.js
-V: 1792800010
-W: webapp-20261023-001#44
+V: 1792800200
+W: webapp-20261023-001#47
 ═══ */
