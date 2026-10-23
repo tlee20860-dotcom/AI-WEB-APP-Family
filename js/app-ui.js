@@ -1,7 +1,7 @@
 // ============================================
 // app-ui.js — SPA UI 元件集
 // 職責：toast / modal / confirm / prompt / form / tab / view-toggle
-// 介面：沿用舊版 ui/* 與 shared/*，呼叫端 100% 相容
+// 版本：1.0.1（FIX-C：補齊 buildForm plusEntity 支援）
 // ============================================
 
 import { AppState } from './app-core.js';
@@ -231,7 +231,7 @@ function _closePrompt(r) {
 }
 
 /* ============================================
-   4. Form Builder
+   4. Form Builder（GAP-22：支援 plusEntity）
    ============================================ */
 export function buildForm(opts) {
   const {
@@ -393,12 +393,43 @@ export function buildForm(opts) {
     destroy: () => { root.innerHTML = ''; },
   };
 
-  /* 初始化：設預設值、載入初始資料 */
+  /* 初始化：設預設值、載入初始資料、綁定 plusEntity */
   fields.forEach((f) => {
     if (initialData && initialData[f.id] !== undefined) api.setFieldValue(f.id, initialData[f.id]);
     else if (f.defaultValue != null) {
       const def = typeof f.defaultValue === 'function' ? f.defaultValue() : f.defaultValue;
       api.setFieldValue(f.id, def);
+    }
+
+    /* FIX-C：綁定 plusEntity */
+    if (f.type === 'select' && f.plusEntity) {
+      const finalId = fieldIdMap[f.id] || f.id;
+      const btn = document.getElementById(`${finalId}-plus-btn`);
+      if (btn) {
+        btn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (btn.disabled) return;
+          btn.disabled = true;
+          try {
+            const result = await import('./app-entities.js').then((m) => m.handlePlusClick(f.plusEntity));
+            if (!result) return;
+
+            if (typeof f.onPlusReload === 'function') {
+              await f.onPlusReload(result, api);
+            } else if (f.optionsSource) {
+              const opts = await import('./app-entities.js').then((m) => m.getDynamicOptions(f.optionsSource));
+              api.updateOptions(f.id, opts, { includeEmpty: f.includeEmpty !== false, emptyText: f.emptyText || '— 請選擇 —' });
+              const newValue = result[f.plusValueKey || 'id'] || result.id;
+              if (newValue) api.setFieldValue(f.id, newValue);
+            }
+          } catch (err) {
+            console.error('[form-builder] plusEntity 失敗：', err);
+          } finally {
+            btn.disabled = false;
+          }
+        });
+      }
     }
   });
 
@@ -444,8 +475,12 @@ function _renderField(f, fieldIdMap) {
     return `<input type="hidden" id="${fid}" value="${esc(f.value || '')}">`;
   }
 
-  const hintHtml = hint ? `<div style="margin-top:4px;font-size:11px;color:var(--text-muted);">${esc(hint)}</div>` : '';
-  return `<div class="field"><label class="field-label" for="${fid}">${esc(label)}${required ? ' *' : ''}</label>${input}${hintHtml}</div>`;
+  const plusHtml = f.plusEntity
+    ? `<div style="display:flex;gap:8px;"><div style="flex:1;">${input}</div><button type="button" class="btn btn-ghost" id="${fid}-plus-btn" style="padding:0 12px;" title="新增"><i data-lucide="plus"></i></button></div>`
+    : input;
+
+  const hintHtml = hint ? `<div class="glass-card-hint" style="margin-top:4px;">${esc(hint)}</div>` : '';
+  return `<div class="field"><label class="field-label" for="${fid}">${esc(label)}${required ? ' *' : ''}</label>${plusHtml}${hintHtml}</div>`;
 }
 
 function _collectData(fields, fieldIdMap) {
@@ -579,3 +614,9 @@ export function initViewToggle(opts) {
   render();
   return { root, getView: () => cur, setView, destroy: () => { root.innerHTML = ''; } };
 }
+
+/* ═══ EOF ═══
+F: js/app-ui.js
+V: 1792720001
+W: webapp-20261023-001#6
+═══ */
