@@ -1,21 +1,19 @@
 // ============================================
-// sw-app.js — SPA 專用 Service Worker
-// 策略：network-first，核心預快取
+// sw-app.js — Service Worker (智能機械 v2)
 // ============================================
-const CACHE_NAME = 'family-fin-mecha-v2';
 
-const CORE_ASSETS = [
+const CACHE_NAME = 'family-fin-mecha-v1';
+
+const STATIC_ASSETS = [
   './app.html',
   './app.css',
   './manifest-app.json',
-  './icon.svg',
   
   // Core
   './js/app-core.js',
   './js/app-data.js',
   './js/app-domain.js',
   './js/app-ui.js',
-  './js/app-pages-loader.js',
   
   // Components
   './js/components/data-table.js',
@@ -40,23 +38,31 @@ const CORE_ASSETS = [
   './js/pages/annual-report.js',
   './js/pages/member-report.js',
   './js/pages/settings.js',
-  './js/pages/admin.js'
+  './js/pages/admin.js',
+  
+  // Loader (若您需要路由自動載入，可在此加入)
 ];
 
 self.addEventListener('install', (e) => {
-  console.log('[SW] install', CACHE_NAME);
+  console.log('[SW] Install', CACHE_NAME);
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) =>
-      Promise.all(CORE_ASSETS.map((u) => cache.add(u).catch((err) => console.warn('[SW] 快取失敗：', u, err.message))))
+      Promise.all(
+        STATIC_ASSETS.map((url) =>
+          cache.add(url).catch((err) => console.warn('[SW] 快取失敗：', url, err.message))
+        )
+      )
     ).then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', (e) => {
-  console.log('[SW] activate');
+  console.log('[SW] Activate');
   e.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k.startsWith('family-fin') && k !== CACHE_NAME).map((k) => caches.delete(k)))
+      Promise.all(
+        keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k))
+      )
     ).then(() => self.clients.claim())
   );
 });
@@ -66,10 +72,11 @@ self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith('/api/')) return;
-  e.respondWith(networkFirst(e.request));
+
+  e.respondWith(_networkFirst(e.request));
 });
 
-async function networkFirst(request) {
+async function _networkFirst(request) {
   const url = new URL(request.url);
   const isHtml = request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname === '/';
   try {
@@ -92,6 +99,6 @@ async function networkFirst(request) {
 
 /* ═══ EOF ═══
 F: sw-app.js
-V: 1792800011
-W: webapp-20261023-001#46
+V: 1792800100
+W: webapp-20261023-001#45
 ═══ */
