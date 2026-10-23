@@ -1,31 +1,62 @@
 // ============================================
 // sw-app.js — SPA 專用 Service Worker
-// 策略：network-first，核心預快取；不干擾舊 sw.js
+// 策略：network-first，核心預快取
 // ============================================
-const CACHE_NAME = 'family-fin-spa-v1';
+const CACHE_NAME = 'family-fin-mecha-v2';
 
 const CORE_ASSETS = [
   './app.html',
   './app.css',
-  './js/app-core.js',
   './manifest-app.json',
   './icon.svg',
+  
+  // Core
+  './js/app-core.js',
+  './js/app-data.js',
+  './js/app-domain.js',
+  './js/app-ui.js',
+  './js/app-pages-loader.js',
+  
+  // Components
+  './js/components/data-table.js',
+  './js/components/data-card.js',
+  './js/components/stats-cards.js',
+  './js/components/page-controls.js',
+  
+  // Entity
+  './js/entity/entity-defs.js',
+  './js/entity/entity-helpers.js',
+  './js/entity/entity-modal.js',
+  './js/entity/funds-allocation.js',
+  
+  // Pages
+  './js/pages/dashboard.js',
+  './js/pages/input-center.js',
+  './js/pages/code-list.js',
+  './js/pages/insurance.js',
+  './js/pages/portfolio.js',
+  './js/pages/settlements.js',
+  './js/pages/finance.js',
+  './js/pages/annual-report.js',
+  './js/pages/member-report.js',
+  './js/pages/settings.js',
+  './js/pages/admin.js'
 ];
 
 self.addEventListener('install', (e) => {
-  console.log('[SW-app] install', CACHE_NAME);
+  console.log('[SW] install', CACHE_NAME);
   e.waitUntil(
     caches.open(CACHE_NAME).then((cache) =>
-      Promise.all(CORE_ASSETS.map((u) => cache.add(u).catch((err) => console.warn('[SW-app] 快取失敗：', u, err.message))))
+      Promise.all(CORE_ASSETS.map((u) => cache.add(u).catch((err) => console.warn('[SW] 快取失敗：', u, err.message))))
     ).then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener('activate', (e) => {
-  console.log('[SW-app] activate');
+  console.log('[SW] activate');
   e.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k.startsWith('family-fin-spa-') && k !== CACHE_NAME).map((k) => caches.delete(k)))
+      Promise.all(keys.filter((k) => k.startsWith('family-fin') && k !== CACHE_NAME).map((k) => caches.delete(k)))
     ).then(() => self.clients.claim())
   );
 });
@@ -55,9 +86,12 @@ async function networkFirst(request) {
       const fallback = await caches.match('./app.html');
       if (fallback) return fallback;
     }
-    return new Response('離線中，請稍後再試', {
-      status: 503,
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
-    });
+    return new Response('離線中，請稍後再試', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
   }
 }
+
+/* ═══ EOF ═══
+F: sw-app.js
+V: 1792800011
+W: webapp-20261023-001#46
+═══ */
