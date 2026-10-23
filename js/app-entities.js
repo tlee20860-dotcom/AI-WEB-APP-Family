@@ -1,18 +1,19 @@
 // ============================================
 // app-entities.js — 9 種實體定義 SSOT
-// 職責：fields / ui / validate / fromForm / toForm / codePrefix / openEntityModal
+// 職責：fields / ui / validate / fromForm / toForm / codePrefix / openEntityModal / handlePlusClick
+// 版本：1.0.1（FIX-C：補齊 handlePlusClick 與簡單實體 prompt）
 // ============================================
 
-import { api, generateCodeFor, resolveName } from './app-data.js';
-import { esc, formatHKD, formatNumber, buildForm, openModal, closeModal, toast } from './app-ui.js';
+import { api, generateCodeFor, resolveName, getList, getOnce } from './app-data.js';
+import { esc, formatHKD, formatNumber, buildForm, openModal, closeModal, toast, openPrompt } from './app-ui.js';
 
 const LIMITS = { NAME_MAX: 60, ORDER_MIN: 0 };
 const PAYMENT_TYPES = { ANNUAL: '年繳', MONTHLY: '月繳', ONCE: '一次付款' };
 const POLICY_SUBTYPES = { normal: 'NORM', fund_insurance: 'FUND', savings: 'SAVE' };
+const SIMPLE_ENTITIES = ['member', 'bank', 'category', 'payment', 'company'];
 
 function _stripCommon(payload) {
   const extra = {};
-  ['name', 'code', 'createdAt', 'updatedAt'].forEach(() => {});
   Object.entries(payload || {}).forEach(([k, v]) => {
     if (!['name', 'code', 'createdAt', 'updatedAt'].includes(k)) extra[k] = v;
   });
@@ -179,6 +180,9 @@ export const ENTITIES = {
   },
 };
 
+/* ============================================
+   CRUD 操作
+   ============================================ */
 export async function createEntity(entityKey, data, allRows = []) {
   const def = ENTITIES[entityKey];
   if (!def) throw new Error(`未知實體：${entityKey}`);
@@ -218,32 +222,25 @@ export async function removeEntity(entityKey, id) {
   await api.entityCreate({ entityType: entityKey, action: 'delete', id });
 }
 
+/* ============================================
+   動態選項
+   ============================================ */
 export async function getDynamicOptions(source, ctx = {}) {
   if (!source) return [];
   switch (source) {
-    case 'members':
-      return (await import('./app-data.js')).getList('members').map((m) => ({ value: m.id, label: m.name }));
-    case 'categories':
-      return (await import('./app-data.js')).getList('categories').map((c) => ({ value: c.id, label: c.name }));
+    case 'members': return getList('members').map((m) => ({ value: m.id, label: m.name }));
+    case 'categories': return getList('categories').map((c) => ({ value: c.id, label: c.name }));
     case 'items': {
-      const all = (await import('./app-data.js')).getList('items');
+      const all = getList('items');
       const f = ctx.categoryId ? all.filter((i) => i.categoryId === ctx.categoryId) : all;
       return f.map((i) => ({ value: i.id, label: i.name }));
     }
-    case 'payments':
-      return (await import('./app-data.js')).getList('payments').map((p) => ({ value: p.id, label: p.name }));
-    case 'companies':
-      return (await import('./app-data.js')).getList('companies').map((c) => ({ value: c.name, label: c.name }));
+    case 'payments': return getList('payments').map((p) => ({ value: p.id, label: p.name }));
+    case 'companies': return getList('companies').map((c) => ({ value: c.name, label: c.name }));
     case 'memberRoles':
-      return [
-        { value: 'husband', label: '老公 / 丈夫' }, { value: 'wife', label: '老婆 / 妻子' },
-        { value: 'child', label: '子女' }, { value: 'other', label: '其他' },
-      ];
+      return [{ value: 'husband', label: '老公 / 丈夫' }, { value: 'wife', label: '老婆 / 妻子' }, { value: 'child', label: '子女' }, { value: 'other', label: '其他' }];
     case 'policyTypes':
-      return [
-        { value: 'normal', label: '普通類保險' }, { value: 'fund_insurance', label: '基金類保險' },
-        { value: 'savings', label: '儲蓄類保險' },
-      ];
+      return [{ value: 'normal', label: '普通類保險' }, { value: 'fund_insurance', label: '基金類保險' }, { value: 'savings', label: '儲蓄類保險' }];
     case 'insurancePaymentTypes':
       return [{ value: '年繳', label: '年繳' }, { value: '月繳', label: '月繳' }, { value: '一次付款', label: '一次付款' }];
     case 'paymentModes':
@@ -253,29 +250,48 @@ export async function getDynamicOptions(source, ctx = {}) {
       for (let m = 1; m <= 12; m++) arr.push({ value: String(m).padStart(2, '0'), label: `${m} 月` });
       return arr;
     }
-    default:
-      return [];
+    default: return [];
   }
 }
 
-export function getEntityDef(key) { return ENTITIES[key] || null; }
-export function getAllEntityKeys() { return Object.keys(ENTITIES); }
-export function getEntityUi(key) {
-  const d = ENTITIES[key];
-  if (!d) return null;
-  return { primaryColumn: d.primaryColumn, listColumns: d.listColumns, cardFields: d.cardFields };
+/* ============================================
+   🆕 FIX-C：handlePlusClick（下拉旁 + 號快速新增）
+   ============================================ */
+export async function handlePlusClick(entityType, context = {}) {
+  if (SIMPLE_ENTITIES.includes(entityType)) {
+    const def = ENTITIES[entityType];
+    const label = def?.label || '項目';
+    const name = await openPrompt({ title: `新增${label}`, label: `${label}名稱`, placeholder: `請輸入${label}名稱`, maxlength: 30 });
+    if (!name) return null;
+
+    try {
+      const result = await createEntity(entityType, { name, ...context }, []);
+      toast(`✅ 已新增${label}`, 'success');
+      return result; /* { id, code } */
+    } catch (err) {
+      toast('新增失敗：' + (err.message || err), 'error');
+      return null;
+    }
+  }
+
+  /* 複雜實體：開啟 Modal，並以 Promise 等待結果 */
+  return new Promise((resolve) => {
+    openEntityModal(entityType, 'add', {
+      initialData: Object.keys(context).length > 0 ? context : null,
+      allRows: [],
+      onSuccess: (result) => resolve(result),
+      onCancel: () => resolve(null),
+    });
+  });
 }
 
 /* ============================================
-   🆕 補齊缺失的 openEntityModal
+   實體 Modal（完整版）
    ============================================ */
 export async function openEntityModal(entityKey, mode = 'add', options = {}) {
   const { id, allRows = [], onSuccess, onCancel } = options;
   const def = ENTITIES[entityKey];
-  if (!def) {
-    toast(`未知的實體：${entityKey}`, 'error');
-    return;
-  }
+  if (!def) { toast(`未知的實體：${entityKey}`, 'error'); return; }
 
   const MODAL_ID = `entity-modal-${entityKey}-${Date.now()}`;
   const o = document.createElement('div');
@@ -291,12 +307,9 @@ export async function openEntityModal(entityKey, mode = 'add', options = {}) {
   let initialData = {};
   if (mode === 'edit' && id) {
     const row = allRows.find((r) => r.id === id);
-    if (row) {
-      initialData = def.toForm ? def.toForm(row) : { ...row };
-    }
+    if (row) initialData = def.toForm ? def.toForm(row) : { ...row };
   }
 
-  // 動態解析 optionsSource 為真正的 options
   const formFields = [];
   for (const f of def.fields) {
     const field = { ...f };
@@ -350,6 +363,6 @@ export async function openEntityModal(entityKey, mode = 'add', options = {}) {
 
 /* ═══ EOF ═══
 F: js/app-entities.js
-V: 1792670006
-W: webapp-20261022-028#1
+V: 1792720002
+W: webapp-20261023-001#7
 ═══ */
