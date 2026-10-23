@@ -3,68 +3,75 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>家庭財務 | FAMILY.FIN V2</title>
-  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://unpkg.com" crossorigin>
-  <link rel="stylesheet" href="./app.css">
+  <title>FAMILY.FIN | 智能機械系統</title>
   <link rel="manifest" href="./manifest-app.json">
-  <meta name="theme-color" content="#E2E8F0">
+  <meta name="theme-color" content="#0B0F19">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-title" content="FAMILY.FIN V2">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="stylesheet" href="./app.css">
 </head>
 <body>
-<div id="auth-view" class="auth-page" style="display:none;">
-  <div class="glass-card auth-card">
-    <h1 class="auth-title">◈ FAMILY.FIN V2</h1>
-    <p class="auth-subtitle">家庭財務與固定供款管理</p>
-    <form id="login-form">
-      <div class="field"><label class="field-label" for="account">帳號</label><input class="input" type="text" id="account" required placeholder="例如：superadmin" autocomplete="username"></div>
-      <div class="field"><label class="field-label" for="password">密碼</label><input class="input" type="password" id="password" required minlength="6" placeholder="至少 6 位" autocomplete="current-password"></div>
-      <div id="login-error" class="banner banner-magenta" style="display:none;"></div>
-      <button class="btn btn-primary" type="submit" id="login-btn" style="width:100%; justify-content:center;">登入</button>
-    </form>
-    <p style="margin-top:16px; font-size:13px; color:var(--text-muted); text-align:center;">沒有帳號？請聯繫平台管理員開通</p>
-  </div>
-</div>
-<div id="loading-view" class="auth-page" style="display:none;">
-  <div class="glass-card auth-card" style="text-align:center;">
-    <h1 class="auth-title">◈ FAMILY.FIN V2</h1>
-    <p class="auth-subtitle" id="loading-message">載入中…</p>
-  </div>
-</div>
-<div id="app-view" class="app-shell" style="display:none;">
-  <aside id="sidebar-root" class="sidebar"><div class="sidebar-header"><div class="sidebar-logo">◈ FAMILY.FIN V2</div></div><nav class="sidebar-nav" id="sidebar-nav"></nav></aside>
-  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
-  <div class="main-area">
-    <header id="navbar-root" class="navbar">
-      <button type="button" class="hamburger" id="hamburger-btn" aria-label="切換選單"><i data-lucide="menu"></i></button>
-      <div class="navbar-title" id="navbar-title"></div>
-      <div class="navbar-right">
-        <span class="navbar-db-tag" id="navbar-db-tag" title="當前連線資料庫">DB: —</span>
-        <button type="button" class="navbar-theme-btn" id="navbar-theme-btn" aria-label="切換主題"><i data-lucide="moon"></i></button>
-        <div class="navbar-user" id="navbar-user"></div>
+  <!-- 1. 登入視圖 -->
+  <div id="auth-view" class="auth-page" style="display:none; align-items:center; justify-content:center; min-height:100vh; flex-direction:column; z-index:10;">
+    <div class="mecha-panel" style="width:100%; max-width:400px;">
+      <div class="mecha-content" style="padding:32px;">
+        <h1 style="font-family:var(--font-mono); color:var(--primary); text-align:center; margin-bottom:8px; font-size:24px;">[ FAMILY.FIN ]</h1>
+        <p class="text-muted" style="text-align:center; font-size:12px; margin-bottom:24px;">SYSTEM V2.0 // 智能機械終端</p>
+        
+        <form id="login-form">
+          <div class="field">
+            <label class="field-label">帳號 (ACCOUNT)</label>
+            <input class="input" type="text" id="account" required autocomplete="username">
+          </div>
+          <div class="field">
+            <label class="field-label">密碼 (PASSWORD)</label>
+            <input class="input" type="password" id="password" required autocomplete="current-password">
+          </div>
+          <div id="login-error" class="badge badge-pending" style="display:none; width:100%; margin-bottom:16px; padding:8px;"></div>
+          <button class="btn btn-primary" type="submit" style="width:100%; justify-content:center;">執行登入</button>
+        </form>
       </div>
-    </header>
-    <main class="content content-min-height" id="page-content"></main>
+    </div>
   </div>
-</div>
-<div id="error-view" class="auth-page" style="display:none;">
-  <div class="glass-card auth-card" style="text-align:center;">
-    <h1 class="auth-title" style="color:var(--danger);">⚠️</h1>
-    <p class="auth-subtitle">載入失敗</p>
-    <div id="error-message" class="banner banner-magenta" style="text-align:left; margin:16px 0;"></div>
-    <button type="button" class="btn btn-primary" id="error-retry-btn" style="width:100%; justify-content:center;">重試</button>
+
+  <!-- 2. 載入視圖 -->
+  <div id="loading-view" class="auth-page" style="display:none; align-items:center; justify-content:center; min-height:100vh; z-index:10;">
+    <div class="mecha-panel">
+      <div class="mecha-content" style="padding:40px; text-align:center;">
+        <h1 style="font-family:var(--font-mono); color:var(--primary); margin-bottom:16px;">[ FAMILY.FIN ]</h1>
+        <div class="mono text-cyan" id="loading-message">正在連接系統核心...</div>
+      </div>
+    </div>
   </div>
-</div>
-<script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.min.js" defer></script>
-<script type="module" src="./js/app-core.js"></script>
-<script type="module" src="./js/app-pages-core.js"></script>
+
+  <!-- 3. 主程式視圖 -->
+  <div id="app-view" class="app-shell" style="display:none;">
+    <aside class="sidebar">
+      <div id="sidebar-root"></div>
+    </aside>
+    <div class="main-area">
+      <header class="navbar" id="navbar-root"></header>
+      <main class="content" id="page-content"></main>
+    </div>
+  </div>
+
+  <!-- 4. 錯誤視圖 -->
+  <div id="error-view" class="auth-page" style="display:none; align-items:center; justify-content:center; min-height:100vh; z-index:10;">
+    <div class="mecha-panel" style="max-width:400px;">
+      <div class="mecha-content" style="text-align:center; padding:32px;">
+        <h1 style="color:#EF4444; font-size:40px; margin-bottom:16px;">⚠️</h1>
+        <p class="mono text-red" style="margin-bottom:16px;">SYSTEM ERROR</p>
+        <div id="error-message" class="mono" style="font-size:12px; margin-bottom:24px; color:var(--text-muted);"></div>
+        <button class="btn btn-primary" onclick="location.reload()" style="width:100%; justify-content:center;">重新啟動</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 引入核心邏輯 (此檔會自動啟動 FSM) -->
+  <script type="module" src="./js/app-core.js"></script>
+  
+  <!-- 引入圖標庫 -->
+  <script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.min.js"></script>
 </body>
 </html>
-
-<!-- ═══ EOF ═══
-F: app.html
-V: 1792670003
-W: webapp-20261022-041#3
-═══ -->
