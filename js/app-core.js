@@ -1,6 +1,6 @@
 // ============================================
 // app-core.js — SPA 核心（狀態 + 路由 + 啟動）
-// 版本：1.0.0（第 1 回骨架，第 2/3 回接入 ui/data/pages）
+// 版本：1.0.1（FIX-A：boot 接入 lookupFamily）
 // ============================================
 // 職責：
 //   1. Firebase 初始化（沿用舊 DB 設定）
@@ -9,6 +9,7 @@
 //   4. Hash 路由（#/dashboard、#/insurance…）
 //   5. 渲染 sidebar / navbar / 頁面外殼
 //   6. 提供 registerPage(route, loader) 供 app-pages.js 註冊
+//   7. 🆕 FIX-A：boot 時呼叫 /api/lookup-family 取 familyId
 // ============================================
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -232,6 +233,84 @@ export async function logout() {
   localStorage.removeItem(STORAGE_KEYS.FAMILY_NAME);
   location.hash = '#/';
   location.reload();
+}
+
+/* ============================================
+   4.1 🆕 FIX-A：lookupFamily（內嵌 fetch，避免與 app-data.js 循環依賴）
+   ============================================ */
+async function _lookupFamily(user) {
+  const token = await user.getIdToken();
+  const res = await fetch('/api/lookup-family', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: '{}',
+  });
+
+  if (res.status === 401) {
+    const err = new Error('登入已過期');
+    err.status = 401;
+    err.code = 'UNAUTHORIZED';
+    throw err;
+  }
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    let parsed = null;
+    try { parsed = JSON.parse(text); } catch (e) { /* noop */ }
+    const err = new Error(parsed?.message || text || `lookupFamily 失敗（${res.status}）`);
+    err.status = res.status;
+    err.code = parsed?.error || 'UNKNOWN';
+    throw err;
+  }
+
+  return res.json();
+}
+
+/**
+ * 🆕 FIX-A：非 superadmin 啟動時，取 familyId 並套用至 AppState
+ * - 成功：設 family / memberAccount / role / canInput
+ * - 401：直接登出
+ * - 其他失敗：fallback 唯讀（canInput=false），不阻斷渲染
+ */
+async function _applyFamilyContext(user) {
+  try {
+    const result = await _lookupFamily(user);
+
+    if (result && result.familyId) {
+      AppState.setFamily(result.familyId, result.familyName || '我的家庭');
+      AppState.setMemberAccount(result.memberAccount || {
+        email: user.email || '',
+        displayName: result.familyName || '成員',
+        role: 'member',
+        canInput: true,
+      });
+      AppState.setRole(result.memberAccount?.role || 'member');
+      AppState.setCanInput(result.memberAccount?.canInput !== false);
+      AppState.setDisplayName(result.memberAccount?.displayName || user.email?.split('@')[0] || '成員');
+      return;
+    }
+  } catch (err) {
+    if (err.status === 401 || err.code === 'UNAUTHORIZED') {
+      console.warn('[boot] lookupFamily 401，登出');
+      logout();
+      return;
+    }
+    console.warn('[boot] lookupFamily 失敗，使用 fallback 唯讀：', err);
+  }
+
+  /* Fallback（唯讀）：不覆蓋 localStorage 既有 familyId，不阻斷渲染 */
+  AppState.setRole('member');
+  AppState.setCanInput(false);
+  AppState.setDisplayName(user.email?.split('@')[0] || '成員');
+  AppState.setMemberAccount({
+    email: user.email || '',
+    displayName: AppState.getDisplayName(),
+    role: 'member',
+    canInput: false,
+  });
 }
 
 /* ============================================
@@ -537,7 +616,7 @@ function handleRouteChange() {
 }
 
 /* ============================================
-   11. 啟動序列
+   11. 啟動序列（🆕 FIX-A：接入 lookupFamily）
    ============================================ */
 async function boot(user) {
   showView('loading-view');
@@ -553,16 +632,8 @@ async function boot(user) {
       AppState.setCanInput(true);
       AppState.setDisplayName('超級管理員');
     } else {
-      /* 第 2 回接入 app-data.js 的 lookupFamily；先以最小資訊渲染 */
-      AppState.setRole('member');
-      AppState.setCanInput(true);
-      AppState.setDisplayName(user.email?.split('@')[0] || '成員');
-      AppState.setMemberAccount({
-        email: user.email || '',
-        displayName: AppState.getDisplayName(),
-        role: 'member',
-        canInput: true,
-      });
+      if (loadingMsg) loadingMsg.textContent = '載入家庭資訊…';
+      await _applyFamilyContext(user);
     }
 
     if (loadingMsg) loadingMsg.textContent = '渲染中…';
@@ -610,3 +681,9 @@ if (document.readyState === 'loading') {
 
 /* 對外匯出（第 2/3 回使用） */
 export { ROUTES, STORAGE_KEYS, DB_LABELS, auth, firebaseApp };
+
+/* ═══ EOF ═══
+F: js/app-core.js
+V: 1792720000
+W: webapp-20261023-001#1
+═══ */
