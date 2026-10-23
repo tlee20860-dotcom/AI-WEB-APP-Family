@@ -1,7 +1,7 @@
 // ============================================
 // app-ui.js — SPA UI 元件集
-// 職責：toast / modal / confirm / prompt / form / tab / view-toggle
-// 版本：1.0.1（FIX-C：補齊 buildForm plusEntity 支援）
+// 職責：toast / modal / confirm / prompt / form / tab / view-toggle / collapsible
+// 版本：1.0.2（FIX-F：補齊 initCollapsible）
 // ============================================
 
 import { AppState } from './app-core.js';
@@ -231,7 +231,7 @@ function _closePrompt(r) {
 }
 
 /* ============================================
-   4. Form Builder（GAP-22：支援 plusEntity）
+   4. Form Builder
    ============================================ */
 export function buildForm(opts) {
   const {
@@ -393,7 +393,6 @@ export function buildForm(opts) {
     destroy: () => { root.innerHTML = ''; },
   };
 
-  /* 初始化：設預設值、載入初始資料、綁定 plusEntity */
   fields.forEach((f) => {
     if (initialData && initialData[f.id] !== undefined) api.setFieldValue(f.id, initialData[f.id]);
     else if (f.defaultValue != null) {
@@ -401,7 +400,6 @@ export function buildForm(opts) {
       api.setFieldValue(f.id, def);
     }
 
-    /* FIX-C：綁定 plusEntity */
     if (f.type === 'select' && f.plusEntity) {
       const finalId = fieldIdMap[f.id] || f.id;
       const btn = document.getElementById(`${finalId}-plus-btn`);
@@ -615,8 +613,47 @@ export function initViewToggle(opts) {
   return { root, getView: () => cur, setView, destroy: () => { root.innerHTML = ''; } };
 }
 
+/* ============================================
+   7. Collapsible（🆕 FIX-F：GAP-21）
+   ============================================ */
+export function initCollapsible(cardId, storageKey, defaultOpen = false) {
+  const card = document.getElementById(cardId);
+  if (!card) return null;
+
+  const header = card.querySelector('.collapsible-header');
+  const body = card.querySelector('.collapsible-body');
+  if (!header || !body) return null;
+
+  const key = storageKey ? `fin_ui_collapse_${storageKey}` : `fin_ui_collapse_${cardId}`;
+
+  const setState = (open) => {
+    if (open) { card.classList.add('open'); body.style.display = 'block'; }
+    else { card.classList.remove('open'); body.style.display = 'none'; }
+    try { localStorage.setItem(key, String(open)); } catch (e) {}
+    if (window.lucide) window.lucide.createIcons();
+  };
+
+  let savedOpen = null;
+  try { savedOpen = localStorage.getItem(key); } catch (e) {}
+  const initialOpen = savedOpen !== null ? savedOpen === 'true' : defaultOpen;
+  setState(initialOpen);
+
+  const clickHandler = () => { setState(!card.classList.contains('open')); };
+  header.addEventListener('click', clickHandler);
+
+  return {
+    open: () => setState(true),
+    close: () => setState(false),
+    toggle: () => setState(!card.classList.contains('open')),
+    isOpen: () => card.classList.contains('open'),
+    destroy: () => { header.removeEventListener('click', clickHandler); },
+  };
+}
+
+export { initCollapsible as initCollapsibleCard };
+
 /* ═══ EOF ═══
 F: js/app-ui.js
-V: 1792720001
-W: webapp-20261023-001#6
+V: 1792720007
+W: webapp-20261023-001#16
 ═══ */
