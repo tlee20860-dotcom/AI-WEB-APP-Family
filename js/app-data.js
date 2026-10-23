@@ -1,7 +1,7 @@
 // ============================================
 // app-data.js — SPA 資料層
-// 職責：Firebase 封裝 / API client / registry / 常數 / 欄位定義
-// 版本：1.0.1（FIX-E：補齊 GAP-14~19）
+// 職責：Firebase 封裝 / API client / registry / 常數 / 欄位定義 / ID 查詢
+// 版本：1.0.2（FIX-F：補齊 GAP-20 id-resolver）
 // ============================================
 
 import { initializeApp, getApps, getApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -633,8 +633,34 @@ export async function savePageMetadata(data) {
   await setSubpath('settings/page_metadata', data || {});
 }
 
+/* ============================================
+   11. ID Resolver（🆕 FIX-F：GAP-20）
+   ============================================ */
+const ENTITY_PATH_FETCHER = {
+  member: () => getList('members'),
+  bank: () => getList('banks'),
+  bankAccount: () => getList('bank_accounts'),
+  category: () => getList('categories'),
+  item: () => getList('items'),
+  payment: () => getList('payments'),
+  company: () => getList('companies'),
+  policy: async () => await getListOnce('insurance_policies'),
+  fund: async () => await getListOnce('funds'),
+};
+
+export async function getEntityByCode(entityType, code) {
+  if (!entityType || !code) return null;
+  const fetcher = ENTITY_PATH_FETCHER[entityType];
+  if (!fetcher) {
+    console.warn(`[id-resolver] 未知 entityType：${entityType}`);
+    return null;
+  }
+  const list = await fetcher();
+  return list.find((item) => item.code === code) || null;
+}
+
 /* ═══ EOF ═══
 F: js/app-data.js
-V: 1792720000
-W: webapp-20261023-001#4
+V: 1792720008
+W: webapp-20261023-001#17
 ═══ */
