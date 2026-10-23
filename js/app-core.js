@@ -1,599 +1,230 @@
 // ============================================
-// app-core.js — SPA 核心（狀態 + 路由 + 啟動）
-// 版本：1.0.2（FIX-F：補齊 PWA 初始化）
+// app-core.js — 狀態路由與核心啟動
 // ============================================
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
-  from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { render } from './app-ui.js';
 
-const FIREBASE_CONFIGS = {
-  old: {
-    apiKey: "AIzaSyCQlrNdorKJI9xsqr4m4ME046lrubo9Y7I",
-    authDomain: "family-fin-a6dd1.firebaseapp.com",
-    databaseURL: "https://family-fin-a6dd1-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "family-fin-a6dd1",
-    storageBucket: "family-fin-a6dd1.firebasestorage.app",
-    messagingSenderId: "382147296734",
-    appId: "1:382147296734:web:42bdbd7401001e75e1f14f",
-  },
-  new: {
-    apiKey: "AIzaSyBJCK83RQyHbol4yJ4UDo3pOUXpUgcW9hU",
-    authDomain: "family-3d0a5.firebaseapp.com",
-    databaseURL: "https://family-3d0a5-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "family-3d0a5",
-    storageBucket: "family-3d0a5.firebasestorage.app",
-    messagingSenderId: "109775445681",
-    appId: "1:109775445681:web:84e974db35951d0a6ecc90",
-  },
+export const FIREBASE_CONFIGS = {
+  old: { apiKey: "AIzaSyCQlrNdorKJI9xsqr4m4ME046lrubo9Y7I", authDomain: "family-fin-a6dd1.firebaseapp.com", databaseURL: "https://family-fin-a6dd1-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "family-fin-a6dd1", storageBucket: "family-fin-a6dd1.firebasestorage.app", messagingSenderId: "382147296734", appId: "1:382147296734:web:42bdbd7401001e75e1f14f" },
+  new: { apiKey: "AIzaSyBJCK83RQyHbol4yJ4UDo3pOUXpUgcW9hU", authDomain: "family-3d0a5.firebaseapp.com", databaseURL: "https://family-3d0a5-default-rtdb.asia-southeast1.firebasedatabase.app", projectId: "family-3d0a5", storageBucket: "family-3d0a5.firebasestorage.app", messagingSenderId: "109775445681", appId: "1:109775445681:web:84e974db35951d0a6ecc90" },
 };
 
-const DB_TARGET_KEY = 'fin_db_target';
-
-function resolveDbTarget() {
-  try {
-    const params = new URLSearchParams(location.search);
-    const fromUrl = params.get('db');
-    if (fromUrl === 'old' || fromUrl === 'new') {
-      localStorage.setItem(DB_TARGET_KEY, fromUrl);
-      return fromUrl;
-    }
-    const saved = localStorage.getItem(DB_TARGET_KEY);
-    if (saved === 'old' || saved === 'new') return saved;
-  } catch (e) { /* noop */ }
-  return 'new';
-}
-
-export const DB_TARGET = resolveDbTarget();
-const firebaseConfig = FIREBASE_CONFIGS[DB_TARGET];
-const firebaseApp = initializeApp(firebaseConfig);
-const auth = getAuth(firebaseApp);
-
-const DB_LABELS = { old: 'family-fin', new: '2026-10-12-family' };
-export const SUPERADMIN_DOMAIN = '@familyfin.local';
-export const SUPERADMIN_EMAIL = `superadmin${SUPERADMIN_DOMAIN}`;
-
-const _P = `fin_${DB_TARGET}_`;
-const STORAGE_KEYS = {
-  YEAR: `${_P}year`,
-  MONTH: `${_P}month`,
-  FAMILY_ID: `${_P}family_id`,
-  FAMILY_NAME: `${_P}family_name`,
-  SIDEBAR_GROUPS: `${_P}ui_sidebar_groups`,
-  SIDEBAR_COLLAPSED: `${_P}ui_sidebar_collapsed`,
-  STATS_MODE: `${_P}ui_stats_mode`,
-  THEME: 'fin_ui_theme',
-};
+const DB_TARGET = localStorage.getItem('fin_db_target') || 'new';
+export const firebaseApp = initializeApp(FIREBASE_CONFIGS[DB_TARGET]);
+export const auth = getAuth(firebaseApp);
+export const SUPERADMIN_EMAIL = 'superadmin@familyfin.local';
 
 export const AppState = {
-  currentUser: null,
-  isSuperAdmin: false,
-  currentFamilyId: '',
-  currentFamilyName: '',
-  role: '',
-  canInput: false,
-  displayName: '',
-  memberAccount: null,
-  currentMemberId: '',
-  year: '',
-  month: '',
-  currentView: 'table',
-  theme: 'light',
+  currentUser: null, isSuperAdmin: false, currentFamilyId: '', currentFamilyName: '',
+  role: '', canInput: false, displayName: '', memberAccount: null, currentMemberId: '',
+  year: new Date().getFullYear().toString(), month: 'all', currentView: 'table',
   _listeners: {},
-  _initialized: false,
-
   init() {
-    if (this._initialized) return;
-    this._initialized = true;
-    this.year = localStorage.getItem(STORAGE_KEYS.YEAR) || String(new Date().getFullYear());
-    this.month = localStorage.getItem(STORAGE_KEYS.MONTH) || 'all';
-    this.currentFamilyId = localStorage.getItem(STORAGE_KEYS.FAMILY_ID) || '';
-    this.currentFamilyName = localStorage.getItem(STORAGE_KEYS.FAMILY_NAME) || '';
-    const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME);
-    this.theme = (savedTheme === 'dark' || savedTheme === 'light') ? savedTheme : 'light';
-    this._applyTheme(this.theme);
+    this.year = localStorage.getItem('fin_year') || this.year;
+    this.month = localStorage.getItem('fin_month') || this.month;
+    this.currentFamilyId = localStorage.getItem('fin_family_id') || '';
+    this.currentFamilyName = localStorage.getItem('fin_family_name') || '';
   },
-
-  _applyTheme(theme) {
-    if (typeof document !== 'undefined') {
-      document.documentElement.setAttribute('data-theme', theme);
-    }
-  },
-
-  setTheme(theme) {
-    if (theme !== 'light' && theme !== 'dark') return;
-    if (this.theme === theme) return;
-    this.theme = theme;
-    localStorage.setItem(STORAGE_KEYS.THEME, theme);
-    this._applyTheme(theme);
-    this.emit('theme-change', theme);
-  },
-
-  getTheme() { return this.theme; },
-  toggleTheme() { this.setTheme(this.theme === 'light' ? 'dark' : 'light'); },
-  setUser(user) { this.currentUser = user; this.emit('user-change', user); },
-  setSuperAdmin(isSuper) {
-    this.isSuperAdmin = !!isSuper;
-    if (this.isSuperAdmin) { this.role = 'superadmin'; this.canInput = true; }
-    this.emit('superadmin-change', this.isSuperAdmin);
-  },
-  setFamily(familyId, familyName) {
-    this.currentFamilyId = familyId || '';
-    this.currentFamilyName = familyName || '';
-    if (this.currentFamilyId) {
-      localStorage.setItem(STORAGE_KEYS.FAMILY_ID, this.currentFamilyId);
-      localStorage.setItem(STORAGE_KEYS.FAMILY_NAME, this.currentFamilyName);
-    } else {
-      localStorage.removeItem(STORAGE_KEYS.FAMILY_ID);
-      localStorage.removeItem(STORAGE_KEYS.FAMILY_NAME);
-    }
-    this.emit('family-change', { familyId: this.currentFamilyId, familyName: this.currentFamilyName });
-  },
-  getFamilyId() { return this.currentFamilyId; },
-  getFamilyName() { return this.currentFamilyName; },
-  setRole(role) { this.role = role || ''; this.emit('role-change', this.role); },
-  getRole() { return this.role; },
-  setCanInput(canInput) { this.canInput = !!canInput; this.emit('permission-change', { canInput: this.canInput }); },
-  getCanInput() { return this.canInput; },
-  setDisplayName(displayName) { this.displayName = displayName || ''; this.emit('displayname-change', this.displayName); },
-  getDisplayName() { return this.displayName; },
-  setMemberAccount(account) {
-    this.memberAccount = account || null;
-    if (account) {
-      this.role = account.role || this.role;
-      this.canInput = account.canInput !== false;
-      this.displayName = account.displayName || this.displayName;
-      if (account.memberId) this.currentMemberId = account.memberId;
-    }
-    this.emit('member-account-change', this.memberAccount);
-  },
-  getMemberAccount() { return this.memberAccount; },
-  getCurrentMemberId() { return this.currentMemberId || (this.memberAccount?.memberId) || ''; },
-  setYearMonth(year, month) {
-    this.year = String(year);
-    this.month = String(month);
-    localStorage.setItem(STORAGE_KEYS.YEAR, this.year);
-    localStorage.setItem(STORAGE_KEYS.MONTH, this.month);
-    this.emit('ym-change', { year: this.year, month: this.month });
-  },
+  setUser(u) { this.currentUser = u; this.emit('user-change'); },
+  setFamily(id, name) { this.currentFamilyId = id; this.currentFamilyName = name; localStorage.setItem('fin_family_id', id); localStorage.setItem('fin_family_name', name); this.emit('family-change'); },
+  setRole(r) { this.role = r; this.emit('role-change'); },
+  setCanInput(v) { this.canInput = v; this.emit('permission-change'); },
+  setMemberAccount(a) { this.memberAccount = a; if (a) { this.role = a.role || this.role; this.canInput = a.canInput !== false; this.displayName = a.displayName || ''; this.currentMemberId = a.memberId || ''; } this.emit('account-change'); },
+  setYearMonth(y, m) { this.year = String(y); this.month = String(m); localStorage.setItem('fin_year', y); localStorage.setItem('fin_month', m); this.emit('ym-change'); },
   getYearMonth() { return { year: this.year, month: this.month }; },
-  setCurrentView(view) {
-    if (view !== 'table' && view !== 'card') return;
-    if (this.currentView === view) return;
-    this.currentView = view;
-    this.emit('view-change', view);
-  },
-  getCurrentView() { return this.currentView; },
-  on(event, callback) {
-    if (!this._listeners[event]) this._listeners[event] = [];
-    this._listeners[event].push(callback);
-    return () => { this._listeners[event] = (this._listeners[event] || []).filter((cb) => cb !== callback); };
-  },
-  emit(event, data) {
-    (this._listeners[event] || []).forEach((cb) => {
-      try { cb(data); } catch (err) { console.error(`[AppState] ${event} 回呼失敗：`, err); }
-    });
-  },
+  on(evt, cb) { if (!this._listeners[evt]) this._listeners[evt] = []; this._listeners[evt].push(cb); return () => { this._listeners[evt] = this._listeners[evt].filter(f => f !== cb); }; },
+  emit(evt) { (this._listeners[evt] || []).forEach(cb => cb()); },
 };
 
-function toEmail(account) {
-  if (!account) return '';
-  return account.includes('@') ? account : `${account}${SUPERADMIN_DOMAIN}`;
+export const ROUTES = {
+  '/dashboard': '總覽儀表板', '/input-center': '綜合輸入中心', '/code-list': '編號對照清單',
+  '/insurance': '保險清單表', '/portfolio': '基金投資表', '/settlements': '結算清單',
+  '/finance': '銀行交易', '/annual-report': '年度報表', '/member-report': '成員收支明細',
+  '/settings': '系統設定', '/admin': '平台管理'
+};
+
+const _pageLoaders = {};
+let _currentPageUnsub = null;
+
+export function registerPage(route, mountFn) { _pageLoaders[route] = mountFn; }
+
+export function navigate(route) {
+  if (!route) route = '#/dashboard';
+  const path = route.replace('#', '');
+  
+  // 清理舊頁面
+  if (_currentPageUnsub) { _currentPageUnsub(); _currentPageUnsub = null; }
+  
+  // 更新側邊欄 active
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.getAttribute('href') === '#' + path);
+  });
+  
+  // 更新標題
+  const titleEl = document.getElementById('navbar-title');
+  if (titleEl) titleEl.textContent = ROUTES[path] || '';
+
+  // 權限檢查
+  if (path === '/admin' && !AppState.isSuperAdmin) {
+    render('page-content', '<div class="mecha-panel"><div class="mecha-content text-red">無權限存取</div></div>');
+    return;
+  }
+
+  const mount = _pageLoaders[path];
+  if (typeof mount === 'function') {
+    _currentPageUnsub = mount(document.getElementById('page-content'));
+  } else {
+    render('page-content', `<div class="mecha-panel"><div class="mecha-content">載入失敗：${path}</div></div>`);
+  }
 }
 
-export function isSuperAdmin(user) {
-  return !!user && user.email === SUPERADMIN_EMAIL;
-}
-
-async function loginWithCustomAccount(account, password) {
-  const cred = await signInWithEmailAndPassword(auth, toEmail(account), password);
+export async function login(account, password) {
+  const email = account.includes('@') ? account : `${account}@familyfin.local`;
+  const cred = await signInWithEmailAndPassword(auth, email, password);
   return cred.user;
 }
 
 export async function logout() {
-  try { await signOut(auth); } catch (err) { console.warn('[auth] signOut 失敗：', err); }
-  localStorage.removeItem(STORAGE_KEYS.FAMILY_ID);
-  localStorage.removeItem(STORAGE_KEYS.FAMILY_NAME);
-  location.hash = '#/';
+  await signOut(auth);
+  localStorage.removeItem('fin_family_id');
+  localStorage.removeItem('fin_family_name');
   location.reload();
 }
 
-async function _lookupFamily(user) {
-  const token = await user.getIdToken();
-  const res = await fetch('/api/lookup-family', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: '{}' });
-  if (res.status === 401) { const err = new Error('登入已過期'); err.status = 401; err.code = 'UNAUTHORIZED'; throw err; }
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    let parsed = null; try { parsed = JSON.parse(text); } catch (e) {}
-    const err = new Error(parsed?.message || text || `lookupFamily 失敗（${res.status}）`);
-    err.status = res.status; err.code = parsed?.error || 'UNKNOWN'; throw err;
-  }
-  return res.json();
-}
+export function isSuperAdmin(user) { return user && user.email === SUPERADMIN_EMAIL; }
 
-async function _applyFamilyContext(user) {
-  try {
-    const result = await _lookupFamily(user);
-    if (result && result.familyId) {
-      AppState.setFamily(result.familyId, result.familyName || '我的家庭');
-      AppState.setMemberAccount(result.memberAccount || { email: user.email || '', displayName: result.familyName || '成員', role: 'member', canInput: true });
-      AppState.setRole(result.memberAccount?.role || 'member');
-      AppState.setCanInput(result.memberAccount?.canInput !== false);
-      AppState.setDisplayName(result.memberAccount?.displayName || user.email?.split('@')[0] || '成員');
-      return;
-    }
-  } catch (err) {
-    if (err.status === 401 || err.code === 'UNAUTHORIZED') { console.warn('[boot] lookupFamily 401，登出'); logout(); return; }
-    console.warn('[boot] lookupFamily 失敗，使用 fallback 唯讀：', err);
-  }
-  AppState.setRole('member');
-  AppState.setCanInput(false);
-  AppState.setDisplayName(user.email?.split('@')[0] || '成員');
-  AppState.setMemberAccount({ email: user.email || '', displayName: AppState.getDisplayName(), role: 'member', canInput: false });
-}
-
-const ROUTES = {
-  '/dashboard':   { title: '總覽儀表板',    icon: 'home' },
-  '/input-center':{ title: '綜合輸入中心',  icon: 'pencil' },
-  '/code-list':   { title: '編號對照清單',  icon: 'database' },
-  '/insurance':   { title: '保險清單表',    icon: 'shield' },
-  '/portfolio':   { title: '基金投資表',    icon: 'line-chart' },
-  '/settlements': { title: '結算清單',      icon: 'clipboard-check' },
-  '/finance':     { title: '銀行交易',      icon: 'landmark' },
-  '/annual-report':{ title: '年度報表',     icon: 'bar-chart-3' },
-  '/member-report':{ title: '成員收支明細',  icon: 'users' },
-  '/settings':    { title: '系統設定',      icon: 'settings' },
-  '/admin':       { title: '平台管理',      icon: 'server' },
-};
-
-const _pageLoaders = {};
-let _currentPage = null;
-
-export function registerPage(route, loader) {
-  _pageLoaders[route] = loader;
-}
-
-const _ROLES_FAMILY = ['owner', 'member'];
-const _ROLES_ALL    = ['owner', 'member', 'superadmin'];
-const _ROLES_ADMIN  = ['superadmin'];
-
-const SIDEBAR_GROUPS = [
-  { key: 'overview',       label: '總覽',       icon: 'home',            defaultOpen: true,  roles: _ROLES_FAMILY,
-    items: [{ icon: 'home', label: '總覽儀表板', route: '/dashboard' }] },
-  { key: 'record',         label: '記錄中心',   icon: 'pencil',          defaultOpen: true,  roles: _ROLES_FAMILY,
-    items: [
-      { icon: 'pencil',   label: '綜合輸入中心', route: '/input-center' },
-      { icon: 'database', label: '編號對照清單', route: '/code-list' },
-    ] },
-  { key: 'insurance-fund', label: '保險與基金', icon: 'shield',          defaultOpen: false, roles: _ROLES_FAMILY,
-    items: [
-      { icon: 'shield',     label: '保險清單表', route: '/insurance' },
-      { icon: 'line-chart', label: '基金投資表', route: '/portfolio' },
-    ] },
-  { key: 'settle',         label: '對帳',       icon: 'clipboard-check', defaultOpen: false, roles: _ROLES_FAMILY,
-    items: [{ icon: 'clipboard-check', label: '結算清單', route: '/settlements' }] },
-  { key: 'assets',         label: '資產',       icon: 'landmark',        defaultOpen: false, roles: _ROLES_FAMILY,
-    items: [{ icon: 'landmark', label: '銀行交易', route: '/finance' }] },
-  { key: 'reports',        label: '報表',       icon: 'bar-chart-3',     defaultOpen: false, roles: _ROLES_FAMILY,
-    items: [
-      { icon: 'bar-chart-3', label: '年度報表', route: '/annual-report' },
-      { icon: 'users',       label: '成員收支明細', route: '/member-report' },
-    ] },
-  { key: 'platform',       label: '平台管理',   icon: 'server',          defaultOpen: true,  roles: _ROLES_ADMIN,
-    items: [{ icon: 'home', label: '家庭管理', route: '/admin' }] },
-  { key: 'system',         label: '系統',       icon: 'settings',        defaultOpen: false, roles: _ROLES_ALL,
-    items: [{ icon: 'settings', label: '系統設定', route: '/settings' }] },
-];
-
-function getSidebarGroupsByRole(role) {
-  if (!role) return SIDEBAR_GROUPS.filter((g) => (g.roles || []).includes('owner'));
-  return SIDEBAR_GROUPS.filter((g) => (g.roles || []).includes(role));
-}
-
-function showView(viewId) {
-  ['auth-view', 'loading-view', 'app-view', 'error-view'].forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = id === viewId ? '' : 'none';
-  });
-}
-
-function showError(msg) {
-  const el = document.getElementById('error-message');
-  if (el) el.textContent = msg;
-  showView('error-view');
-}
-
-function bindLoginForm() {
-  const form = document.getElementById('login-form');
-  const errBox = document.getElementById('login-error');
-  const btn = document.getElementById('login-btn');
-  if (!form || form.__bound) return;
-  form.__bound = true;
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    errBox.style.display = 'none';
-    btn.disabled = true;
-    btn.textContent = '登入中…';
-    const account = document.getElementById('account').value.trim();
-    const password = document.getElementById('password').value;
-    try {
-      const user = await loginWithCustomAccount(account, password);
-      AppState.setUser(user);
-      AppState.setSuperAdmin(isSuperAdmin(user));
-    } catch (err) {
-      console.error(err);
-      errBox.textContent = '登入失敗：帳號或密碼錯誤';
-      errBox.style.display = 'block';
-      btn.disabled = false;
-      btn.textContent = '登入';
-    }
-  });
-}
-
+// 渲染側邊欄
 function renderSidebar() {
   const navEl = document.getElementById('sidebar-nav');
   if (!navEl) return;
-  const role = AppState.getRole();
-  const groups = getSidebarGroupsByRole(role);
-  let openSet;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.SIDEBAR_GROUPS);
-    openSet = raw ? new Set(JSON.parse(raw)) : new Set(groups.filter((g) => g.defaultOpen).map((g) => g.key));
-  } catch (e) {
-    openSet = new Set(groups.filter((g) => g.defaultOpen).map((g) => g.key));
-  }
-  const currentHash = location.hash.replace(/^#/, '') || '/dashboard';
-  const groupsHtml = groups.map((g) => {
-    const isOpen = openSet.has(g.key);
-    const arrow = isOpen ? 'chevron-down' : 'chevron-right';
-    const itemsHtml = g.items.map((it) => {
-      const active = it.route === currentHash ? 'active' : '';
-      return `<a class="nav-item ${active}" href="#${it.route}" data-route="${it.route}">
-        <i data-lucide="${it.icon}" class="nav-icon"></i>
-        <span class="nav-label">${it.label}</span>
-      </a>`;
-    }).join('');
-    return `<div class="nav-group" data-group="${g.key}">
-      <div class="nav-group-title collapsible ${isOpen ? 'open' : ''}" data-group-toggle="${g.key}">
-        <span class="nav-group-label">
-          <i data-lucide="${g.icon}" class="nav-group-icon"></i>
-          <span>${g.label}</span>
-        </span>
-        <i data-lucide="${arrow}" class="nav-group-arrow"></i>
-      </div>
-      <div class="nav-group-body" style="display:${isOpen ? 'block' : 'none'};">${itemsHtml}</div>
-    </div>`;
-  }).join('');
+  const isSuper = AppState.isSuperAdmin;
+  
+  const groups = isSuper ? [
+    { label: '平台', items: [ { path: '/admin', label: '家庭管理' }, { path: '/settings', label: '系統設定' } ] }
+  ] : [
+    { label: '記錄', items: [ { path: '/dashboard', label: '儀表板' }, { path: '/input-center', label: '輸入中心' }, { path: '/code-list', label: '編號清單' } ] },
+    { label: '保險', items: [ { path: '/insurance', label: '保險清單' }, { path: '/portfolio', label: '基金投資' } ] },
+    { label: '對帳', items: [ { path: '/settlements', label: '結算清單' }, { path: '/finance', label: '銀行交易' } ] },
+    { label: '報表', items: [ { path: '/annual-report', label: '年度報表' }, { path: '/member-report', label: '成員明細' } ] },
+    { label: '系統', items: [ { path: '/settings', label: '系統設定' } ] }
+  ];
 
-  navEl.innerHTML = groupsHtml;
-
-  navEl.addEventListener('click', (e) => {
-    const toggle = e.target.closest('[data-group-toggle]');
-    if (toggle) {
-      e.preventDefault();
-      const key = toggle.dataset.groupToggle;
-      const groupEl = navEl.querySelector(`[data-group="${key}"]`);
-      if (!groupEl) return;
-      const body = groupEl.querySelector('.nav-group-body');
-      const title = groupEl.querySelector('.nav-group-title');
-      const arrow = title.querySelector('.nav-group-arrow');
-      const isOpen = body.style.display === 'block';
-      body.style.display = isOpen ? 'none' : 'block';
-      title.classList.toggle('open', !isOpen);
-      if (arrow) arrow.setAttribute('data-lucide', isOpen ? 'chevron-right' : 'chevron-down');
-      if (isOpen) openSet.delete(key); else openSet.add(key);
-      try { localStorage.setItem(STORAGE_KEYS.SIDEBAR_GROUPS, JSON.stringify([...openSet])); } catch (err) {}
-      if (window.lucide) window.lucide.createIcons();
-      return;
-    }
-    const link = e.target.closest('.nav-item');
-    if (link && window.innerWidth < 640) {
-      document.querySelector('.sidebar')?.classList.remove('mobile-open');
-      document.getElementById('sidebar-backdrop')?.classList.remove('active');
-    }
+  let html = `<div class="sidebar-logo">[ FAMILY.FIN ]</div>`;
+  groups.forEach(g => {
+    html += `<div class="nav-group-title">${g.label}</div>`;
+    g.items.forEach(it => {
+      html += `<a class="nav-item" href="#${it.path}">${it.label}</a>`;
+    });
   });
-
-  if (window.lucide) window.lucide.createIcons();
+  render(navEl, html);
 }
 
+// 渲染導覽列
 function renderNavbar() {
-  const titleEl = document.getElementById('navbar-title');
-  const userEl = document.getElementById('navbar-user');
-  const dbTag = document.getElementById('navbar-db-tag');
-  const themeBtn = document.getElementById('navbar-theme-btn');
-
-  const currentHash = location.hash.replace(/^#/, '') || '/dashboard';
-  const route = ROUTES[currentHash];
-  if (titleEl) titleEl.textContent = route ? route.title : '';
-
-  if (dbTag) {
-    const label = DB_LABELS[DB_TARGET] || DB_TARGET;
-    dbTag.textContent = `DB: ${label}`;
-    dbTag.classList.toggle('new', DB_TARGET === 'new');
-  }
-
-  if (userEl) {
-    const user = AppState.currentUser;
-    const dn = AppState.getDisplayName() || (user?.email?.split('@')[0] || '');
-    const role = AppState.getRole();
-    const roleBadge = role === 'superadmin'
-      ? ' <span class="badge badge-magenta" style="font-size:10px;">超級管理員</span>'
-      : (role === 'owner' ? ' <span class="badge badge-info" style="font-size:10px;">👑</span>' : '');
-    userEl.innerHTML = user ? `<span class="navbar-user-text">👤 ${dn}${roleBadge}</span>` : '';
-  }
-
-  if (themeBtn && !themeBtn.__bound) {
-    themeBtn.__bound = true;
-    themeBtn.addEventListener('click', () => {
-      AppState.toggleTheme();
-      const icon = AppState.getTheme() === 'dark' ? 'sun' : 'moon';
-      themeBtn.innerHTML = `<i data-lucide="${icon}"></i>`;
-      if (window.lucide) window.lucide.createIcons();
-    });
-  }
-  const themeIcon = AppState.getTheme() === 'dark' ? 'sun' : 'moon';
-  if (themeBtn) themeBtn.innerHTML = `<i data-lucide="${themeIcon}"></i>`;
-
-  if (window.lucide) window.lucide.createIcons();
-}
-
-function bindShellEvents() {
-  const hamburger = document.getElementById('hamburger-btn');
-  const backdrop = document.getElementById('sidebar-backdrop');
-  if (hamburger && !hamburger.__bound) {
-    hamburger.__bound = true;
-    hamburger.addEventListener('click', () => {
-      const sidebar = document.querySelector('.sidebar');
-      if (!sidebar) return;
-      if (window.innerWidth < 640) {
-        sidebar.classList.toggle('mobile-open');
-        backdrop?.classList.toggle('active');
-      } else {
-        sidebar.classList.toggle('collapsed');
-      }
-    });
-  }
-}
-
-async function renderPage(route) {
-  const content = document.getElementById('page-content');
-  if (!content) return;
-
-  if (_currentPage && typeof _currentPage.destroy === 'function') {
-    try { _currentPage.destroy(); } catch (e) { console.warn('[router] destroy 失敗：', e); }
-  }
-  _currentPage = null;
-  content.innerHTML = '';
-
-  const routeDef = ROUTES[route];
-  if (!routeDef) { content.innerHTML = `<div class="glass-card"><div class="empty-state">未知的路由：${route}</div></div>`; return; }
-  if (route === '/admin' && !AppState.isSuperAdmin) { content.innerHTML = `<div class="glass-card"><div class="empty-state">無權限存取</div></div>`; return; }
-
-  const loader = _pageLoaders[route];
-  if (typeof loader !== 'function') {
-    content.innerHTML = `<div class="glass-card"><div class="empty-state"><p>${routeDef.title}</p><p>模組載入中…</p></div></div>`;
-    return;
-  }
-
-  try {
-    _currentPage = await loader(content, { AppState });
-  } catch (err) {
-    console.error(`[router] 頁面載入失敗 ${route}：`, err);
-    content.innerHTML = `<div class="glass-card"><div class="empty-state text-red">頁面載入失敗：${err.message || err}</div></div>`;
-  }
-}
-
-function handleRouteChange() {
-  const route = location.hash.replace(/^#/, '') || '/dashboard';
-  if (!location.hash) { location.replace('#/dashboard'); return; }
-  renderNavbar();
-  renderPage(route);
-  document.querySelectorAll('.nav-item').forEach((a) => { a.classList.toggle('active', a.dataset.route === route); });
-}
-
-async function boot(user) {
-  showView('loading-view');
-  const loadingMsg = document.getElementById('loading-message');
-  try {
-    AppState.init();
-    AppState.setUser(user);
-    AppState.setSuperAdmin(isSuperAdmin(user));
-
-    if (isSuperAdmin(user)) {
-      AppState.setRole('superadmin');
-      AppState.setCanInput(true);
-      AppState.setDisplayName('超級管理員');
-    } else {
-      if (loadingMsg) loadingMsg.textContent = '載入家庭資訊…';
-      await _applyFamilyContext(user);
-    }
-
-    if (loadingMsg) loadingMsg.textContent = '渲染中…';
-    showView('app-view');
-    renderSidebar();
-    renderNavbar();
-    bindShellEvents();
-
-    if (!location.hash) location.replace('#/dashboard');
-    handleRouteChange();
-    window.addEventListener('hashchange', handleRouteChange);
-  } catch (err) {
-    console.error('[boot] 失敗：', err);
-    showError(String(err.message || err));
-  }
-}
-
-/* ============================================
-   🆕 FIX-F：PWA 初始化（GAP-13）
-   ============================================ */
-let _hadController = false;
-let _refreshing = false;
-
-function initPWA() {
-  if ('serviceWorker' in navigator) {
-    _hadController = !!navigator.serviceWorker.controller;
-  }
-
-  const head = document.head;
-  if (!document.querySelector('link[rel="manifest"]')) {
-    const link = document.createElement('link'); link.rel = 'manifest'; link.href = './manifest-app.json'; head.appendChild(link);
-  }
-  if (!document.querySelector('meta[name="theme-color"]')) {
-    const meta = document.createElement('meta'); meta.name = 'theme-color'; meta.content = '#E2E8F0'; head.appendChild(meta);
-  }
-  if (!document.querySelector('meta[name="mobile-web-app-capable"]')) {
-    const meta = document.createElement('meta'); meta.name = 'mobile-web-app-capable'; meta.content = 'yes'; head.appendChild(meta);
-  }
-  if (!document.querySelector('meta[name="apple-mobile-web-app-capable"]')) {
-    const meta = document.createElement('meta'); meta.name = 'apple-mobile-web-app-capable'; meta.content = 'yes'; head.appendChild(meta);
-  }
-
-  if (!('serviceWorker' in navigator)) return;
-  window.addEventListener('load', async () => {
-    try {
-      const reg = await navigator.serviceWorker.register('./sw-app.js', { scope: './' });
-      console.log('✅ Service Worker 已註冊：', reg.scope);
-      reg.update().catch(() => {});
-    } catch (err) { console.warn('⚠️ SW 註冊失敗：', err); }
-  });
-
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (!_hadController) { _hadController = true; return; }
-    if (_refreshing) return;
-    _refreshing = true;
-    window.location.reload();
+  const navEl = document.getElementById('navbar-root');
+  if (!navEl) return;
+  const user = AppState.currentUser;
+  const role = AppState.role === 'superadmin' ? '管理員' : AppState.role;
+  const html = `
+    <button class="btn btn-ghost" id="hamburger-btn" style="display:none; padding:4px 8px;">≡</button>
+    <div id="navbar-title" style="flex:1; font-family:var(--font-mono); font-size:16px; color:var(--primary);"></div>
+    <div style="font-family:var(--font-mono); font-size:12px; color:var(--text-muted);">
+      [ USER: ${user?.email?.split('@')[0] || '---'} | ROLE: ${role} ]
+    </div>
+    <button class="btn btn-ghost" onclick="import('./app-core.js').then(m=>m.logout())" style="margin-left:16px;">登出</button>
+  `;
+  render(navEl, html);
+  
+  // 手機版選單邏輯
+  const ham = document.getElementById('hamburger-btn');
+  if (window.innerWidth < 768) ham.style.display = 'block';
+  ham?.addEventListener('click', () => {
+    document.querySelector('.sidebar').classList.toggle('mobile-open');
   });
 }
 
+// 啟動
 function init() {
-  initPWA(); /* FIX-F */
-  showView('loading-view');
-  bindLoginForm();
+  AppState.init();
+  
+  document.getElementById('login-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = e.target.querySelector('button');
+    btn.disabled = true; btn.textContent = '登入中...';
+    try {
+      await login(document.getElementById('account').value, document.getElementById('password').value);
+    } catch (err) {
+      const errEl = document.getElementById('login-error');
+      errEl.textContent = '登入失敗：帳號或密碼錯誤';
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = '登入';
+    }
+  });
 
-  document.getElementById('error-retry-btn')?.addEventListener('click', () => location.reload());
-
-  onAuthStateChanged(auth, (user) => {
+  onAuthStateChanged(auth, async (user) => {
+    const views = ['auth-view', 'loading-view', 'app-view'];
     if (user) {
-      boot(user);
+      views.forEach(v => document.getElementById(v).style.display = 'none');
+      document.getElementById('loading-view').style.display = 'flex';
+      
+      AppState.setUser(user);
+      const isSuper = isSuperAdmin(user);
+      
+      if (isSuper) {
+        AppState.setFamily('', '系統平台');
+        AppState.setRole('superadmin');
+        AppState.setCanInput(true);
+        AppState.isSuperAdmin = true;
+        bootApp();
+      } else {
+        // 呼叫後端取得家庭資訊
+        try {
+          const token = await user.getIdToken();
+          const res = await fetch('/api/lookup-family', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+          const data = await res.json();
+          if (data.ok && data.familyId) {
+            AppState.setFamily(data.familyId, data.familyName);
+            AppState.setMemberAccount(data.memberAccount);
+            AppState.isSuperAdmin = false;
+            bootApp();
+          } else {
+            alert('無法取得家庭資訊，請聯繫管理員');
+            await logout();
+          }
+        } catch (err) {
+          alert('網路錯誤，請重試');
+          await logout();
+        }
+      }
     } else {
       AppState.currentUser = null;
-      showView('auth-view');
-      bindLoginForm();
+      views.forEach(v => document.getElementById(v).style.display = 'none');
+      document.getElementById('auth-view').style.display = 'flex';
     }
   });
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
+async function bootApp() {
+  document.getElementById('loading-view').style.display = 'none';
+  document.getElementById('app-view').style.display = 'flex';
+  
+  renderSidebar();
+  renderNavbar();
+  
+  // 初始化路由與載入器
+  await import('./app-pages-loader.js');
+  
+  window.addEventListener('hashchange', () => navigate(location.hash));
+  navigate(location.hash || '#/dashboard');
 }
 
-export { ROUTES, STORAGE_KEYS, DB_LABELS, auth, firebaseApp };
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+else init();
 
 /* ═══ EOF ═══
 F: js/app-core.js
-V: 1792720006
-W: webapp-20261023-001#12
+V: 1792800001
+W: webapp-20261023-001#21
 ═══ */
