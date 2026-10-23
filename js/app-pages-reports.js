@@ -1,7 +1,7 @@
 // ============================================
 // app-pages-reports.js — 5 個報表／設定頁
 // 職責：finance / annual-report / member-report / settings / admin
-// 版本：1.0.1（FIX-C：補齊 GAP-10, GAP-18, GAP-23, GAP-24）
+// 版本：1.0.2（FIX-F：補齊設定頁四卡、vConsole 除錯、預設資料庫）
 // ============================================
 
 import { AppState, registerPage, logout } from './app-core.js';
@@ -19,7 +19,6 @@ import {
   countCompletedPeriods, calcProgress, isPolicyCompleted,
   calcFundCostEstimate, getFundCostMap, findPolicyByFund,
 } from './app-domain.js';
-import { getEntityDef } from './app-entities.js';
 
 /* ============================================
    1. Finance（銀行交易）
@@ -415,6 +414,18 @@ function pageSettings(root) {
         </div>
         <button type="button" class="btn btn-primary" id="meta-save">儲存</button>
       </div>
+
+      <div class="glass-card" style="grid-column:1/-1;">
+        <div class="glass-card-title" style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+          <i data-lucide="bug" style="width:16px;height:16px;color:var(--neon-cyan);"></i>
+          <span>除錯工具（開發者用）</span>
+        </div>
+        <p class="glass-card-hint mb-12">手機若無 DevTools，可開啟 vConsole 檢視日誌。開啟後會跨頁保持。</p>
+        <div id="settings-debug-status" style="margin-bottom:12px; font-size:13px;"><span class="badge badge-muted">● 已關閉</span></div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="button" class="btn btn-primary" id="settings-debug-enable"><i data-lucide="play" style="width:14px;height:14px;"></i> 開啟 vConsole</button>
+        </div>
+      </div>
     </div>`;
 
     document.getElementById('st-logout')?.addEventListener('click', async () => {
@@ -473,6 +484,24 @@ function pageSettings(root) {
         await savePageMetadata({ ...allMeta, [page]: { title } });
         toast('✅ 標題已儲存', 'success');
       } catch (e) { toast('儲存失敗：' + e.message, 'error'); }
+    });
+
+    // 除錯工具（vConsole）
+    document.getElementById('settings-debug-enable')?.addEventListener('click', async () => {
+      const btn = document.getElementById('settings-debug-enable');
+      btn.disabled = true; btn.textContent = '載入中…';
+      try {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/vconsole@3.15.0/dist/vconsole.min.js';
+        script.onload = () => {
+          window.vConsole = new window.VConsole({ maxLogNumber: 2000 });
+          document.getElementById('settings-debug-status').innerHTML = '<span class="badge badge-success">● 已開啟</span>';
+          btn.style.display = 'none';
+          toast('✅ vConsole 已開啟', 'success');
+        };
+        script.onerror = () => { toast('❌ 載入失敗，請檢查網路', 'error'); btn.disabled = false; btn.textContent = '開啟 vConsole'; };
+        document.head.appendChild(script);
+      } catch (e) { toast('❌ 載入失敗', 'error'); btn.disabled = false; btn.textContent = '開啟 vConsole'; }
     });
   };
 
@@ -549,7 +578,6 @@ function pageAdmin(root) {
     const el = document.getElementById('ad-panel-defaults');
     if (!el) return;
     
-    // 簡易預設資料庫編輯（成員、銀行、公司、支付、類別、狀態）
     el.innerHTML = `
       <div class="banner">ℹ️ 此處的預設資料將套用於「新家庭初始化時」，修改後不影響已存在的家庭。</div>
       <div id="ad-defaults-tabs"></div>
@@ -621,6 +649,6 @@ export { pageFinance, pageAnnualReport, pageMemberReport, pageSettings, pageAdmi
 
 /* ═══ EOF ═══
 F: js/app-pages-reports.js
-V: 1792720500
-W: webapp-20261023-001#10
+V: 1792720501
+W: webapp-20261023-001#18
 ═══ */
