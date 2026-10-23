@@ -1,13 +1,17 @@
 // ============================================
 // app-pages-reports.js — 5 個報表／設定頁
 // 職責：finance / annual-report / member-report / settings / admin
+// 版本：1.0.1（FIX-C：補齊 GAP-10, GAP-18, GAP-23, GAP-24）
 // ============================================
 
-import { AppState, registerPage, logout, isSuperAdmin } from './app-core.js';
-import { toast, openConfirm, buildForm, openModal, closeModal, openPrompt, initTabPanel, esc, formatHKD } from './app-ui.js';
-import { api, listen, listenList, getList, resolveName, statusLabel, statusBadgeClass, statusIsDone } from './app-data.js';
+import { AppState, registerPage, logout } from './app-core.js';
+import { toast, openConfirm, buildForm, openModal, closeModal, initTabPanel, esc, formatHKD, openPrompt } from './app-ui.js';
+import {
+  api, listen, listenList, getList, resolveName, statusLabel, statusBadgeClass, statusIsDone,
+  listenYearRange, saveYearRange, listenPageMetadata, savePageMetadata, getYearRange, getColumns, getResolvers
+} from './app-data.js';
 import { renderStats, renderTable, renderControls } from './app-widgets.js';
-import { openEntityModal } from './app-entities.js';
+import { openEntityModal, removeEntity, getDynamicOptions } from './app-entities.js';
 import {
   calcBankBalance, computeYearTotals, computeMemberReportRows,
   computeMemberAnnualRows, computeAnnualOverview,
@@ -46,6 +50,7 @@ function pageFinance(root) {
     const monthTxns = all.filter((t) => (t.date || '').startsWith(prefix));
     const inTotal = monthTxns.filter((t) => t.type === 'in').reduce((s, t) => s + (Number(t.amount) || 0), 0);
     const outTotal = monthTxns.filter((t) => t.type !== 'in').reduce((s, t) => s + (Number(t.amount) || 0), 0);
+    
     _stats?.destroy?.();
     _stats = renderStats({ container: 'fin-stats', columns: 4, cards: [
       { title: '家庭總餘額', value: formatHKD(total), valueClass: total >= 0 ? 'text-emerald' : 'text-red', hint: `${_accounts.length} 個帳號`, icon: 'landmark' },
@@ -53,6 +58,7 @@ function pageFinance(root) {
       { title: '本月出帳', value: formatHKD(outTotal), valueClass: 'text-red', icon: 'arrow-up-circle' },
       { title: '本月淨變動', value: formatHKD(inTotal - outTotal), valueClass: (inTotal - outTotal) >= 0 ? 'text-emerald' : 'text-red', icon: 'trending-up' },
     ] });
+    
     paintBanks();
     paintTxns(all);
   };
@@ -65,6 +71,7 @@ function pageFinance(root) {
     const y = year || String(new Date().getFullYear());
     const all = flatten();
     const rows = _accounts.map((a) => ({ ...a, _balance: calcBankBalance([a], all, y, tM) }));
+    
     renderTable({ container: el, rows,
       columns: [
         { id: 'name', label: '名稱', type: 'text' },
@@ -90,6 +97,7 @@ function pageFinance(root) {
     if (tM) rows = rows.filter((t) => (t.date || '').startsWith(`${y}-${String(tM).padStart(2, '0')}`));
     else rows = rows.filter((t) => (t.date || '').startsWith(y));
     rows = rows.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+    
     renderTable({ container: el, rows,
       columns: [
         { id: 'date', label: '日期', type: 'date', width: 110 },
@@ -123,7 +131,9 @@ function pageFinance(root) {
     _accounts = Object.entries(v).map(([id, x]) => ({ id, ...x }));
     paint();
   })];
+  
   _ctrl = renderControls({ container: 'fin-ctrl', items: [{ type: 'year' }, { type: 'month', includeAll: true }] });
+  
   return { destroy: () => { unsubs.forEach((u) => u && u()); _stats?.destroy?.(); _ctrl?.destroy?.(); _tab?.destroy?.(); } };
 }
 
@@ -145,6 +155,7 @@ function pageAnnualReport(root) {
     const yt = computeYearTotals(_allIncome, _allExpenses, year);
     let pi = 0;
     Object.values(_allPersonalIncome || {}).forEach((md) => Object.values((md || {})[year] || {}).forEach((v) => { pi += Number(v) || 0; }));
+    
     _stats?.destroy?.();
     _stats = renderStats({ container: 'ar-stats', columns: 4, cards: [
       { title: `${year} 家用轉入`, value: formatHKD(yt.totalIncome), valueClass: 'text-emerald', icon: 'trending-up' },
@@ -161,6 +172,7 @@ function pageAnnualReport(root) {
     if (!el) return;
     const members = getList('members');
     const rows = computeMemberAnnualRows(members, _allIncome, _allExpenses, _allPersonalIncome, AppState.year);
+    
     el.innerHTML = `<div style="overflow-x:auto;"><div class="glass-card" style="padding:0;"><table class="data-table">
       <thead><tr><th>成員</th><th class="num">家用轉入</th><th class="num">個人收入</th><th class="num">總支出</th><th class="num">淨結餘</th></tr></thead>
       <tbody>${rows.map((r) => `<tr style="${r.__isTotal ? 'font-weight:700;background:var(--hover-bg-strong);' : r.__isShared ? 'background:rgba(220,38,38,0.05);' : ''}">
@@ -183,6 +195,7 @@ function pageAnnualReport(root) {
     const rows = [];
     Object.entries(incomeM).forEach(([mid, amt]) => rows.push({ name: `收入：${resolveName('members', mid) || mid}`, amount: Number(amt) || 0 }));
     Object.entries(monthData).forEach(([mid, items]) => Object.values(items || {}).forEach((e) => rows.push({ name: `支出：${e.name || ''}`, amount: -(Number(e.amount) || 0) })));
+    
     el.innerHTML = `<div class="glass-card" style="padding:0;"><table class="data-table"><thead><tr><th>項目</th><th class="num">金額</th></tr></thead><tbody>
       ${rows.map((r) => `<tr><td>${esc(r.name)}</td><td class="num ${r.amount >= 0 ? 'text-emerald' : 'text-red'}">${formatHKD(r.amount)}</td></tr>`).join('')}
     </tbody></table></div>`;
@@ -202,6 +215,7 @@ function pageAnnualReport(root) {
         <button type="button" class="btn btn-sm btn-ghost" data-arv="monthly">月度明細</button>
       </div>` },
   ] });
+  
   document.getElementById('ar-ctrl')?.addEventListener('click', (e) => {
     const b = e.target.closest('[data-arv]');
     if (!b) return;
@@ -210,6 +224,7 @@ function pageAnnualReport(root) {
     document.getElementById('ar-summary').style.display = _view === 'summary' ? '' : 'none';
     document.getElementById('ar-monthly').style.display = _view === 'monthly' ? '' : 'none';
   });
+  
   return { destroy: () => { unsubs.forEach((u) => u && u()); _stats?.destroy?.(); _ctrl?.destroy?.(); } };
 }
 
@@ -232,6 +247,7 @@ function pageMemberReport(root) {
     const tPI = rows.reduce((s, r) => s + r.personalIncome, 0);
     const tE = rows.reduce((s, r) => s + r.expense, 0);
     const tIns = rows.reduce((s, r) => s + r.insurance, 0);
+    
     _stats?.destroy?.();
     _stats = renderStats({ container: 'mr-stats', columns: 4, cards: [
       { title: `${AppState.year} 家庭收入`, value: formatHKD(tI), valueClass: 'text-emerald', icon: 'trending-up' },
@@ -239,6 +255,7 @@ function pageMemberReport(root) {
       { title: `${AppState.year} 總支出`, value: formatHKD(tE), valueClass: 'text-red', icon: 'trending-down' },
       { title: `${AppState.year} 保險平攤`, value: formatHKD(tIns), valueClass: 'text-magenta', icon: 'shield' },
     ] });
+    
     renderTable({ container: 'mr-list', rows,
       columns: [
         { id: 'name', label: '成員', type: 'text', width: 140 },
@@ -264,12 +281,14 @@ function pageMemberReport(root) {
     listen('expenses', (s) => { _allExpenses = s.val() || {}; paint(); }),
     listen('personal_income', (s) => { _allPersonalIncome = s.val() || {}; paint(); }),
   ];
+  
   _ctrl = renderControls({ container: 'mr-ctrl', items: [{ type: 'year' }] });
+  
   return { destroy: () => { unsubs.forEach((u) => u && u()); _stats?.destroy?.(); _ctrl?.destroy?.(); } };
 }
 
 /* ============================================
-   4. Settings
+   4. Settings（GAP-10, 18, 23）
    ============================================ */
 function pageSettings(root) {
   root.innerHTML = `
@@ -278,18 +297,30 @@ function pageSettings(root) {
     <div id="st-panel-platform" class="tab-panel"></div>
     <div id="st-panel-banks" class="tab-panel"></div>
     <div id="st-panel-personal" class="tab-panel"></div>`;
+  
   const isSuper = AppState.isSuperAdmin;
   const tabs = [
     ...(isSuper ? [{ key: 'platform', label: '平台設定', icon: 'settings', panelId: 'st-panel-platform' }] : []),
     { key: 'banks', label: '銀行帳號', icon: 'landmark', panelId: 'st-panel-banks' },
     { key: 'personal', label: '個人化', icon: 'user', panelId: 'st-panel-personal' },
   ];
-  let _tab = null, _bankUnsub = null, _memberUnsub = null;
+  let _tab = null, _bankUnsub = null, _memberUnsub = null, _yrUnsub = null, _metaUnsub = null;
+  let _personalRendered = false;
 
   const loadBanks = () => {
     const el = document.getElementById('st-panel-banks');
     if (!el) return;
-    renderTable({ container: el, rows: getList('bank_accounts'),
+    el.innerHTML = `
+      <div class="flex flex-between mb-16">
+        <div class="text-muted" style="font-size:13px;">共 ${getList('bank_accounts').length} 個帳號</div>
+        <button type="button" class="btn btn-primary" id="st-bank-add"><i data-lucide="plus"></i> 新增銀行帳號</button>
+      </div>
+      <div id="st-bank-list"></div>`;
+      
+    document.getElementById('st-bank-add')?.addEventListener('click', () => openEntityModal('bankAccount', 'add', { onSuccess: loadBanks }));
+    
+    renderTable({
+      container: 'st-bank-list', rows: getList('bank_accounts'),
       columns: [
         { id: 'name', label: '名稱', type: 'text' },
         { id: 'type', label: '類型', width: 100 },
@@ -299,22 +330,26 @@ function pageSettings(root) {
         type: (v) => v === 'personal' ? '👤 個人' : '🏠 家庭',
         initialBalance: (v) => `<span class="mono">${formatHKD(v)}</span>`,
       },
-      actions: AppState.getCanInput() ? (row) => [
+      actions: (row) => [
+        { label: '編輯', icon: 'pencil', className: 'btn-ghost', action: 'edit', onClick: () => openEntityModal('bankAccount', 'edit', { id: row.id, allRows: getList('bank_accounts'), onSuccess: loadBanks }) },
         { label: '刪除', icon: 'trash-2', className: 'btn-danger', action: 'del', onClick: async () => {
           const ok = await openConfirm(`確定刪除「${row.name}」？`, { okText: '刪除', okClass: 'btn-danger' });
           if (!ok) return;
-          try { await api.bankAccounts.remove(row.id); toast('✅ 已刪除', 'success'); } catch (e) { toast(e.message, 'error'); }
-        } },
-      ] : () => [],
+          try { await removeEntity('bankAccount', row.id); toast('✅ 已刪除', 'success'); } catch (e) { toast(e.message, 'error'); }
+        }},
+      ],
     });
   };
 
   const loadPersonal = () => {
     const el = document.getElementById('st-panel-personal');
     if (!el) return;
+    if (_personalRendered) return;
+    _personalRendered = true;
+
     const acc = AppState.getMemberAccount() || {};
-    const savedMode = localStorage.getItem(`fin_${DB_TARGET}_ui_stats_mode`) || 'auto';
-    
+    const savedMode = localStorage.getItem(`fin_${AppState.getFamilyId()}_ui_stats_mode`) || 'auto';
+
     el.innerHTML = `
     <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(360px, 1fr));gap:16px;align-items:start;">
       <div class="glass-card">
@@ -329,7 +364,6 @@ function pageSettings(root) {
 
       <div class="glass-card">
         <div class="glass-card-title" style="margin-bottom:12px;">統計卡顯示模式</div>
-        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px;">調整頁面頂部統計卡的顯示樣式</p>
         <div style="display:flex;flex-direction:column;gap:8px;">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:8px;border-radius:6px;background:rgba(255,255,255,0.03);">
             <input type="radio" name="stats-mode" value="auto" ${savedMode === 'auto' ? 'checked' : ''} style="width:auto;cursor:pointer;">
@@ -353,6 +387,34 @@ function pageSettings(root) {
         <div class="glass-card-title" style="margin-bottom:12px;">家庭成員</div>
         <div id="st-members"></div>
       </div>
+
+      <div class="glass-card" style="grid-column:1/-1;">
+        <div class="glass-card-title" style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+          <i data-lucide="calendar" style="width:16px;height:16px;color:var(--neon-cyan);"></i>
+          <span>年份範圍</span>
+        </div>
+        <div id="st-yr-root"></div>
+      </div>
+
+      <div class="glass-card" style="grid-column:1/-1;">
+        <div class="glass-card-title" style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+          <i data-lucide="type" style="width:16px;height:16px;color:var(--neon-cyan);"></i>
+          <span>頁面標題</span>
+        </div>
+        <div class="field" style="margin-bottom:12px;">
+          <label class="field-label">選擇頁面</label>
+          <select class="select" id="meta-page" style="max-width:400px;">
+            <option value="dashboard">總覽儀表板</option>
+            <option value="portfolio">基金投資表</option>
+            <option value="settings">系統設定</option>
+          </select>
+        </div>
+        <div class="field" style="margin-bottom:12px;">
+          <label class="field-label">標題</label>
+          <input class="input" type="text" id="meta-title" maxlength="40" style="max-width:400px;">
+        </div>
+        <button type="button" class="btn btn-primary" id="meta-save">儲存</button>
+      </div>
     </div>`;
 
     document.getElementById('st-logout')?.addEventListener('click', async () => {
@@ -363,7 +425,7 @@ function pageSettings(root) {
     document.getElementById('save-stats-mode')?.addEventListener('click', () => {
       const selected = document.querySelector('input[name="stats-mode"]:checked');
       if (selected) {
-        localStorage.setItem(`fin_${DB_TARGET}_ui_stats_mode`, selected.value);
+        localStorage.setItem(`fin_${AppState.getFamilyId()}_ui_stats_mode`, selected.value);
         toast('✅ 已儲存顯示模式', 'success');
       }
     });
@@ -371,6 +433,46 @@ function pageSettings(root) {
     renderTable({ container: 'st-members', rows: getList('members'),
       columns: [{ id: 'name', label: '名稱', type: 'text' }, { id: 'role', label: '角色', width: 120 }],
       resolvers: { role: (v) => esc(v || '—') },
+    });
+
+    // 年份範圍
+    const yrRoot = document.getElementById('st-yr-root');
+    _yrUnsub = listenYearRange((d) => {
+      const curRange = d || { startYear: null, futureYears: 5 };
+      yrRoot.innerHTML = `
+        <div class="grid grid-2">
+          <div class="field"><label class="field-label">起始年份</label><input class="input" type="number" id="yr-start" value="${curRange.startYear || ''}" placeholder="留空預設"></div>
+          <div class="field"><label class="field-label">往後顯示年數</label><input class="input" type="number" id="yr-future" value="${curRange.futureYears}"></div>
+        </div>
+        <div style="text-align:right; margin-top:8px;"><button type="button" class="btn btn-primary" id="yr-save">儲存年份</button></div>
+      `;
+      document.getElementById('yr-save')?.addEventListener('click', async () => {
+        const s = document.getElementById('yr-start').value;
+        const f = document.getElementById('yr-future').value;
+        try {
+          await saveYearRange({ startYear: s ? Number(s) : null, futureYears: Number(f) });
+          toast('✅ 年份範圍已儲存', 'success');
+        } catch (e) { toast('儲存失敗：' + e.message, 'error'); }
+      });
+    });
+
+    // 頁面標題
+    const metaPage = document.getElementById('meta-page');
+    const metaTitle = document.getElementById('meta-title');
+    let allMeta = {};
+    _metaUnsub = listenPageMetadata((all) => {
+      allMeta = all || {};
+      metaTitle.value = allMeta[metaPage.value]?.title || '';
+    });
+    metaPage?.addEventListener('change', () => { metaTitle.value = allMeta[metaPage.value]?.title || ''; });
+    document.getElementById('meta-save')?.addEventListener('click', async () => {
+      const page = metaPage.value;
+      const title = metaTitle.value.trim();
+      if (!title) return toast('標題不可為空', 'warning');
+      try {
+        await savePageMetadata({ ...allMeta, [page]: { title } });
+        toast('✅ 標題已儲存', 'success');
+      } catch (e) { toast('儲存失敗：' + e.message, 'error'); }
     });
   };
 
@@ -389,25 +491,38 @@ function pageSettings(root) {
   });
   loadTab(isSuper ? 'platform' : 'banks');
 
-  return { destroy: () => { _tab?.destroy?.(); if (_bankUnsub) _bankUnsub(); if (_memberUnsub) _memberUnsub(); } };
+  return { destroy: () => { 
+    _tab?.destroy?.(); 
+    if (_bankUnsub) _bankUnsub(); 
+    if (_memberUnsub) _memberUnsub(); 
+    if (_yrUnsub) _yrUnsub();
+    if (_metaUnsub) _metaUnsub();
+    _personalRendered = false;
+  } };
 }
 
 /* ============================================
-   5. Admin
+   5. Admin（GAP-24）
    ============================================ */
 function pageAdmin(root) {
   root.innerHTML = `
     <div class="page-header"><div><h1 class="page-title">平台管理</h1><p class="page-subtitle"></p></div>
       <div><button type="button" class="btn btn-danger" id="ad-logout"><i data-lucide="log-out"></i> 登出</button></div></div>
     <div class="banner">ℹ️ 管理所有家庭與平台預設資料庫</div>
-    <div id="ad-families"></div>`;
-  let _families = [];
+    <div id="ad-tabs"></div>
+    <div id="ad-panel-families" class="tab-panel"></div>
+    <div id="ad-panel-defaults" class="tab-panel"></div>`;
+
+  let _tab = null;
 
   const loadFamilies = async () => {
+    const el = document.getElementById('ad-panel-families');
+    if (!el) return;
     try {
       const r = await api.adminListFamilies();
-      _families = r.families || [];
-      renderTable({ container: 'ad-families', rows: _families,
+      const families = r.families || [];
+      renderTable({
+        container: el, rows: families,
         columns: [
           { id: 'uid', label: 'UID', width: 220 },
           { id: 'name', label: '名稱' },
@@ -419,25 +534,78 @@ function pageAdmin(root) {
           ownerEmail: (v) => `<span class="mono" style="font-size:12px;color:var(--text-muted);">${esc(v || '—')}</span>`,
           createdAt: (v) => `<span class="mono" style="font-size:12px;">${v ? new Date(v).toLocaleString('zh-HK') : '—'}</span>`,
         },
-        actions: () => [{ label: '刪除', icon: 'trash-2', className: 'btn-danger', action: 'del', onClick: (row) => onDelete(row) }],
+        actions: () => [
+          { label: '刪除', icon: 'trash-2', className: 'btn-danger', action: 'del', onClick: async (row) => {
+            const ok = await openConfirm(`確定刪除家庭「${row.name || row.uid}」？`, { okText: '刪除', okClass: 'btn-danger' });
+            if (!ok) return;
+            try { await api.adminRemoveFamily(row.uid); toast('✅ 已刪除', 'success'); loadFamilies(); } catch (e) { toast(e.message, 'error'); }
+          }},
+        ],
       });
     } catch (e) { toast('載入失敗：' + e.message, 'error'); }
   };
 
-  const onDelete = async (row) => {
-    const ok = await openConfirm(`確定刪除家庭「${row.name || row.uid}」？此操作不可逆。`, { okText: '刪除', okClass: 'btn-danger' });
-    if (!ok) return;
-    try { await api.adminRemoveFamily(row.uid); toast('✅ 已刪除', 'success'); loadFamilies(); }
-    catch (e) { toast('刪除失敗：' + e.message, 'error'); }
+  const loadDefaults = () => {
+    const el = document.getElementById('ad-panel-defaults');
+    if (!el) return;
+    
+    // 簡易預設資料庫編輯（成員、銀行、公司、支付、類別、狀態）
+    el.innerHTML = `
+      <div class="banner">ℹ️ 此處的預設資料將套用於「新家庭初始化時」，修改後不影響已存在的家庭。</div>
+      <div id="ad-defaults-tabs"></div>
+      <div id="ad-defaults-list"></div>
+    `;
+    
+    const dTab = initTabPanel({
+      containerId: 'ad-defaults-tabs',
+      tabs: [
+        { key: 'members', label: '成員', icon: 'users' },
+        { key: 'companies', label: '保險公司', icon: 'shield' },
+        { key: 'categories', label: '支出類別', icon: 'tags' },
+      ],
+      defaultKey: 'members',
+      onChange: async (k) => {
+        const listEl = document.getElementById('ad-defaults-list');
+        listEl.innerHTML = '<div class="empty-state">載入中…</div>';
+        try {
+          const res = await api.platformDefaults.list(k);
+          renderTable({
+            container: listEl,
+            rows: res.list || [],
+            columns: [
+              { id: 'name', label: '名稱' },
+              { id: 'order', label: '排序', width: 80 },
+            ],
+            actions: (row) => [
+              { label: '刪除', icon: 'trash-2', className: 'btn-danger', action: 'del', onClick: async () => {
+                const ok = await openConfirm(`確定刪除「${row.name}」？`, { okText: '刪除', okClass: 'btn-danger' });
+                if (!ok) return;
+                try { await api.platformDefaults.remove(k, row.id); toast('✅ 已刪除', 'success'); dTab.switchTo(k); } catch (e) { toast(e.message, 'error'); }
+              }},
+            ],
+          });
+        } catch (e) { listEl.innerHTML = `<div class="text-red">載入失敗：${e.message}</div>`; }
+      }
+    });
   };
+
+  _tab = initTabPanel({
+    containerId: 'ad-tabs',
+    tabs: [
+      { key: 'families', label: '家庭列表', icon: 'home', panelId: 'ad-panel-families' },
+      { key: 'defaults', label: '預設資料庫', icon: 'database', panelId: 'ad-panel-defaults' },
+    ],
+    defaultKey: 'families',
+    onChange: (k) => { if (k === 'families') loadFamilies(); else loadDefaults(); },
+  });
+  loadFamilies();
 
   document.getElementById('ad-logout')?.addEventListener('click', async () => {
     const ok = await openConfirm('確定要登出嗎？', { title: '登出', okText: '登出', okClass: 'btn-danger' });
     if (ok) logout();
   });
 
-  loadFamilies();
-  return { destroy: () => { root.innerHTML = ''; } };
+  return { destroy: () => { _tab?.destroy?.(); root.innerHTML = ''; } };
 }
 
 /* ============================================
@@ -453,6 +621,6 @@ export { pageFinance, pageAnnualReport, pageMemberReport, pageSettings, pageAdmi
 
 /* ═══ EOF ═══
 F: js/app-pages-reports.js
-V: 1792670008
-W: webapp-20261022-034#1
+V: 1792720500
+W: webapp-20261023-001#10
 ═══ */
