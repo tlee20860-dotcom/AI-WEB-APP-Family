@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>FAMILY.FIN V2</title>
+  
+  <!-- PWA 設定 -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#0F172A">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FAMILY V2">
+  
+  <!-- 預載 CDN 資源 -->
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com">
+
+  <!-- 樣式 (P0 僅載入基礎主題) -->
+  <link rel="stylesheet" href="./css/theme.css">
+  
+  <!-- 確保手機端不會有奇怪的白邊或滾動 -->
+  <style>
+    body { margin: 0; padding: 0; background-color: var(--bg-deep, #0F172A); color: var(--text-primary, #F1F5F9); font-family: sans-serif; }
+    #app-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+    .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.1); border-top-color: #00F0FF; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <!-- 載入畫面 -->
+  <div id="app-loading">
+    <div class="spinner"></div>
+    <div style="font-family: monospace; color: #00F0FF; letter-spacing: 1px;">SYSTEM INITIALIZING...</div>
+  </div>
+
+  <!-- SPA 掛載點 -->
+  <div id="app-root" style="display: none;"></div>
+
+  <!-- 圖示庫 -->
+  <script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.min.js" defer></script>
+
+  <!-- 主程式入口 (待後續階段建立 engine/main.js) -->
+  <!-- <script type="module" src="./engine/main.js"></script> -->
+</body>
+</html>
+
+<!-- ═══ EOF ═══
+F: index.html
+V: 1792900130
+W: ai-system-20261024-012#8
+═══ EOF ═══ -->
