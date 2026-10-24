@@ -1,9 +1,6 @@
 # WF-HANDOFF（專案交接快照）
 
 上限：80 行（嚴格限制）
-最後更新：2026-10-23
-Version: 1792800500
-Writer: webapp-20261023-001#50
 用途：提供下一輪對話 AI 的專案現況快照
 
 ---
@@ -60,7 +57,7 @@ Writer: webapp-20261023-001#50
 ---
 
 /* ═══ EOF ═══
-F: docs/records/WF-HANDOFF.md
-V: 1792800500
-W: webapp-20261023-001#50
+F: AI-General/docs/projects/90-webapp/records/WF-HANDOFF.md
+V: 1792900034
+W: ai-system-20261024-012#17
 ═══ */
