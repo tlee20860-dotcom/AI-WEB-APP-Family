@@ -1,8 +1,5 @@
 # WF-PROGRESS（專案任務進度追蹤）
 
-最後更新：2026-10-23
-Version: 1792800501
-Writer: webapp-20261023-001#51
 用途：追蹤 WebApp Family 專案的步驟進度
 
 ---
@@ -34,10 +31,8 @@ Writer: webapp-20261023-001#51
 | 9 | 根目錄入口修正 | 待處理 | 需將 `app.html` 改名為 `index.html` |
 | 10 | 線上驗收測試 | 待處理 | 需登入測試各頁面 |
 
----
-
 /* ═══ EOF ═══
-F: docs/records/WF-PROGRESS.md
-V: 1792800501
-W: webapp-20261023-001#51
+F: AI-General/docs/projects/90-webapp/records/WF-PROGRESS.md
+V: 1792900035
+W: ai-system-20261024-012#18
 ═══ */
