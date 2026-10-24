@@ -1,0 +1,21 @@
+{
+  "name": "家庭財務與固定供款管理 V2",
+  "short_name": "FAMILY V2",
+  "description": "全家財務、保險供款、基金資產、銀行交易即時管理 (重構版)",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0F172A",
+  "theme_color": "#0F172A",
+  "lang": "zh-Hant",
+  "categories": ["finance", "productivity"],
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
