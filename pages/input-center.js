@@ -5,7 +5,7 @@
 // ============================================
 
 import { AppState } from '../config/state.js';
-import { listenAllExpenses, getList } from '../db/index.js';
+import { listenAllExpenses } from '../db/index.js';
 import { saveIncome, savePersonalIncome, addExpense, removeExpense } from '../db/write.js';
 import { getList as getMembersList } from '../config/entity-registry.js';
 import { renderTable } from '../ui/table.js';
@@ -15,7 +15,6 @@ import { createForm } from '../ui/form.js';
 import { showToast } from '../ui/toast.js';
 import { formatHKD, esc, todayISO } from '../ui/format.js';
 import { RESERVED_IDS } from '../config/constants.js';
-import { normalize, label as statusLabel, badgeClass } from '../config/status.js';
 
 export default {
   _unsubExpenses: null,
@@ -103,7 +102,7 @@ export default {
     renderTable({
       container: listRoot,
       rows: displayData,
-      columnsKey: 'recentExpense', // 需要在 columns.js 補上
+      columnsKey: 'recentExpense',
       renderActions
     });
 
@@ -125,7 +124,6 @@ export default {
           showToast('刪除失敗：' + err.message, 'error');
         }
       } else if (btn.dataset.action === 'edit') {
-        // 未來可實作編輯彈窗，這裡先提示
         showToast('編輯功能開發中', 'info');
       }
     });
@@ -246,6 +244,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/input-center.js
-V: 1792900540
-W: ai-system-20261024-012#49
+V: 1792900640
+W: ai-system-20261024-012#59
 ═══ EOF ═══ */
