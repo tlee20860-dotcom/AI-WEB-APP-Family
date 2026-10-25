@@ -230,6 +230,33 @@
   .data-table th, .data-table td { padding: 12px 10px; font-size: 13px; }
 }
 
+/* Navbar 相關 */
+.navbar-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.navbar-logout {
+  background: transparent;
+  border: none;
+  color: var(--accent-danger);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  margin-left: 4px;
+}
+.navbar-theme-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+}
+
 /* ═══ EOF ═══
 F: css/app.css
 V: 1792900780
