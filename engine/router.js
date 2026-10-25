@@ -25,20 +25,27 @@ const ROUTES_MAP = {
 let _currentPage = null;
 let _isInitialized = false;
 
-export function initRouter(runImmediately = true) {
-  if (_isInitialized) return;
-  _isInitialized = true;
-
-  window.addEventListener('hashchange', _handleRoute);
+/**
+ * 初始化路由
+ * @param {string|null} initialPath - 若傳入字串，則強制執行該路徑；若傳 true/null，則依當前 hash 執行。
+ */
+export function initRouter(initialPath = null) {
+  if (!_isInitialized) {
+    window.addEventListener('hashchange', _handleRoute);
+    _isInitialized = true;
+  }
   
-  if (runImmediately) {
-    if (!window.location.hash) window.location.hash = ROUTES.DASHBOARD;
-    else _handleRoute();
+  if (typeof initialPath === 'string') {
+    _handleRoute(initialPath);
+  } else if (!window.location.hash) {
+    window.location.hash = ROUTES.DASHBOARD;
+  } else {
+    _handleRoute();
   }
 }
 
-async function _handleRoute() {
-  const path = window.location.hash.replace('#', '') || ROUTES.DASHBOARD;
+async function _handleRoute(targetPath = null) {
+  const path = targetPath || window.location.hash.replace('#', '') || ROUTES.DASHBOARD;
   const routeConfig = ROUTES_MAP[path];
   
   if (!routeConfig) {
@@ -110,6 +117,6 @@ function _render404(path) {
 
 /* ═══ EOF ═══
 F: engine/router.js
-V: 1792900660
-W: ai-system-20261024-012#61
+V: 1792900810
+W: ai-system-20261024-012#72
 ═══ EOF ═══ */
