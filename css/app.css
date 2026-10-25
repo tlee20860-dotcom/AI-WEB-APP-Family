@@ -333,6 +333,19 @@
   }
   .content { padding: 16px; }
   .navbar { padding: 0 16px; }
+
+/* ============================================
+   9. 手機版卡片列表優化
+   ============================================ */
+.mobile-card-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 讓手機版的按鈕不會被擠壓 */
+.mobile-card-list button {
+  white-space: nowrap;
+}
 }
 
 /* ═══ EOF ═══
