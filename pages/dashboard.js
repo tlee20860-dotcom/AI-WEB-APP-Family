@@ -8,7 +8,6 @@ import { AppState } from '../config/state.js';
 import { api } from '../domain/api-client.js';
 import { showToast } from '../ui/toast.js';
 import { formatHKD, esc } from '../ui/format.js';
-import { renderYearMonth } from '../ui/controls.js';
 import { renderTable } from '../ui/table.js';
 
 export default {
@@ -18,7 +17,7 @@ export default {
     const content = document.getElementById('app-content');
     if (!content) return;
 
-    // 1. 渲染基礎骨架
+    // 1. 渲染基礎骨架 (無年月切換控制列)
     content.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
         <h1 style="font-size:24px; font-weight:700; color:var(--primary);">總覽儀表板</h1>
@@ -27,10 +26,9 @@ export default {
         </a>
       </div>
 
-      <div id="dashboard-controls" style="margin-bottom:20px;"></div>
-      <div id="dashboard-stats" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px; margin-bottom:24px;"></div>
+      <div id="dashboard-stats" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:16px; margin-bottom:24px;"></div>
       
-      <div class="glass-card" style="padding:0; margin-bottom:24px;">
+      <div class="table-container" style="margin-bottom:24px;">
         <div style="padding:16px; border-bottom:1px solid var(--border-color); display:flex; align-items:center; gap:8px;">
           <i data-lucide="calendar" style="width:18px;height:18px;color:var(--primary);"></i>
           <span style="font-weight:700; font-size:15px;">年度總覽（前後 2 年）</span>
@@ -38,11 +36,6 @@ export default {
         <div id="dashboard-annual-table" style="padding:16px;"></div>
       </div>
     `;
-
-    // 2. 渲染年月控制列
-    renderYearMonth('dashboard-controls', { includeAllMonth: false }, () => {
-      this._loadData();
-    });
 
     // 3. 綁定 State 監聽 (若其他頁面切換年月，這裡也要連動)
     this._unsubYM = AppState.on('ym-change', () => {
@@ -60,30 +53,30 @@ export default {
     
     if (!statsRoot || !tableRoot) return;
 
-    statsRoot.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted);">載入統計資料…</div>';
+    statsRoot.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted); grid-column:span 2;">載入統計資料…</div>';
     tableRoot.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted);">載入年度資料…</div>';
 
     try {
-      // 同時抓取單月統計與前後 2 年的年度總覽
       const y = Number(year);
       const [summaryRes, annualRes] = await Promise.all([
         api.summary(year, month === 'all' ? '12' : month),
         api.fetchAnnualSummaryRange(y - 2, y + 2)
       ]);
 
-      // 渲染統計卡
+      // 渲染統計卡 (套用舊版風格)
       const s = summaryRes;
       const statsHtml = [
-        { title: '家庭總餘額', val: s.bankBalance + s.fundValue, color: (s.bankBalance + s.fundValue) >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)', icon: 'landmark' },
-        { title: `${year} 家庭收入`, val: s.totalIncome, color: 'var(--accent-success)', icon: 'trending-up' },
-        { title: `${year} 年度總支出`, val: s.totalExpense, color: 'var(--accent-danger)', icon: 'trending-down' },
-        { title: `${year} 年度淨餘額`, val: s.netBalance, color: s.netBalance >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)', icon: 'wallet' }
+        { title: '家庭總餘額', val: s.bankBalance + s.fundValue, color: (s.bankBalance + s.fundValue) >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)', icon: 'landmark', hint: `共 ${s.bankCount || 1} 個銀行帳號` },
+        { title: `${year} 家庭收入`, val: s.totalIncome, color: 'var(--accent-success)', icon: 'trending-up', hint: '家用轉入 + 額外收入' },
+        { title: `${year} 年度總支出`, val: s.totalExpense, color: 'var(--accent-danger)', icon: 'trending-down', hint: `${s.monthCount || 0} 個月有紀錄` },
+        { title: `${year} 年度淨餘額`, val: s.netBalance, color: s.netBalance >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)', icon: 'wallet', hint: s.netBalance >= 0 ? '收支平衡' : '支出大於收入' }
       ].map(card => `
         <div class="glass-card" style="padding:20px; display:flex; flex-direction:column; gap:8px;">
           <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
             <i data-lucide="${card.icon}" style="width:14px;height:14px;"></i> ${esc(card.title)}
           </div>
           <div class="mono" style="font-size:24px; font-weight:700; color:${card.color};">${formatHKD(card.val)}</div>
+          <div style="font-size:11px; color:var(--text-muted);">${esc(card.hint)}</div>
         </div>
       `).join('');
       statsRoot.innerHTML = statsHtml;
@@ -99,12 +92,10 @@ export default {
           isCurrent: yData.year === y
         }));
 
-        // 這裡直接內嵌一個簡單的表格渲染，或者調用 ui/table.js
-        // 為了簡潔，我們直接用 ui/table.js
         renderTable({
           container: 'dashboard-annual-table',
           rows: tableRows,
-          columnsKey: 'dashboardAnnual', // 待 config/columns.js 補上
+          columnsKey: 'dashboardAnnual',
           emptyText: '無年度資料'
         });
       } else {
@@ -115,7 +106,7 @@ export default {
     } catch (err) {
       console.error('[dashboard] 載入失敗：', err);
       showToast('載入總覽資料失敗', 'error');
-      statsRoot.innerHTML = '<div style="color:var(--accent-danger); padding:20px;">載入失敗</div>';
+      statsRoot.innerHTML = '<div style="color:var(--accent-danger); padding:20px; grid-column:span 2;">載入失敗</div>';
       tableRoot.innerHTML = '';
     }
   },
@@ -130,6 +121,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/dashboard.js
-V: 1792900480
-W: ai-system-20261024-012#43
+V: 1792900760
+W: ai-system-20261024-012#67
 ═══ EOF ═══ */
