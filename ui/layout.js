@@ -1,6 +1,5 @@
 // ============================================
-// layout.js — SPA 骨架與導覽（V2 重構版）
-// 位置：ui/layout.js
+// layout.js — SPA 骨架與導覽
 // ============================================
 
 import { AppState } from '../config/state.js';
@@ -47,7 +46,7 @@ function _renderShell(root) {
           <div class="navbar-title" id="app-navbar-title"></div>
           
           <div class="navbar-right">
-            <span class="navbar-db-tag" id="app-navbar-db">DB: 2026-10-12-fam</span>
+            <span class="navbar-db-tag" id="app-navbar-db" style="display:none;">DB: 2026-10-12-fam</span>
             <button type="button" class="navbar-theme-btn" id="app-theme-toggle">
               <i data-lucide="moon" style="width:18px;height:18px;"></i>
             </button>
@@ -67,10 +66,21 @@ function _renderShell(root) {
 export function updateNavbar() {
   const titleEl = document.getElementById('app-navbar-title');
   const userEl = document.getElementById('app-user-info');
+  const dbEl = document.getElementById('app-navbar-db');
   const themeBtn = document.getElementById('app-theme-toggle');
 
   if (titleEl && AppState.currentFamilyName) {
     titleEl.textContent = AppState.currentFamilyName;
+  }
+
+  if (dbEl) {
+    // 開發模式顯示 DB
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('debug') === '1') {
+      dbEl.style.display = 'inline-block';
+    } else {
+      dbEl.style.display = 'none';
+    }
   }
 
   if (userEl) {
@@ -80,9 +90,10 @@ export function updateNavbar() {
     if (role === ROLES.SUPERADMIN) badge = '<span class="badge badge-danger" style="font-size:10px; padding:2px 6px;">管理員</span>';
     else if (role === ROLES.OWNER) badge = '<span class="badge badge-info" style="font-size:10px; padding:2px 6px;">👑 擁有者</span>';
     
+    // 對齊舊版：圖示 -> 名字 -> Badge -> 登出
     userEl.innerHTML = `
       <i data-lucide="user" style="width:16px;height:16px;"></i>
-      <span style="white-space:nowrap;">${esc(name)}</span>
+      <span style="white-space:nowrap; font-weight:500;">${esc(name)}</span>
       ${badge}
       <button type="button" id="app-logout-btn" class="navbar-logout" title="登出">
         <i data-lucide="log-out" style="width:18px;height:18px;"></i>
@@ -209,9 +220,3 @@ function _toggleSidebar(open) {
     document.body.style.overflow = '';
   }
 }
-
-/* ═══ EOF ═══
-F: ui/layout.js
-V: 1792900750
-W: ai-system-20261024-012#66
-═══ EOF ═══ */
