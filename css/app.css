@@ -216,7 +216,52 @@
 .mono { font-family: var(--font-mono); }
 
 /* ============================================
-   6. 響應式 (Mobile)
+   6. Modal (彈出視窗) - 本次新增修復
+   ============================================ */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+  transform: translateY(20px);
+  transition: transform 0.2s ease;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.modal-overlay.active .modal {
+  transform: translateY(0);
+}
+
+/* ============================================
+   7. 響應式 (Mobile)
    ============================================ */
 @media (max-width: 768px) {
   .sidebar { position: fixed; top: 0; left: 0; height: 100vh; transform: translateX(-100%); }
@@ -259,6 +304,6 @@
 
 /* ═══ EOF ═══
 F: css/app.css
-V: 1792900780
-W: ai-system-20261024-012#69
-═══ EOF ═══ */
+V: 1792901300
+W: webapp-20261025-001#11
+═══ */
