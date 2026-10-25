@@ -1,7 +1,6 @@
 // ============================================
-// member-report.js — 成員收支明細（V2 重構版）
+// member-report.js — 成員收支明細
 // 位置：pages/member-report.js
-// 說明：顯示各成員的收支與保險平攤狀況。
 // ============================================
 
 import { AppState } from '../config/state.js';
@@ -22,25 +21,23 @@ export default {
 
     content.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-        <h1 style="font-size:24px; font-weight:700; color:var(--primary);">成員收支明細</h1>
+        <h1 style="font-size:24px; font-weight:700; color:var(--primary); margin:0;">成員收支明細</h1>
       </div>
 
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-        <div id="mr-controls-period"></div>
+      <div id="mr-stats" style="display:grid; grid-template-columns:repeat(4, 1fr); gap:16px; margin-bottom:24px;"></div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
         <div id="mr-view-toggle"></div>
+        <div id="mr-controls-period"></div>
       </div>
-
-      <div id="mr-stats" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px;"></div>
       
       <div id="mr-list-container"></div>
     `;
 
-    // 渲染控制列
     renderYearMonth('mr-controls-period', { includeAllMonth: true }, () => {
       this._loadData();
     });
 
-    // 渲染檢視切換
     renderViewToggle('mr-view-toggle', () => {
       this._renderList();
     });
@@ -53,20 +50,14 @@ export default {
     if (!statsRoot) return;
 
     const { year, month } = AppState.getYearMonth();
-    statsRoot.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted);">載入資料中…</div>';
+    statsRoot.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted); grid-column:span 4;">載入資料中…</div>';
 
     try {
-      // 取得當月（或全年）的 summary
       const s = await api.summary(year, month);
-      
-      // 取得成員列表
       const members = await getMembersOnce();
 
-      // 處理每位成員的資料
       const rows = members.map(m => {
         const mData = s.perMember[m.id] || { sum: 0, items: [] };
-        
-        // 計算該成員的保險平攤
         let insurance = 0;
         let expense = 0;
         mData.items.forEach(item => {
@@ -74,24 +65,13 @@ export default {
           else expense += item.amount;
         });
 
-        // 取得該成員的收入與個人收入
         const income = Number(s.incomeBreakdown?.[m.id]) || 0;
         const personalIncome = Number(s.personalIncomeBreakdown?.[m.id]) || 0;
-        
         const net = income + personalIncome - expense - insurance;
 
-        return {
-          id: m.id,
-          name: m.name,
-          income,
-          personalIncome,
-          expense,
-          insurance,
-          net
-        };
+        return { id: m.id, name: m.name, income, personalIncome, expense, insurance, net };
       });
 
-      // 加入「家庭共用」 (如果有支出)
       const sharedData = s.perMember[RESERVED_IDS.SHARED_MEMBER] || { sum: 0, items: [] };
       let sharedIns = 0, sharedExp = 0;
       sharedData.items.forEach(item => {
@@ -100,20 +80,11 @@ export default {
       });
       
       if (sharedExp > 0 || sharedIns > 0) {
-        rows.push({
-          id: RESERVED_IDS.SHARED_MEMBER,
-          name: '🏠 家庭共用',
-          income: 0,
-          personalIncome: 0,
-          expense: sharedExp,
-          insurance: sharedIns,
-          net: -(sharedExp + sharedIns)
-        });
+        rows.push({ id: RESERVED_IDS.SHARED_MEMBER, name: '🏠 家庭共用', income: 0, personalIncome: 0, expense: sharedExp, insurance: sharedIns, net: -(sharedExp + sharedIns) });
       }
 
       this._data = rows;
 
-      // 渲染統計卡
       const tIncome = rows.reduce((sum, r) => sum + r.income, 0);
       const tPersonal = rows.reduce((sum, r) => sum + r.personalIncome, 0);
       const tExpense = rows.reduce((sum, r) => sum + r.expense, 0);
@@ -122,19 +93,19 @@ export default {
       statsRoot.innerHTML = `
         <div class="glass-card" style="padding:16px;">
           <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">家用轉入</div>
-          <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-success);">${formatHKD(tIncome)}</div>
+          <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-success); white-space:nowrap;">${formatHKD(tIncome)}</div>
         </div>
         <div class="glass-card" style="padding:16px;">
           <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">個人收入</div>
-          <div class="mono" style="font-size:20px; font-weight:700; color:var(--primary);">${formatHKD(tPersonal)}</div>
+          <div class="mono" style="font-size:20px; font-weight:700; color:var(--primary); white-space:nowrap;">${formatHKD(tPersonal)}</div>
         </div>
         <div class="glass-card" style="padding:16px;">
           <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">總支出</div>
-          <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-danger);">${formatHKD(tExpense)}</div>
+          <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-danger); white-space:nowrap;">${formatHKD(tExpense)}</div>
         </div>
         <div class="glass-card" style="padding:16px;">
           <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">保險平攤</div>
-          <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-warm);">${formatHKD(tIns)}</div>
+          <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-warm); white-space:nowrap;">${formatHKD(tIns)}</div>
         </div>
       `;
 
@@ -143,7 +114,7 @@ export default {
     } catch (err) {
       console.error('[member-report] 載入失敗：', err);
       showToast('載入成員報表失敗', 'error');
-      statsRoot.innerHTML = '<div style="color:var(--accent-danger); padding:20px;">載入失敗</div>';
+      statsRoot.innerHTML = '<div style="color:var(--accent-danger); padding:20px; grid-column:span 4;">載入失敗</div>';
     }
   },
 
@@ -159,19 +130,9 @@ export default {
     const currentView = AppState.getCurrentView() || 'table';
 
     if (currentView === 'card') {
-      renderCards({
-        container: listRoot,
-        rows: this._data,
-        columnsKey: 'memberReport',
-        emptyText: '尚無資料'
-      });
+      renderCards({ container: listRoot, rows: this._data, columnsKey: 'memberReport', emptyText: '尚無資料' });
     } else {
-      renderTable({
-        container: listRoot,
-        rows: this._data,
-        columnsKey: 'memberReport',
-        emptyText: '尚無資料'
-      });
+      renderTable({ container: listRoot, rows: this._data, columnsKey: 'memberReport', emptyText: '尚無資料' });
     }
   },
 
@@ -180,6 +141,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/member-report.js
-V: 1792900740
-W: ai-system-20261024-012#65
+V: 1792900870
+W: ai-system-20261024-012#78
 ═══ EOF ═══ */
