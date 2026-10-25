@@ -1,10 +1,11 @@
 // ============================================
-// main.js — 系統啟動入口（V2 重構版 - 修正版）
+// main.js — 系統啟動入口（V2 重構版 - 嚴格驗證）
+// 位置：engine/main.js
 // ============================================
 
 import { auth } from '../config/firebase.js';
 import { AppState } from '../config/state.js';
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { initAppConfig, watchConfigChanges } from '../config/app-config.js';
 import { initEntityRegistry } from '../config/entity-registry.js';
 import { isSuperAdmin } from '../domain/auth.js';
@@ -22,14 +23,20 @@ if ('serviceWorker' in navigator) {
 async function bootstrap() {
   AppState.init();
 
+  // 初始化路由，但傳入 false 不立刻執行
+  initRouter(false);
+
   onAuthStateChanged(auth, async (user) => {
     const loadingEl = document.getElementById('app-loading');
+    const root = document.getElementById('app-root');
     
     if (user) {
-      // === 已登入 ===
+      // === 已登入（確認身分） ===
       AppState.setUser(user);
       const superAdmin = isSuperAdmin(user);
       AppState.setSuperAdmin(superAdmin);
+
+      let hasFamily = false;
 
       if (!superAdmin) {
         try {
@@ -42,18 +49,27 @@ async function bootstrap() {
           
           if (res.ok) {
             const data = await res.json();
-            AppState.setFamily(data.familyId, data.familyName || '我的家庭');
-            AppState.setMemberAccount(data.memberAccount);
-          } else {
-            showToast('無法載入家庭資訊，請聯繫管理員', 'error');
+            if (data.familyId) {
+              AppState.setFamily(data.familyId, data.familyName || '我的家庭');
+              AppState.setMemberAccount(data.memberAccount);
+              hasFamily = true;
+            }
           }
         } catch (err) {
           console.error('[main] 取得家庭資訊失敗：', err);
-          showToast('網路異常，無法載入家庭資訊', 'error');
+        }
+
+        // 關鍵：如果一般成員查無家庭，強制登出！
+        if (!hasFamily) {
+          showToast('此帳號尚未建立家庭，請聯繫管理員', 'error', 5000);
+          await signOut(auth);
+          return; // 這裡 return 後會再次觸發 onAuthStateChanged，進入未登入區塊
         }
       } else {
+        // 超級管理員不需要家庭
         AppState.setRole(ROLES.SUPERADMIN);
         AppState.setDisplayName('超級管理員');
+        hasFamily = true;
       }
 
       if (AppState.getFamilyId()) {
@@ -62,19 +78,16 @@ async function bootstrap() {
         initEntityRegistry();
       }
 
-      // 確保 DOM 存在，並渲染主骨架
-      const root = document.getElementById('app-root');
-      if (root && root.style.display === 'none') {
-        initLayout('app-root');
+      // 渲染主骨架
+      if (root) {
+        root.innerHTML = ''; // 清空
+        root.style.display = 'block';
       }
+      initLayout('app-root');
       updateNavbar();
       
-      // 顯示選單與 Navbar
-      document.querySelector('.sidebar')?.style.setProperty('display', 'flex');
-      document.querySelector('.navbar')?.style.setProperty('display', 'flex');
-
       // 啟動路由
-      initRouter();
+      initRouter(true);
       if (window.location.hash === `#${ROUTES.LOGIN}` || !window.location.hash) {
         window.location.hash = ROUTES.DASHBOARD;
       }
@@ -83,26 +96,15 @@ async function bootstrap() {
       // === 未登入 ===
       AppState.destroy();
       
-      // 確保 DOM 存在，但不渲染主骨架的選單
-      const root = document.getElementById('app-root');
-      if (root && root.style.display === 'none') {
+      // 清空畫面，確保沒有選單
+      if (root) {
+        root.innerHTML = '';
         root.style.display = 'block';
-        // 不呼叫 initLayout，避免渲染側邊欄
-        // 改為直接放入 app-content 容器
-        root.innerHTML = `
-          <div class="main-area" style="width:100%;">
-            <main class="content" id="app-content" style="padding:0;"></main>
-          </div>
-        `;
       }
-
-      // 隱藏選單與 Navbar (如果存在的話)
-      document.querySelector('.sidebar')?.style.setProperty('display', 'none');
-      document.querySelector('.navbar')?.style.setProperty('display', 'none');
-
-      // 強制跳轉到登入頁
+      
+      // 啟動路由並強制進入登入頁
+      initRouter(true);
       window.location.hash = ROUTES.LOGIN;
-      initRouter();
     }
 
     if (loadingEl) loadingEl.style.display = 'none';
@@ -116,6 +118,6 @@ bootstrap().catch(err => {
 
 /* ═══ EOF ═══
 F: engine/main.js
-V: 1792900640
-W: ai-system-20261024-012#59
+V: 1792900650
+W: ai-system-20261024-012#60
 ═══ EOF ═══ */
