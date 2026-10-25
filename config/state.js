@@ -14,6 +14,7 @@ export const AppState = {
   currentFamilyId: '',
   currentFamilyName: '',
   memberAccount: null,
+  currentMemberId: '', // 🆕 補齊 V1 狀態
   
   role: '',
   canInput: false,
@@ -59,6 +60,7 @@ export const AppState = {
     this.currentFamilyId = '';
     this.currentFamilyName = '';
     this.memberAccount = null;
+    this.currentMemberId = ''; // 🆕 重置
     this.role = '';
     this.canInput = false;
     this.displayName = '';
@@ -134,15 +136,31 @@ export const AppState = {
       this.role = account.role || this.role;
       this.canInput = account.canInput !== false;
       this.displayName = account.displayName || this.displayName;
+      if (account.memberId) {
+        this.currentMemberId = account.memberId;
+      }
     } else {
       this.role = '';
       this.canInput = false;
       this.displayName = '';
+      this.currentMemberId = '';
     }
     this.emit('member-account-change', this.memberAccount);
   },
 
   getMemberAccount() { return this.memberAccount; },
+
+  /* 🆕 補齊 Member ID 相關 API */
+  getCurrentMemberId() {
+    if (this.currentMemberId) return this.currentMemberId;
+    if (this.memberAccount && this.memberAccount.memberId) return this.memberAccount.memberId;
+    return '';
+  },
+
+  setCurrentMemberId(memberId) {
+    this.currentMemberId = memberId || '';
+    this.emit('current-member-change', this.currentMemberId);
+  },
 
   /* ============================================
      家庭資訊
@@ -220,6 +238,6 @@ export const AppState = {
 
 /* ═══ EOF ═══
 F: config/state.js
-V: 1792900180
-W: ai-system-20261024-012#13
-═══ EOF ═══ */
+V: 1792901760
+W: webapp-20261025-001#26
+═══ */
