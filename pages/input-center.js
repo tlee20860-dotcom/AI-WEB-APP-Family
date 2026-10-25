@@ -1,15 +1,14 @@
 // ============================================
 // input-center.js — 綜合輸入中心（V2 重構版）
 // 位置：pages/input-center.js
-// 說明：提供快速新增支出、家用轉入、個人收入，並顯示最近支出。
 // ============================================
 
 import { AppState } from '../config/state.js';
 import { listenAllExpenses } from '../db/index.js';
 import { saveIncome, savePersonalIncome, addExpense, removeExpense } from '../db/write.js';
 import { getList as getMembersList } from '../config/entity-registry.js';
-import { renderTable } from '../ui/table.js';
-import { renderYearMonth } from '../ui/controls.js';
+import { renderTable, renderCards } from '../ui/table.js';
+import { renderViewToggle, renderYearMonth } from '../ui/controls.js';
 import { openModal, closeModal, openConfirm } from '../ui/modal.js';
 import { createForm } from '../ui/form.js';
 import { showToast } from '../ui/toast.js';
@@ -41,8 +40,9 @@ export default {
         </button>
       </div>
 
-      <div style="margin-bottom:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
         <div id="ic-controls-period"></div>
+        <div id="ic-view-toggle"></div>
       </div>
 
       <div>
@@ -56,15 +56,19 @@ export default {
       this._renderList();
     });
 
+    // 渲染檢視切換 (表格 / 卡片)
+    renderViewToggle('ic-view-toggle', () => {
+      this._renderList();
+    });
+
     // 綁定按鈕
     document.getElementById('btn-add-expense')?.addEventListener('click', () => this._openExpenseModal());
     document.getElementById('btn-add-contribution')?.addEventListener('click', () => this._openIncomeModal('contribution'));
     document.getElementById('btn-add-income')?.addEventListener('click', () => this._openIncomeModal('personal'));
 
-    // 監聽支出資料 (只抓今年的，避免資料過大)
+    // 監聽支出資料
     const { year } = AppState.getYearMonth();
     this._unsubExpenses = listenAllExpenses((list) => {
-      // 過濾出當前年份的資料
       this._expenses = list.filter(e => e.year === String(year));
       this._renderList();
     });
@@ -82,7 +86,6 @@ export default {
       displayData = displayData.filter(e => e.month === mm);
     }
 
-    // 依據時間倒序
     displayData.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
     if (displayData.length === 0) {
@@ -99,12 +102,24 @@ export default {
       </button>
     `;
 
-    renderTable({
-      container: listRoot,
-      rows: displayData,
-      columnsKey: 'recentExpense',
-      renderActions
-    });
+    // 根據全域狀態決定渲染模式
+    const currentView = AppState.getCurrentView() || 'table';
+
+    if (currentView === 'card') {
+      renderCards({
+        container: listRoot,
+        rows: displayData,
+        columnsKey: 'recentExpense',
+        renderActions
+      });
+    } else {
+      renderTable({
+        container: listRoot,
+        rows: displayData,
+        columnsKey: 'recentExpense',
+        renderActions
+      });
+    }
 
     listRoot.addEventListener('click', async (e) => {
       const btn = e.target.closest('button[data-action]');
@@ -244,6 +259,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/input-center.js
-V: 1792900640
-W: ai-system-20261024-012#59
+V: 1792900700
+W: ai-system-20261024-012#61
 ═══ EOF ═══ */
