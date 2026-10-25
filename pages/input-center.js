@@ -90,13 +90,23 @@ export default {
       this._renderCurrentTab();
     });
 
-    // 6. 綁定操作按鈕
-    document.getElementById('btn-add-expense')?.addEventListener('click', () => {
-      openExpenseModal({ onSuccess: () => this._renderExpenseTab() });
-    });
-    
-    document.getElementById('btn-add-contribution')?.addEventListener('click', () => this._openIncomeModal('contribution'));
-    document.getElementById('btn-add-income')?.addEventListener('click', () => this._openIncomeModal('personal'));
+    // 6. 綁定操作按鈕（使用 onclick 防止多次渲染時事件累積）
+    const btnExpense = document.getElementById('btn-add-expense');
+    if (btnExpense) {
+      btnExpense.onclick = () => {
+        openExpenseModal({ onSuccess: () => this._renderExpenseTab() });
+      };
+    }
+
+    const btnContrib = document.getElementById('btn-add-contribution');
+    if (btnContrib) {
+      btnContrib.onclick = () => this._openIncomeModal('contribution');
+    }
+
+    const btnIncome = document.getElementById('btn-add-income');
+    if (btnIncome) {
+      btnIncome.onclick = () => this._openIncomeModal('personal');
+    }
 
     // 7. 載入資料
     const { year } = AppState.getYearMonth();
@@ -301,6 +311,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/input-center.js
-V: 1792901520
-W: webapp-20261025-001#15
+V: 1792901720
+W: webapp-20261025-001#22
 ═══ */
