@@ -57,9 +57,9 @@ export function renderTable(options) {
     </tbody>
   `;
 
-  // 加上 min-width 確保表格不會被過度擠壓
+  // 加上 min-width 確保表格不會被過度擠壓，並限制外層寬度防撐破
   root.innerHTML = `
-    <div class="glass-card" style="padding:0; overflow:hidden;">
+    <div class="glass-card" style="padding:0; overflow:hidden; width:100%; max-width:100%;">
       <div class="data-table-scroll-wrapper" style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
         <table class="data-table" style="width:100%; border-collapse:collapse; min-width:600px;">
           ${theadHtml}
@@ -117,7 +117,7 @@ export function renderCards(options) {
       : '';
 
     return `
-      <div class="glass-card" data-index="${index}" style="padding:16px; margin-bottom:12px; ${onRowClick ? 'cursor:pointer;' : ''}">
+      <div class="glass-card" data-index="${index}" style="padding:16px; margin-bottom:12px; width:100%; max-width:100%; ${onRowClick ? 'cursor:pointer;' : ''}">
         <div style="font-size:16px; font-weight:700; color:var(--primary); margin-bottom:12px; word-break:break-word;">${primaryContent}</div>
         <div>${fieldsHtml}</div>
         ${actionsHtml}
@@ -125,7 +125,7 @@ export function renderCards(options) {
     `;
   }).join('');
 
-  root.innerHTML = `<div class="mobile-card-list">${cardsHtml}</div>`;
+  root.innerHTML = `<div class="mobile-card-list" style="width:100%; max-width:100%;">${cardsHtml}</div>`;
 
   _bindRowClick(root, onRowClick, rows);
 }
@@ -153,6 +153,6 @@ function _bindRowClick(root, onRowClick, rows) {
 
 /* ═══ EOF ═══
 F: ui/table.js
-V: 1792900820
-W: ai-system-20261024-012#73
-═══ EOF ═══ */
+V: 1792901280
+W: webapp-20261025-001#9
+═══ */
