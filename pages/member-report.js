@@ -7,8 +7,8 @@
 import { AppState } from '../config/state.js';
 import { api } from '../domain/api-client.js';
 import { getMembersOnce } from '../db/index.js';
-import { renderTable } from '../ui/table.js';
-import { renderYearMonth } from '../ui/controls.js';
+import { renderTable, renderCards } from '../ui/table.js';
+import { renderViewToggle, renderYearMonth } from '../ui/controls.js';
 import { showToast } from '../ui/toast.js';
 import { formatHKD, esc } from '../ui/format.js';
 import { RESERVED_IDS } from '../config/constants.js';
@@ -25,8 +25,9 @@ export default {
         <h1 style="font-size:24px; font-weight:700; color:var(--primary);">成員收支明細</h1>
       </div>
 
-      <div style="margin-bottom:20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
         <div id="mr-controls-period"></div>
+        <div id="mr-view-toggle"></div>
       </div>
 
       <div id="mr-stats" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px;"></div>
@@ -39,17 +40,20 @@ export default {
       this._loadData();
     });
 
+    // 渲染檢視切換
+    renderViewToggle('mr-view-toggle', () => {
+      this._renderList();
+    });
+
     await this._loadData();
   },
 
   async _loadData() {
     const statsRoot = document.getElementById('mr-stats');
-    const listRoot = document.getElementById('mr-list-container');
-    if (!statsRoot || !listRoot) return;
+    if (!statsRoot) return;
 
     const { year, month } = AppState.getYearMonth();
     statsRoot.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted);">載入資料中…</div>';
-    listRoot.innerHTML = '';
 
     try {
       // 取得當月（或全年）的 summary
@@ -71,8 +75,6 @@ export default {
         });
 
         // 取得該成員的收入與個人收入
-        // 在 summary 中，totalIncome 與 personalIncomeBreakdown 是全域的
-        // 若要精確到成員，需從 summary 的 income 或 personalIncome 提取
         const income = Number(s.incomeBreakdown?.[m.id]) || 0;
         const personalIncome = Number(s.personalIncomeBreakdown?.[m.id]) || 0;
         
@@ -136,18 +138,7 @@ export default {
         </div>
       `;
 
-      // 渲染表格
-      if (this._data.length === 0) {
-        listRoot.innerHTML = '<div class="glass-card" style="text-align:center; padding:40px; color:var(--text-muted);">尚無資料</div>';
-        return;
-      }
-
-      renderTable({
-        container: listRoot,
-        rows: this._data,
-        columnsKey: 'memberReport',
-        emptyText: '尚無資料'
-      });
+      this._renderList();
 
     } catch (err) {
       console.error('[member-report] 載入失敗：', err);
@@ -156,11 +147,39 @@ export default {
     }
   },
 
+  _renderList() {
+    const listRoot = document.getElementById('mr-list-container');
+    if (!listRoot || !this._data) return;
+
+    if (this._data.length === 0) {
+      listRoot.innerHTML = '<div class="glass-card" style="text-align:center; padding:40px; color:var(--text-muted);">尚無資料</div>';
+      return;
+    }
+
+    const currentView = AppState.getCurrentView() || 'table';
+
+    if (currentView === 'card') {
+      renderCards({
+        container: listRoot,
+        rows: this._data,
+        columnsKey: 'memberReport',
+        emptyText: '尚無資料'
+      });
+    } else {
+      renderTable({
+        container: listRoot,
+        rows: this._data,
+        columnsKey: 'memberReport',
+        emptyText: '尚無資料'
+      });
+    }
+  },
+
   destroy() {}
 };
 
 /* ═══ EOF ═══
 F: pages/member-report.js
-V: 1792900580
-W: ai-system-20261024-012#53
+V: 1792900740
+W: ai-system-20261024-012#65
 ═══ EOF ═══ */
