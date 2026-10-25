@@ -27,8 +27,8 @@ export function renderTable(options) {
   const theadHtml = `
     <thead>
       <tr>
-        ${columns.map((c) => `<th class="${c.type === 'number' ? 'num' : ''}">${esc(c.label)}</th>`).join('')}
-        ${hasActions ? '<th style="width:150px; text-align:right;">操作</th>' : ''}
+        ${columns.map((c) => `<th class="${c.type === 'number' ? 'num' : ''}" style="white-space:nowrap;">${esc(c.label)}</th>`).join('')}
+        ${hasActions ? '<th style="width:150px; text-align:right; white-space:nowrap;">操作</th>' : ''}
       </tr>
     </thead>
   `;
@@ -39,8 +39,15 @@ export function renderTable(options) {
         const tds = columns.map((col) => {
           const val = row[col.id];
           const resolver = resolvers[col.id];
-          const content = resolver ? resolver(val, row) : esc(val);
-          return `<td class="${col.type === 'number' ? 'num' : ''}">${content}</td>`;
+          // 如果沒有 resolver，就防呆轉字串
+          let content = resolver ? resolver(val, row) : esc(val);
+          
+          // 如果是空值，給個破折號
+          if (content === undefined || content === null || content === '') content = '<span class="text-muted">—</span>';
+
+          // 針對數字欄位，避免「今年」這種標籤導致換行
+          const isNum = col.type === 'number';
+          return `<td class="${isNum ? 'num' : ''}" style="white-space:nowrap;">${content}</td>`;
         }).join('');
 
         const actionsHtml = hasActions ? `<td style="text-align:right; white-space:nowrap;">${renderActions(row)}</td>` : '';
@@ -50,10 +57,11 @@ export function renderTable(options) {
     </tbody>
   `;
 
+  // 加上 min-width 確保表格不會被過度擠壓
   root.innerHTML = `
     <div class="glass-card" style="padding:0; overflow:hidden;">
-      <div class="data-table-scroll-wrapper" style="overflow-x:auto;">
-        <table class="data-table" style="width:100%; border-collapse:collapse;">
+      <div class="data-table-scroll-wrapper" style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
+        <table class="data-table" style="width:100%; border-collapse:collapse; min-width:600px;">
           ${theadHtml}
           ${tbodyHtml}
         </table>
@@ -93,7 +101,9 @@ export function renderCards(options) {
     const fieldsHtml = restCols.map((col) => {
       const val = row[col.id];
       const resolver = resolvers[col.id];
-      const content = resolver ? resolver(val, row) : esc(val);
+      let content = resolver ? resolver(val, row) : esc(val);
+      if (content === undefined || content === null || content === '') content = '<span class="text-muted">—</span>';
+      
       return `
         <div style="display:flex; justify-content:space-between; margin-bottom:6px; font-size:13px;">
           <span style="color:var(--text-muted);">${esc(col.label)}</span>
@@ -143,6 +153,6 @@ function _bindRowClick(root, onRowClick, rows) {
 
 /* ═══ EOF ═══
 F: ui/table.js
-V: 1792900700
-W: ai-system-20261024-012#61
+V: 1792900820
+W: ai-system-20261024-012#73
 ═══ EOF ═══ */
