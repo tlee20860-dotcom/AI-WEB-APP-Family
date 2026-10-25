@@ -9,12 +9,12 @@ import { api } from '../domain/api-client.js';
 import { computeEnrichedPolicies, getPolicyHolderId } from '../domain/insurance.js';
 import { renderTable, renderCards } from '../ui/table.js';
 import { renderViewToggle, renderYearMonth } from '../ui/controls.js';
-// 修正這裡的引入路徑
 import { renderPageLayout } from '../ui/layout.js'; 
 import { openModal, closeModal, openConfirm } from '../ui/modal.js';
 import { createForm } from '../ui/form.js';
 import { showToast } from '../ui/toast.js';
 import { formatHKD, esc } from '../ui/format.js';
+import { getMembersOnce } from '../db/index.js';
 
 export default {
   _unsubPolicies: null,
@@ -33,8 +33,8 @@ export default {
       <div id="insurance-controls-period"></div>
     `;
 
-    // 2. 呼叫統一引擎繪製骨架 (統計卡先給空陣列，載入後補上)
-    const listRoot = renderPageLayout({
+    // 2. 呼叫統一引擎繪製骨架
+    renderPageLayout({
       title: '保險清單表',
       stats: [], 
       controls: controlsHtml,
@@ -83,7 +83,7 @@ export default {
     const totalAnnual = enriched.reduce((s, p) => s + (p._currentAnnualPremium || 0), 0);
     const totalPaid = enriched.reduce((s, p) => s + (p._paidTotal || 0), 0);
 
-    // 更新統計卡 (直接在 DOM 中找，透過統一的排版引擎繪製)
+    // 更新統計卡 (透過 layout.js 繪製的結構，尋找 grid 容器)
     const statsContainer = document.querySelector('#app-content > div[style*="grid"]');
     if (statsContainer) {
       statsContainer.innerHTML = [
@@ -131,12 +131,94 @@ export default {
     });
   },
 
-  _openPolicyModal(policy = null) {
-    // 略：為節省篇幅，與前版相同
+  async _openPolicyModal(policy = null) {
+    const isEdit = !!policy;
+    const modalId = 'policy-modal';
+    document.getElementById(modalId)?.remove();
+
+    // 取得成員列表
+    const members = await getMembersOnce();
+    const memberOpts = members.map(m => ({ value: m.id, label: m.name }));
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = modalId;
+    overlay.innerHTML = `
+      <div class="modal" style="max-width:600px; background:var(--bg-surface); max-height:90vh; overflow-y:auto;">
+        <h2 style="font-size:18px; font-weight:700; margin-bottom:16px; color:var(--text-primary);">${isEdit ? '編輯' : '新增'}保單</h2>
+        <div id="policy-form-root"></div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    openModal(modalId);
+
+    const fields = [
+      { id: 'name', label: '保單名稱', type: 'text', required: true },
+      { id: 'company', label: '保險公司', type: 'text' },
+      { id: 'type', label: '保單類型', type: 'select', required: true, options: [
+        { value: 'normal', label: '普通保險' },
+        { value: 'fund_insurance', label: '基金保險' }
+      ]},
+      { id: 'memberId', label: '受保人', type: 'select', required: true, options: memberOpts },
+      { id: 'policyHolderId', label: '持有人 (留空同受保人)', type: 'select', options: memberOpts, includeEmpty: true },
+      { id: 'firstStartYear', label: '開始年份', type: 'number', required: true },
+      { id: 'firstStartMonth', label: '開始月份', type: 'number', required: true, min: 1, max: 12 },
+      { id: 'totalPolicyYears', label: '總供款年期', type: 'number', required: true },
+      { id: 'annualPremium', label: '年繳保費 (普通保險)', type: 'number' },
+      { id: 'monthlyPremium', label: '月繳金額 (基金保險)', type: 'number' },
+      { id: 'paymentMode', label: '付款模式', type: 'select', required: true, options: [
+        { value: 'direct', label: '直接付款' },
+        { value: 'advance', label: '代墊模式' }
+      ]}
+    ];
+
+    createForm({
+      container: 'policy-form-root',
+      fields,
+      initialData: isEdit ? { ...policy } : { type: 'normal', firstStartYear: new Date().getFullYear(), firstStartMonth: 1, paymentMode: 'direct' },
+      submitText: isEdit ? '儲存' : '新增',
+      onCancel: () => {
+        closeModal(modalId);
+        overlay.remove();
+      },
+      onSubmit: async (data) => {
+        try {
+          const payload = {
+            ...data,
+            firstStartYear: Number(data.firstStartYear),
+            firstStartMonth: String(data.firstStartMonth).padStart(2, '0'),
+            totalPolicyYears: Number(data.totalPolicyYears),
+            annualPremium: Number(data.annualPremium) || 0,
+            monthlyPremium: Number(data.monthlyPremium) || 0,
+            totalPolicyPeriods: Number(data.totalPolicyYears) * 12,
+            policyHolderId: data.policyHolderId || data.memberId
+          };
+
+          if (isEdit) {
+            await api.entityCreate({ action: 'update', entityType: 'policy', id: policy.id, name: data.name, extra: payload });
+            showToast('✅ 保單已更新', 'success');
+          } else {
+            await api.entityCreate({ action: 'create', entityType: 'policy', code: 'POL-TEMP', name: data.name, extra: payload });
+            showToast('✅ 保單已新增', 'success');
+          }
+          closeModal(modalId);
+          overlay.remove();
+        } catch (err) {
+          showToast('操作失敗：' + err.message, 'error');
+        }
+      }
+    });
   },
 
   async _deletePolicy(policy) {
-    // 略：為節省篇幅，與前版相同
+    const ok = await openConfirm(`⚠️ 確定要刪除保單「${policy.name}」嗎？`, { title: '刪除保單', okText: '刪除', okClass: 'btn-danger' });
+    if (!ok) return;
+    try {
+      await api.entityCreate({ action: 'delete', entityType: 'policy', id: policy.id });
+      showToast('✅ 已刪除保單', 'success');
+    } catch (err) {
+      showToast('刪除失敗：' + err.message, 'error');
+    }
   },
 
   destroy() {
@@ -146,6 +228,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/insurance.js
-V: 1792900920
-W: ai-system-20261024-012#83
+V: 1792900930
+W: ai-system-20261024-012#84
 ═══ EOF ═══ */
