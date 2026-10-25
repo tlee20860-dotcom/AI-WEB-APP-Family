@@ -1,6 +1,7 @@
 // ============================================
 // member-report.js — 成員收支明細
 // 位置：pages/member-report.js
+// 說明：顯示各成員的收支與保險平攤狀況。
 // ============================================
 
 import { AppState } from '../config/state.js';
@@ -8,31 +9,34 @@ import { api } from '../domain/api-client.js';
 import { getMembersOnce } from '../db/index.js';
 import { renderTable, renderCards } from '../ui/table.js';
 import { renderViewToggle, renderYearMonth } from '../ui/controls.js';
+import { renderPageLayout } from '../ui/layout.js';
 import { showToast } from '../ui/toast.js';
 import { formatHKD, esc } from '../ui/format.js';
 import { RESERVED_IDS } from '../config/constants.js';
 
 export default {
   _data: [],
+  _unsubYM: null,
 
   async render() {
-    const content = document.getElementById('app-content');
-    if (!content) return;
-
-    content.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-        <h1 style="font-size:24px; font-weight:700; color:var(--primary); margin:0;">成員收支明細</h1>
-      </div>
-
-      <div id="mr-stats" style="display:grid; grid-template-columns:repeat(4, 1fr); gap:16px; margin-bottom:24px;"></div>
-
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+    // 1. 準備控制列 HTML
+    const controlsHtml = `
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
         <div id="mr-view-toggle"></div>
-        <div id="mr-controls-period"></div>
       </div>
-      
-      <div id="mr-list-container"></div>
+      <div id="mr-controls-period"></div>
     `;
+
+    // 2. 呼叫統一引擎繪製骨架
+    renderPageLayout({
+      title: '成員收支明細',
+      stats: [], 
+      controls: controlsHtml,
+      listContainerId: 'mr-list-container'
+    });
+
+    // 3. 綁定控制列事件
+    this._unsubYM = AppState.on('ym-change', () => this._loadData());
 
     renderYearMonth('mr-controls-period', { includeAllMonth: true }, () => {
       this._loadData();
@@ -42,22 +46,30 @@ export default {
       this._renderList();
     });
 
+    // 4. 載入資料
     await this._loadData();
   },
 
   async _loadData() {
-    const statsRoot = document.getElementById('mr-stats');
-    if (!statsRoot) return;
+    const listRoot = document.getElementById('mr-list-container');
+    if (!listRoot) return;
+
+    listRoot.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-muted);">載入資料中…</div>';
 
     const { year, month } = AppState.getYearMonth();
-    statsRoot.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted); grid-column:span 4;">載入資料中…</div>';
 
     try {
+      // 取得當月（或全年）的 summary
       const s = await api.summary(year, month);
+      
+      // 取得成員列表
       const members = await getMembersOnce();
 
+      // 處理每位成員的資料
       const rows = members.map(m => {
         const mData = s.perMember[m.id] || { sum: 0, items: [] };
+        
+        // 計算該成員的保險平攤與一般支出
         let insurance = 0;
         let expense = 0;
         mData.items.forEach(item => {
@@ -65,13 +77,24 @@ export default {
           else expense += item.amount;
         });
 
+        // 取得該成員的收入與個人收入
         const income = Number(s.incomeBreakdown?.[m.id]) || 0;
         const personalIncome = Number(s.personalIncomeBreakdown?.[m.id]) || 0;
+        
         const net = income + personalIncome - expense - insurance;
 
-        return { id: m.id, name: m.name, income, personalIncome, expense, insurance, net };
+        return {
+          id: m.id,
+          name: m.name,
+          income,
+          personalIncome,
+          expense,
+          insurance,
+          net
+        };
       });
 
+      // 加入「家庭共用」 (如果有支出)
       const sharedData = s.perMember[RESERVED_IDS.SHARED_MEMBER] || { sum: 0, items: [] };
       let sharedIns = 0, sharedExp = 0;
       sharedData.items.forEach(item => {
@@ -80,41 +103,64 @@ export default {
       });
       
       if (sharedExp > 0 || sharedIns > 0) {
-        rows.push({ id: RESERVED_IDS.SHARED_MEMBER, name: '🏠 家庭共用', income: 0, personalIncome: 0, expense: sharedExp, insurance: sharedIns, net: -(sharedExp + sharedIns) });
+        rows.push({
+          id: RESERVED_IDS.SHARED_MEMBER,
+          name: '🏠 家庭共用',
+          income: 0,
+          personalIncome: 0,
+          expense: sharedExp,
+          insurance: sharedIns,
+          net: -(sharedExp + sharedIns)
+        });
       }
 
       this._data = rows;
 
-      const tIncome = rows.reduce((sum, r) => sum + r.income, 0);
-      const tPersonal = rows.reduce((sum, r) => sum + r.personalIncome, 0);
-      const tExpense = rows.reduce((sum, r) => sum + r.expense, 0);
-      const tIns = rows.reduce((sum, r) => sum + r.insurance, 0);
+      // 更新統計卡
+      const statsContainer = document.getElementById('page-stats-container');
+      if (statsContainer) {
+        statsContainer.style.display = 'grid';
+        statsContainer.style.gridTemplateColumns = window.innerWidth < 768 ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)';
+        
+        const tIncome = rows.reduce((sum, r) => sum + r.income, 0);
+        const tPersonal = rows.reduce((sum, r) => sum + r.personalIncome, 0);
+        const tExpense = rows.reduce((sum, r) => sum + r.expense, 0);
+        const tIns = rows.reduce((sum, r) => sum + r.insurance, 0);
 
-      statsRoot.innerHTML = `
-        <div class="glass-card" style="padding:16px;">
-          <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">家用轉入</div>
-          <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-success); white-space:nowrap;">${formatHKD(tIncome)}</div>
-        </div>
-        <div class="glass-card" style="padding:16px;">
-          <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">個人收入</div>
-          <div class="mono" style="font-size:20px; font-weight:700; color:var(--primary); white-space:nowrap;">${formatHKD(tPersonal)}</div>
-        </div>
-        <div class="glass-card" style="padding:16px;">
-          <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">總支出</div>
-          <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-danger); white-space:nowrap;">${formatHKD(tExpense)}</div>
-        </div>
-        <div class="glass-card" style="padding:16px;">
-          <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">保險平攤</div>
-          <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-warm); white-space:nowrap;">${formatHKD(tIns)}</div>
-        </div>
-      `;
+        statsContainer.innerHTML = `
+          <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
+            <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+              <i data-lucide="trending-up" style="width:14px;height:14px;"></i> 家用轉入
+            </div>
+            <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-success); white-space:nowrap;">${formatHKD(tIncome)}</div>
+          </div>
+          <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
+            <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+              <i data-lucide="wallet" style="width:14px;height:14px;"></i> 個人收入
+            </div>
+            <div class="mono" style="font-size:20px; font-weight:700; color:var(--primary); white-space:nowrap;">${formatHKD(tPersonal)}</div>
+          </div>
+          <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
+            <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+              <i data-lucide="trending-down" style="width:14px;height:14px;"></i> 總支出
+            </div>
+            <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-danger); white-space:nowrap;">${formatHKD(tExpense)}</div>
+          </div>
+          <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
+            <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+              <i data-lucide="shield" style="width:14px;height:14px;"></i> 保險平攤
+            </div>
+            <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-warm); white-space:nowrap;">${formatHKD(tIns)}</div>
+          </div>
+        `;
+      }
 
       this._renderList();
 
     } catch (err) {
       console.error('[member-report] 載入失敗：', err);
       showToast('載入成員報表失敗', 'error');
-      statsRoot.innerHTML = '<div style="color:var(--accent-danger); padding:20px; grid-column:span 4;">載入失敗</div>';
+      listRoot.innerHTML = '<div style="color:var(--accent-danger); padding:20px; text-align:center;">載入失敗</div>';
     }
   },
 
@@ -136,11 +182,13 @@ export default {
     }
   },
 
-  destroy() {}
+  destroy() {
+    if (this._unsubYM) { try { this._unsubYM(); } catch (e) {} this._unsubYM = null; }
+  }
 };
 
 /* ═══ EOF ═══
 F: pages/member-report.js
-V: 1792900870
-W: ai-system-20261024-012#78
+V: 1792901060
+W: ai-system-20261024-012#8
 ═══ EOF ═══ */
