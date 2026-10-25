@@ -17,7 +17,7 @@ const ROUTES_MAP = {
   [ROUTES.SETTLEMENTS]:  { module: () => import('../pages/settlements.js'),  title: '結算清單', auth: true, family: true },
   [ROUTES.ANNUAL_REPORT]:{ module: () => import('../pages/annual-report.js'),title: '年度報表', auth: true, family: true },
   [ROUTES.MEMBER_REPORT]:{ module: () => import('../pages/member-report.js'),title: '成員收支明細', auth: true, family: true },
-  [ROUTES.SETTINGS]:     { module: () => import('../pages/settings.js'),     title: '系統設定', auth: true, family: false }, // 系統設定不需家庭
+  [ROUTES.SETTINGS]:     { module: () => import('../pages/settings.js'),     title: '系統設定', auth: true, family: false },
   [ROUTES.ADMIN]:        { module: () => import('../admin/admin.js'),        title: '平台管理', auth: true, family: false, role: 'superadmin' },
   [ROUTES.LOGIN]:        { module: () => import('../pages/login.js'),        title: '登入', auth: false, family: false },
 };
@@ -51,13 +51,12 @@ async function _handleRoute() {
     window.location.hash = ROUTES.LOGIN;
     return;
   }
-  // 檢查家庭綁定
+  
   if (routeConfig.family && !AppState.getFamilyId()) {
-    // 如果沒有家庭資訊，強制踢回登入或首頁
     window.location.hash = ROUTES.LOGIN;
     return;
   }
-  // 檢查角色
+  
   if (routeConfig.role && AppState.getRole() !== routeConfig.role) {
     window.location.hash = ROUTES.DASHBOARD;
     return;
@@ -71,10 +70,7 @@ async function _handleRoute() {
     _currentPage = null;
   }
 
-  // 為了避免登入頁被加載到主佈局中，登入頁單獨處理
-  if (path === ROUTES.LOGIN) {
-    // 這裡不需要 setContent，因為 login.js 自己會控制
-  } else {
+  if (path !== ROUTES.LOGIN) {
     setContent('<div style="text-align:center; padding:40px; color:var(--text-muted);">載入中…</div>');
   }
 
@@ -114,6 +110,6 @@ function _render404(path) {
 
 /* ═══ EOF ═══
 F: engine/router.js
-V: 1792900650
-W: ai-system-20261024-012#60
+V: 1792900660
+W: ai-system-20261024-012#61
 ═══ EOF ═══ */
