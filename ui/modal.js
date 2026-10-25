@@ -260,6 +260,6 @@ function _bindEscClose() {
 
 /* ═══ EOF ═══
 F: ui/modal.js
-V: 1792900410
-W: ai-system-20261024-012#36
-═══ EOF ═══ */
+V: 1792901700
+W: webapp-20261025-001#20
+═══ */
