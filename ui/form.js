@@ -6,6 +6,7 @@
 // ============================================
 
 import { esc } from './format.js';
+import { handlePlusClick } from './dropdown-plus.js';
 
 /**
  * 建立並渲染表單
@@ -57,6 +58,9 @@ export function createForm(options) {
 
   let _isSubmitting = false;
 
+  // 綁定「+」按鈕事件
+  _bindPlusEvents(fields, formEl);
+
   // 表單送出
   formEl.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -81,7 +85,6 @@ export function createForm(options) {
         await onSubmit(data);
       } catch (err) {
         console.error('[ui/form] 送出失敗：', err);
-        // 這裡可以選擇是否要顯示全域 Toast，通常呼叫端會處理
       } finally {
         _isSubmitting = false;
         submitBtn.disabled = false;
@@ -111,7 +114,7 @@ export function createForm(options) {
    內部實作：渲染欄位
    ============================================ */
 function _renderField(f, value) {
-  const { id, label, type = 'text', required, placeholder = '', options = [], min, max, step } = f;
+  const { id, label, type = 'text', required, placeholder = '', options = [], min, max, step, plusEntity, onPlusReload } = f;
   const reqMark = required ? '<span style="color:var(--accent-danger); margin-left:4px;">*</span>' : '';
   const valStr = value != null ? String(value) : '';
 
@@ -151,12 +154,59 @@ function _renderField(f, value) {
       inputHtml = `<input class="input" type="text" id="field-${id}" name="${id}" value="${esc(valStr)}" placeholder="${esc(placeholder)}" ${required ? 'required' : ''}>`;
   }
 
+  // 若需要「+」按鈕，包裝成 flex 容器
+  if (plusEntity) {
+    inputHtml = `
+      <div style="display:flex; gap:8px; align-items:center;">
+        <div style="flex:1;">${inputHtml}</div>
+        <button type="button" class="btn btn-ghost" id="plus-btn-${id}" style="padding:0 12px; height:42px; flex-shrink:0;">
+          <i data-lucide="plus" style="width:18px;height:18px;"></i>
+        </button>
+      </div>
+    `;
+  }
+
   return `
     <div class="field" style="display:flex; flex-direction:column; gap:6px; border:1px solid transparent; border-radius:var(--radius-sm);">
       <label for="field-${id}" style="font-size:12px; color:var(--text-secondary); font-weight:500;">${esc(label)}${reqMark}</label>
       ${inputHtml}
     </div>
   `;
+}
+
+/* ============================================
+   內部實作：綁定「+」按鈕事件
+   ============================================ */
+function _bindPlusEvents(fields, formEl) {
+  fields.forEach(f => {
+    if (!f.plusEntity) return;
+    const btn = formEl.querySelector(`#plus-btn-${f.id}`);
+    if (!btn) return;
+
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (btn.disabled) return;
+      btn.disabled = true;
+
+      try {
+        const result = await handlePlusClick(f.plusEntity);
+        if (!result) return;
+
+        // 若有自訂的重載邏輯，優先呼叫
+        if (typeof f.onPlusReload === 'function') {
+          await f.onPlusReload(result, formEl);
+        } else {
+          // 預設：重新讀取該欄位的選項，並選中新增的項目
+          // 注意：這裡需要依賴 entity-registry 重新獲取資料，通常需要一點時間，或者由呼叫端傳入 onPlusReload
+        }
+      } catch (err) {
+        console.error('[ui/form] 快速新增失敗：', err);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
 }
 
 /* ============================================
@@ -213,6 +263,6 @@ function _resolveEl(target) {
 
 /* ═══ EOF ═══
 F: ui/form.js
-V: 1792900460
-W: ai-system-20261024-012#41
-═══ EOF ═══ */
+V: 1792901500
+W: webapp-20261025-001#12
+═══ */
