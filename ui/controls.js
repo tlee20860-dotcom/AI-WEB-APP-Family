@@ -1,8 +1,6 @@
 // ============================================
 // controls.js — 共用控制列與篩選器（V2 重構版）
 // 位置：ui/controls.js
-// 說明：提供統一的「年月切換」、「檢視切換」與「篩選列」渲染。
-//       大幅精簡舊版複雜的 config 陣列設計。
 // ============================================
 
 import { AppState } from '../config/state.js';
@@ -13,12 +11,6 @@ import { esc } from './format.js';
 /* ============================================
    1. 年月選擇器
    ============================================ */
-/**
- * 渲染年月下拉選單
- * @param {string} containerId - 容器 ID
- * @param {Object} options - { includeAllMonth: boolean }
- * @param {Function} onChange - (year, month) => void
- */
 export function renderYearMonth(containerId, options = {}, onChange) {
   const root = document.getElementById(containerId);
   if (!root) return;
@@ -66,36 +58,59 @@ export function renderViewToggle(containerId, onChange) {
   const root = document.getElementById(containerId);
   if (!root) return;
 
+  // 每次渲染都先清空舊的監聽器
+  root.innerHTML = '';
+
   const curView = AppState.getCurrentView() || 'table';
 
+  // 繪製按鈕結構
   root.innerHTML = `
     <div class="flex items-center gap-4" style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:4px;">
-      <button type="button" class="btn" data-view="table" style="padding:6px 10px; border:none; background:${curView === 'table' ? 'var(--primary)' : 'transparent'}; color:${curView === 'table' ? '#fff' : 'var(--text-secondary)'}; border-radius:var(--radius-sm);">
-        <i data-lucide="list" style="width:16px;height:16px;"></i>
+      <button type="button" class="btn" data-view="table" style="padding:6px 12px; border:none; border-radius:var(--radius-sm); transition:all 0.2s;">
+        表格模式
       </button>
-      <button type="button" class="btn" data-view="card" style="padding:6px 10px; border:none; background:${curView === 'card' ? 'var(--primary)' : 'transparent'}; color:${curView === 'card' ? '#fff' : 'var(--text-secondary)'}; border-radius:var(--radius-sm);">
-        <i data-lucide="layout-grid" style="width:16px;height:16px;"></i>
+      <button type="button" class="btn" data-view="card" style="padding:6px 12px; border:none; border-radius:var(--radius-sm); transition:all 0.2s;">
+        卡片模式
       </button>
     </div>
   `;
 
-  if (window.lucide) window.lucide.createIcons();
+  const btnTable = root.querySelector('button[data-view="table"]');
+  const btnCard = root.querySelector('button[data-view="card"]');
 
+  // 更新按鈕樣式的函數
+  const updateBtnStyles = (view) => {
+    if (view === 'table') {
+      btnTable.style.background = 'var(--primary)';
+      btnTable.style.color = '#fff';
+      btnCard.style.background = 'transparent';
+      btnCard.style.color = 'var(--text-secondary)';
+    } else {
+      btnCard.style.background = 'var(--primary)';
+      btnCard.style.color = '#fff';
+      btnTable.style.background = 'transparent';
+      btnTable.style.color = 'var(--text-secondary)';
+    }
+  };
+
+  // 初始化樣式
+  updateBtnStyles(curView);
+
+  // 點擊事件
   root.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-view]');
     if (!btn) return;
     const view = btn.dataset.view;
-    if (view === curView) return;
-
-    AppState.setCurrentView(view);
-    if (typeof onChange === 'function') onChange(view);
     
-    // 更新 UI 狀態
-    root.querySelectorAll('button[data-view]').forEach((b) => {
-      const active = b.dataset.view === view;
-      b.style.background = active ? 'var(--primary)' : 'transparent';
-      b.style.color = active ? '#fff' : 'var(--text-secondary)';
-    });
+    // 如果點擊的是當前已經選中的狀態，就不做任何事
+    if (view === AppState.getCurrentView()) return;
+
+    // 更新 AppState 與按鈕樣式
+    AppState.setCurrentView(view);
+    updateBtnStyles(view);
+
+    // 觸發外部回呼（讓頁面重新渲染列表）
+    if (typeof onChange === 'function') onChange(view);
   });
 }
 
@@ -106,7 +121,6 @@ export function renderFilterBar(containerId, fields, onFilterChange) {
   const root = document.getElementById(containerId);
   if (!root) return;
 
-  // fields 格式: [{ id: 'member', label: '成員', type: 'select', options: [{value, label}] }]
   root.innerHTML = `
     <div class="flex flex-wrap items-center gap-12" style="margin-bottom:16px;">
       ${fields.map((f) => {
@@ -147,7 +161,6 @@ export function renderFilterBar(containerId, fields, onFilterChange) {
   });
   root.addEventListener('input', (e) => {
     if (e.target.closest('input[type="text"]')) {
-      // Debounce 處理
       clearTimeout(root._timer);
       root._timer = setTimeout(handleInput, 300);
     }
@@ -156,6 +169,6 @@ export function renderFilterBar(containerId, fields, onFilterChange) {
 
 /* ═══ EOF ═══
 F: ui/controls.js
-V: 1792900440
-W: ai-system-20261024-012#39
+V: 1792900880
+W: ai-system-20261024-012#79
 ═══ EOF ═══ */
