@@ -92,6 +92,16 @@ export const COLUMNS = {
     { id: 'amount', label: '金額', defaultVisible: true, defaultWidth: 110, type: 'number', sortable: true },
     { id: 'status', label: '狀態', defaultVisible: true, defaultWidth: 120, sortable: true, filterable: true },
   ],
+
+  /* 🆕 成員收支明細 (Member Report) */
+  memberReport: [
+    { id: 'name', label: '成員', defaultVisible: true, defaultWidth: 140, sortable: true },
+    { id: 'income', label: '家用轉入', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
+    { id: 'personalIncome', label: '個人收入', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
+    { id: 'expense', label: '一般支出', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
+    { id: 'insurance', label: '保險平攤', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
+    { id: 'net', label: '淨結餘', defaultVisible: true, defaultWidth: 140, type: 'number', sortable: true },
+  ],
 };
 
 /* ============================================
@@ -192,6 +202,18 @@ export const RESOLVERS = {
     amount: (v) => formatHKD(v),
     status: (v) => `<span class="badge ${statusBadgeClass(v)}">${esc(statusLabel(v))}</span>`,
   },
+
+  /* 🆕 成員收支明細 */
+  memberReport: {
+    name: (v, r) => r.id === RESERVED_IDS.SHARED_MEMBER
+      ? '🏠 家庭共用'
+      : esc(v || '（未知成員）'),
+    income: (v) => `<span class="mono text-emerald">${formatHKD(v)}</span>`,
+    personalIncome: (v) => `<span class="mono text-primary">${formatHKD(v)}</span>`,
+    expense: (v) => `<span class="mono text-red">${formatHKD(v)}</span>`,
+    insurance: (v) => `<span class="mono text-magenta">${formatHKD(v)}</span>`,
+    net: (v) => `<span class="mono ${v >= 0 ? 'text-emerald' : 'text-red'}" style="font-weight:700;">${formatHKD(v)}</span>`,
+  },
 };
 
 /* ============================================
@@ -210,6 +232,6 @@ export function getResolvers(key) {
 
 /* ═══ EOF ═══
 F: config/columns.js
-V: 1792900550
-W: ai-system-20261024-012#50
-═══ EOF ═══ */
+V: 1792901230
+W: webapp-20261025-001#4
+═══ */
