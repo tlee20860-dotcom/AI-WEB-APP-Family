@@ -46,7 +46,7 @@ export default {
 
     // 2. 準備控制列 (Tab + 年月 + 檢視切換)
     const controlsHtml = `
-      <div style="display:flex; align-items:center; gap:8px; overflow-x:auto; padding-bottom:4px; width:100%;">
+      <div id="ic-tabs" style="display:flex; align-items:center; gap:8px; overflow-x:auto; padding-bottom:4px; width:100%;">
         <button type="button" class="btn" data-tab="expense">支出</button>
         <button type="button" class="btn" data-tab="insurance">保險</button>
         <button type="button" class="btn" data-tab="fund">基金</button>
@@ -71,6 +71,7 @@ export default {
     // 4. 初始化 Tab 與按鈕狀態
     this._updateTabStyles();
     
+    // 綁定 Tab 事件
     document.getElementById('ic-tabs')?.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-tab]');
       if (!btn) return;
@@ -105,9 +106,11 @@ export default {
   },
 
   _updateTabStyles() {
-    const controlsRoot = document.querySelector('#app-content > div[style*="flex-wrap"]');
-    if (!controlsRoot) return;
-    controlsRoot.querySelectorAll('button[data-tab]').forEach(btn => {
+    // 直接透過 id 抓取容器，避免脆弱的 DOM 選擇器
+    const tabsRoot = document.getElementById('ic-tabs');
+    if (!tabsRoot) return;
+    
+    tabsRoot.querySelectorAll('button[data-tab]').forEach(btn => {
       const isActive = btn.dataset.tab === this._activeTab;
       btn.className = isActive ? 'btn btn-primary' : 'btn btn-ghost';
     });
@@ -340,6 +343,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/input-center.js
-V: 1792901220
-W: webapp-20261025-001#3
+V: 1792901270
+W: webapp-20261025-001#8
 ═══ */
