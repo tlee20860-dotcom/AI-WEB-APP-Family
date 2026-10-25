@@ -1,5 +1,7 @@
 // ============================================
-// dashboard.js — 總覽儀表板
+// dashboard.js — 總覽儀表板（V2 重構版）
+// 位置：pages/dashboard.js
+// 說明：完全使用「年度總覽」API，確保金額與舊版一致。
 // ============================================
 
 import { AppState } from '../config/state.js';
@@ -23,9 +25,10 @@ export default {
         </a>
       </div>
 
-      <!-- 嚴格控制 2 欄，gap 16px -->
+      <!-- 統計卡容器 -->
       <div id="dashboard-stats" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:16px; margin-bottom:24px;"></div>
       
+      <!-- 年度總覽表格 -->
       <div class="table-container" style="margin-bottom:24px;">
         <div style="padding:16px; border-bottom:1px solid var(--border-color); display:flex; align-items:center; gap:8px;">
           <i data-lucide="calendar" style="width:18px;height:18px;color:var(--primary);"></i>
@@ -35,37 +38,68 @@ export default {
       </div>
     `;
 
-    this._unsubYM = AppState.on('ym-change', () => this._loadData());
+    this._unsubYM = AppState.on('ym-change', () => {
+      this._loadData();
+    });
+
     await this._loadData();
   },
 
   async _loadData() {
-    const { year, month } = AppState.getYearMonth();
+    const { year } = AppState.getYearMonth();
     const statsRoot = document.getElementById('dashboard-stats');
     const tableRoot = document.getElementById('dashboard-annual-table');
     
     if (!statsRoot || !tableRoot) return;
 
-    statsRoot.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted); grid-column:span 2;">載入中…</div>';
-    tableRoot.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted);">載入中…</div>';
+    statsRoot.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted); grid-column:span 2;">載入統計資料…</div>';
+    tableRoot.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted);">載入年度資料…</div>';
 
     try {
       const y = Number(year);
-      const [summaryRes, annualRes] = await Promise.all([
-        api.summary(year, month === 'all' ? '12' : month),
-        api.fetchAnnualSummaryRange(y - 2, y + 2)
-      ]);
-
-      const s = summaryRes;
+      // 直接抓取年度資料 (前後 2 年)
+      const annualRes = await api.fetchAnnualSummaryRange(y - 2, y + 2);
       
-      // 對齊舊版：字體縮小至 20px，內邊距 16px
+      // 找出當年的資料
+      const currentYearData = (annualRes.years || []).find(d => d.year === y) || {
+        totalIncome: 0, totalExpense: 0, netBalance: 0, bankBalance: 0, fundValue: 0, monthly: []
+      };
+
+      // 計算有紀錄的月數
+      const monthCount = (currentYearData.monthly || []).filter(m => m.totalExpense > 0).length;
+
+      // 渲染統計卡 (對齊舊版：內邊距 16px，字體 20px)
       const statsHtml = [
-        { title: '家庭總餘額', val: s.bankBalance + s.fundValue, color: (s.bankBalance + s.fundValue) >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)', icon: 'landmark', hint: `共 ${s.bankCount || 1} 個銀行帳號` },
-        { title: `${year} 家庭收入`, val: s.totalIncome, color: 'var(--accent-success)', icon: 'trending-up', hint: '家用轉入 + 額外收入' },
-        { title: `${year} 年度總支出`, val: s.totalExpense, color: 'var(--accent-danger)', icon: 'trending-down', hint: `${s.monthCount || 0} 個月有紀錄` },
-        { title: `${year} 年度淨餘額`, val: s.netBalance, color: s.netBalance >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)', icon: 'wallet', hint: s.netBalance >= 0 ? '收支平衡' : '支出大於收入' }
+        { 
+          title: '家庭總餘額', 
+          val: (currentYearData.bankBalance || 0) + (currentYearData.fundValue || 0), 
+          color: ((currentYearData.bankBalance || 0) + (currentYearData.fundValue || 0)) >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)', 
+          icon: 'landmark', 
+          hint: `共 1 個銀行帳號` 
+        },
+        { 
+          title: `${year} 家庭收入`, 
+          val: currentYearData.totalIncome || 0, 
+          color: 'var(--accent-success)', 
+          icon: 'trending-up', 
+          hint: '家用轉入 + 額外收入' 
+        },
+        { 
+          title: `${year} 年度總支出`, 
+          val: currentYearData.totalExpense || 0, 
+          color: 'var(--accent-danger)', 
+          icon: 'trending-down', 
+          hint: `${monthCount} 個月有紀錄` 
+        },
+        { 
+          title: `${year} 年度淨餘額`, 
+          val: currentYearData.netBalance || 0, 
+          color: (currentYearData.netBalance || 0) >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)', 
+          icon: 'wallet', 
+          hint: (currentYearData.netBalance || 0) >= 0 ? '收支平衡' : '支出大於收入' 
+        }
       ].map(card => `
-        <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
+        <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:8px;">
           <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
             <i data-lucide="${card.icon}" style="width:14px;height:14px;"></i> ${esc(card.title)}
           </div>
@@ -79,6 +113,7 @@ export default {
       `).join('');
       statsRoot.innerHTML = statsHtml;
 
+      // 渲染年度表格
       if (annualRes && annualRes.years) {
         const tableRows = annualRes.years.map(yData => ({
           year: yData.year,
@@ -115,3 +150,9 @@ export default {
     }
   }
 };
+
+/* ═══ EOF ═══
+F: pages/dashboard.js
+V: 1792900800
+W: ai-system-20261024-012#71
+═══ EOF ═══ */
