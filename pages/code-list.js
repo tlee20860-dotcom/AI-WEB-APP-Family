@@ -9,7 +9,9 @@ import {
   getCategoriesOnce, getItemsOnce, getPaymentMethodsOnce,
   getInsuranceCompaniesOnce, getInsurancePoliciesOnce, getFundsOnce
 } from '../db/index.js';
-import { renderTable } from '../ui/table.js';
+import { renderTable, renderCards } from '../ui/table.js';
+import { renderViewToggle } from '../ui/controls.js';
+import { AppState } from '../config/state.js';
 import { showToast } from '../ui/toast.js';
 import { esc } from '../ui/format.js';
 
@@ -23,6 +25,7 @@ export default {
     content.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
         <h1 style="font-size:24px; font-weight:700; color:var(--primary);">編號對照清單</h1>
+        <div id="code-view-toggle"></div>
       </div>
 
       <div class="glass-card" style="padding:16px; margin-bottom:20px;">
@@ -47,6 +50,12 @@ export default {
         <div style="text-align:center; padding:40px; color:var(--text-muted);">載入資料中…</div>
       </div>
     `;
+
+    // 渲染檢視切換
+    renderViewToggle('code-view-toggle', () => {
+      const filterType = document.getElementById('code-filter-type').value;
+      this._renderList(filterType);
+    });
 
     // 綁定篩選事件
     document.getElementById('code-filter-type')?.addEventListener('change', (e) => {
@@ -122,12 +131,23 @@ export default {
       return;
     }
 
-    renderTable({
-      container,
-      rows: displayData,
-      columnsKey: 'codeList',
-      emptyText: '尚無資料'
-    });
+    const currentView = AppState.getCurrentView() || 'table';
+
+    if (currentView === 'card') {
+      renderCards({
+        container,
+        rows: displayData,
+        columnsKey: 'codeList',
+        emptyText: '尚無資料'
+      });
+    } else {
+      renderTable({
+        container,
+        rows: displayData,
+        columnsKey: 'codeList',
+        emptyText: '尚無資料'
+      });
+    }
   },
 
   destroy() {}
@@ -135,6 +155,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/code-list.js
-V: 1792900560
-W: ai-system-20261024-012#51
+V: 1792900730
+W: ai-system-20261024-012#64
 ═══ EOF ═══ */
