@@ -50,7 +50,7 @@ export async function removeObject(path) {
 }
 
 /* ============================================
-   2. 成員
+   2. 成員與基礎實體
    ============================================ */
 export async function addMember(m) {
   return pushObject('members', {
@@ -74,9 +74,6 @@ export async function removeMember(id) {
   await removeObject(`members/${id}`);
 }
 
-/* ============================================
-   3. 基礎實體 (銀行、類別、支付等)
-   ============================================ */
 export async function addBankAccount(d) {
   return pushObject('bank_accounts', {
     name: String(d.name || '').trim(),
@@ -102,6 +99,40 @@ export async function updateBankAccount(id, p) {
 
 export async function removeBankAccount(id) {
   await removeObject(`bank_accounts/${id}`);
+}
+
+/* ============================================
+   3. 銀行交易 (新增補齊)
+   ============================================ */
+export async function addBankTransaction(bid, d) {
+  if (!bid) throw new Error('缺少 bankId');
+  return pushObject(`bank_accounts/${bid}/transactions`, {
+    type: d.type || 'out',
+    category: d.category || 'manual',
+    amount: roundInt(d.amount),
+    date: d.date || new Date().toISOString().slice(0, 10),
+    memberId: d.memberId || '',
+    refId: d.refId || '',
+    note: d.note || '',
+    createdAt: Date.now(),
+  });
+}
+
+export async function updateBankTransaction(bid, tid, p) {
+  if (!bid || !tid) throw new Error('缺少參數');
+  const c = {};
+  ['type', 'category', 'amount', 'date', 'memberId', 'refId', 'note'].forEach((k) => {
+    if (p[k] !== undefined) c[k] = p[k];
+  });
+  if (c.amount != null) c.amount = roundInt(c.amount);
+  if (!Object.keys(c).length) return;
+  c.updatedAt = Date.now();
+  await updateObject(`bank_accounts/${bid}/transactions/${tid}`, c);
+}
+
+export async function removeBankTransaction(bid, tid) {
+  if (!bid || !tid) throw new Error('缺少參數');
+  await removeObject(`bank_accounts/${bid}/transactions/${tid}`);
 }
 
 /* ============================================
@@ -136,7 +167,7 @@ export async function removeExpense(y, m, mid, eid) {
 }
 
 /* ============================================
-   5. 收入紀錄
+   5. 收入與代墊
    ============================================ */
 export async function saveIncome(y, m, data) {
   const up = {};
@@ -158,15 +189,39 @@ export async function savePersonalIncome(mid, y, m, amt) {
   }
 }
 
+export async function addMemberAdvance(mid, d) {
+  if (!mid) throw new Error('缺少 memberId');
+  return pushObject(`member_advances/${mid}`, {
+    policyId: d.policyId || '',
+    totalAmount: roundInt(d.totalAmount),
+    remainingAmount: roundInt(d.totalAmount),
+    startYear: String(d.startYear || ''),
+    startMonth: String(d.startMonth || '').padStart(2, '0'),
+    note: d.note || '',
+    paidMonths: {},
+    createdAt: Date.now(),
+  });
+}
+
+export async function updateMemberAdvance(mid, aid, p) {
+  if (!mid || !aid) throw new Error('缺少參數');
+  const c = {};
+  ['policyId', 'totalAmount', 'remainingAmount', 'startYear', 'startMonth', 'note', 'paidMonths'].forEach((k) => {
+    if (p[k] !== undefined) c[k] = p[k];
+  });
+  if (c.totalAmount != null) c.totalAmount = roundInt(c.totalAmount);
+  if (c.remainingAmount != null) c.remainingAmount = roundInt(c.remainingAmount);
+  if (!Object.keys(c).length) return;
+  c.updatedAt = Date.now();
+  await updateObject(`member_advances/${mid}/${aid}`, c);
+}
+
 /* ============================================
-   6. 基金快照
+   6. 基金快照與保單
    ============================================ */
 export async function saveFundSnapshot(fundId, dateKey, data) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) throw new Error('dateKey 必須是 YYYY-MM-DD 格式');
   const path = `funds/${fundId}/snapshots/${dateKey}`;
-  
-  // 讀取現有資料以保留 createdAt
-  const snap = await familyRef(path).once ? null : null; // 簡化處理，這裡不特別拉取，直接覆蓋
   await saveObject(path, {
     shares: Number(data.shares) || 0,
     nav: Number(data.nav) || 0,
@@ -180,8 +235,16 @@ export async function removeFundSnapshot(fundId, dateKey, rawPath) {
   await removeObject(`funds/${fundId}/snapshots/${path}`);
 }
 
+export async function updateInsurancePolicy(id, p) {
+  const c = {};
+  const allowed = ['type', 'memberId', 'policyHolderId', 'name', 'company', 'paymentType', 'paymentMode', 'advanceHolderId', 'advanceId', 'firstStartYear', 'firstStartMonth', 'totalPolicyYears', 'totalPolicyPeriods', 'totalPremium', 'currentPeriodIndex', 'monthlyPremium', 'annualPremium', 'account', 'periods', 'isCompleted', 'fundsAllocation'];
+  allowed.forEach((k) => { if (p[k] !== undefined) c[k] = p[k]; });
+  if (!Object.keys(c).length) return;
+  await updateObject(`insurance_policies/${id}`, c);
+}
+
 /* ═══ EOF ═══
 F: db/write.js
-V: 1792900230
-W: ai-system-20261024-012#18
+V: 1792900270
+W: ai-system-20261024-012#22
 ═══ EOF ═══ */
