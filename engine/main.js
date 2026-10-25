@@ -1,5 +1,5 @@
 // ============================================
-// main.js — 系統啟動入口（V2 重構版）
+// main.js — 系統啟動入口（V2 重構版 - 除錯版）
 // 位置：engine/main.js
 // ============================================
 
@@ -31,6 +31,8 @@ async function bootstrap() {
 
   onAuthStateChanged(auth, async (user) => {
     const loadingEl = document.getElementById('app-loading');
+    const sidebar = document.querySelector('.sidebar');
+    const navbar = document.querySelector('.navbar');
     
     if (user) {
       // === 已登入 ===
@@ -56,16 +58,23 @@ async function bootstrap() {
               AppState.setMemberAccount(data.memberAccount);
               hasFamily = true;
             }
+          } else {
+            const errorText = await res.text();
+            console.error('[main] lookup-family 失敗：', res.status, errorText);
+            showToast(`載入家庭失敗 (${res.status})`, 'error');
           }
         } catch (err) {
-          console.error('[main] 取得家庭資訊失敗：', err);
+          console.error('[main] 取得家庭資訊網路錯誤：', err);
+          showToast('網路異常，無法載入家庭資訊', 'error');
         }
 
-        // 關鍵：如果查無家庭，強制登出並提示
         if (!hasFamily) {
-          showToast('此帳號尚未建立家庭，請聯繫管理員', 'error', 5000);
-          await signOut(auth);
-          return; // 這裡 return 後會再次觸發 onAuthStateChanged，進入未登入區塊
+          // 如果查無家庭，不要立刻 signOut，避免無限迴圈，先停留在登入頁並提示
+          window.location.hash = ROUTES.LOGIN;
+          if (loadingEl) loadingEl.style.display = 'none';
+          if (sidebar) sidebar.style.display = 'none';
+          if (navbar) navbar.style.display = 'none';
+          return;
         }
       } else {
         AppState.setRole(ROLES.SUPERADMIN);
@@ -73,14 +82,20 @@ async function bootstrap() {
       }
 
       if (AppState.getFamilyId()) {
-        await initAppConfig();
-        watchConfigChanges();
-        initEntityRegistry();
+        try {
+          await initAppConfig();
+          watchConfigChanges();
+          initEntityRegistry();
+        } catch (initErr) {
+          console.error('[main] 設定初始化失敗：', initErr);
+        }
       }
 
+      // 渲染主畫面
+      if (sidebar) sidebar.style.display = 'flex';
+      if (navbar) navbar.style.display = 'flex';
       updateNavbar();
       
-      // 啟動路由
       initRouter(true);
       if (window.location.hash === `#${ROUTES.LOGIN}` || !window.location.hash) {
         window.location.hash = ROUTES.DASHBOARD;
@@ -90,7 +105,10 @@ async function bootstrap() {
       // === 未登入 ===
       AppState.destroy();
       
-      // 強制進入登入頁
+      // 隱藏主畫面選單
+      if (sidebar) sidebar.style.display = 'none';
+      if (navbar) navbar.style.display = 'none';
+      
       window.location.hash = ROUTES.LOGIN;
       initRouter(true);
     }
@@ -106,6 +124,6 @@ bootstrap().catch(err => {
 
 /* ═══ EOF ═══
 F: engine/main.js
-V: 1792900660
-W: ai-system-20261024-012#61
+V: 1792900670
+W: ai-system-20261024-012#57
 ═══ EOF ═══ */
