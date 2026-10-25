@@ -7,8 +7,8 @@
 import { AppState } from '../config/state.js';
 import { api } from '../domain/api-client.js';
 import { mergeSettlementData } from '../domain/settlement.js';
-import { renderTable } from '../ui/table.js';
-import { renderYearMonth } from '../ui/controls.js';
+import { renderTable, renderCards } from '../ui/table.js';
+import { renderViewToggle, renderYearMonth } from '../ui/controls.js';
 import { openConfirm, openModal, closeModal } from '../ui/modal.js';
 import { createForm } from '../ui/form.js';
 import { showToast } from '../ui/toast.js';
@@ -30,9 +30,12 @@ export default {
 
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
         <div id="settle-controls-period"></div>
-        <div class="flex items-center gap-8">
-          <input type="checkbox" id="settle-hide-done" style="cursor:pointer;">
-          <label for="settle-hide-done" style="font-size:13px; color:var(--text-secondary); cursor:pointer;">隱藏已處理</label>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="checkbox" id="settle-hide-done" style="cursor:pointer;">
+            <label for="settle-hide-done" style="font-size:13px; color:var(--text-secondary); cursor:pointer;">隱藏已處理</label>
+          </div>
+          <div id="settle-view-toggle"></div>
         </div>
       </div>
 
@@ -47,6 +50,11 @@ export default {
     // 渲染控制列
     renderYearMonth('settle-controls-period', { includeAllMonth: true }, () => {
       this._loadData();
+    });
+
+    // 渲染檢視切換
+    renderViewToggle('settle-view-toggle', () => {
+      this._renderListAndStats();
     });
 
     document.getElementById('settle-hide-done')?.addEventListener('change', () => {
@@ -122,6 +130,7 @@ export default {
     if (!statsRoot || !listRoot || !this._data) return;
 
     const hideDone = document.getElementById('settle-hide-done')?.checked;
+    const currentView = AppState.getCurrentView() || 'table';
 
     // 過濾資料
     let displayData = this._data;
@@ -170,12 +179,22 @@ export default {
       `;
     };
 
-    renderTable({
-      container: listRoot,
-      rows: displayData,
-      columnsKey: 'settlements',
-      renderActions
-    });
+    // 根據狀態渲染
+    if (currentView === 'card') {
+      renderCards({
+        container: listRoot,
+        rows: displayData,
+        columnsKey: 'settlements',
+        renderActions
+      });
+    } else {
+      renderTable({
+        container: listRoot,
+        rows: displayData,
+        columnsKey: 'settlements',
+        renderActions
+      });
+    }
 
     // 事件綁定
     listRoot.addEventListener('click', (e) => {
@@ -193,7 +212,6 @@ export default {
   },
 
   async _handleInsuranceSync(row) {
-    // 簡化版：直接確認，不選銀行
     try {
       await api.insuranceSync({
         policyId: row._ref.policyId,
@@ -261,8 +279,6 @@ export default {
       onCancel: () => { closeModal(modalId); overlay.remove(); },
       onSubmit: async (data) => {
         try {
-          // 呼叫更新 API (這裡假設 entity-create 可以更新任意狀態，或透過 updateExpense)
-          // 為了正規化，我們透過 entity-create 端點處理
           await api.entityCreate({
             action: 'update',
             entityType: 'expense',
@@ -285,6 +301,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/settlements.js
-V: 1792900530
-W: ai-system-20261024-012#48
+V: 1792900720
+W: ai-system-20261024-012#63
 ═══ EOF ═══ */
