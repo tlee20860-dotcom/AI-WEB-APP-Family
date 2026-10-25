@@ -1,5 +1,5 @@
 // ============================================
-// dashboard.js — 總覽儀表板（V2 重構版）
+// dashboard.js — 總覽儀表板
 // ============================================
 
 import { AppState } from '../config/state.js';
@@ -15,19 +15,17 @@ export default {
     const content = document.getElementById('app-content');
     if (!content) return;
 
-    // 標題與按鈕
     content.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-        <h1 style="font-size:24px; font-weight:700; color:var(--primary);">總覽儀表板</h1>
+        <h1 style="font-size:24px; font-weight:700; color:var(--primary); margin:0;">總覽儀表板</h1>
         <a href="#/annual-report" class="btn btn-primary" style="display:inline-flex; align-items:center; gap:6px; text-decoration:none;">
           <i data-lucide="bar-chart-3" style="width:16px;height:16px;"></i> 查看年度報表
         </a>
       </div>
 
-      <!-- 統計卡容器 (2x2 網格) -->
+      <!-- 嚴格控制 2 欄，gap 16px -->
       <div id="dashboard-stats" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:16px; margin-bottom:24px;"></div>
       
-      <!-- 年度總覽表格 -->
       <div class="table-container" style="margin-bottom:24px;">
         <div style="padding:16px; border-bottom:1px solid var(--border-color); display:flex; align-items:center; gap:8px;">
           <i data-lucide="calendar" style="width:18px;height:18px;color:var(--primary);"></i>
@@ -37,10 +35,7 @@ export default {
       </div>
     `;
 
-    this._unsubYM = AppState.on('ym-change', () => {
-      this._loadData();
-    });
-
+    this._unsubYM = AppState.on('ym-change', () => this._loadData());
     await this._loadData();
   },
 
@@ -51,8 +46,8 @@ export default {
     
     if (!statsRoot || !tableRoot) return;
 
-    statsRoot.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted); grid-column:span 2;">載入統計資料…</div>';
-    tableRoot.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted);">載入年度資料…</div>';
+    statsRoot.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted); grid-column:span 2;">載入中…</div>';
+    tableRoot.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted);">載入中…</div>';
 
     try {
       const y = Number(year);
@@ -61,19 +56,20 @@ export default {
         api.fetchAnnualSummaryRange(y - 2, y + 2)
       ]);
 
-      // 渲染統計卡 (嚴格對齊截圖的內邊距與字體)
       const s = summaryRes;
+      
+      // 對齊舊版：字體縮小至 20px，內邊距 16px
       const statsHtml = [
         { title: '家庭總餘額', val: s.bankBalance + s.fundValue, color: (s.bankBalance + s.fundValue) >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)', icon: 'landmark', hint: `共 ${s.bankCount || 1} 個銀行帳號` },
         { title: `${year} 家庭收入`, val: s.totalIncome, color: 'var(--accent-success)', icon: 'trending-up', hint: '家用轉入 + 額外收入' },
         { title: `${year} 年度總支出`, val: s.totalExpense, color: 'var(--accent-danger)', icon: 'trending-down', hint: `${s.monthCount || 0} 個月有紀錄` },
         { title: `${year} 年度淨餘額`, val: s.netBalance, color: s.netBalance >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)', icon: 'wallet', hint: s.netBalance >= 0 ? '收支平衡' : '支出大於收入' }
       ].map(card => `
-        <div class="glass-card" style="padding:20px; display:flex; flex-direction:column; gap:8px; height:100%;">
+        <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
           <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
             <i data-lucide="${card.icon}" style="width:14px;height:14px;"></i> ${esc(card.title)}
           </div>
-          <div class="mono" style="font-size:24px; font-weight:700; color:${card.color}; white-space:nowrap;">
+          <div class="mono" style="font-size:20px; font-weight:700; color:${card.color}; white-space:nowrap;">
             ${formatHKD(card.val)}
           </div>
           <div style="font-size:11px; color:var(--text-muted);">
@@ -83,7 +79,6 @@ export default {
       `).join('');
       statsRoot.innerHTML = statsHtml;
 
-      // 渲染年度表格
       if (annualRes && annualRes.years) {
         const tableRows = annualRes.years.map(yData => ({
           year: yData.year,
@@ -120,9 +115,3 @@ export default {
     }
   }
 };
-
-/* ═══ EOF ═══
-F: pages/dashboard.js
-V: 1792900780
-W: ai-system-20261024-012#69
-═══ EOF ═══ */
