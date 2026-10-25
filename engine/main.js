@@ -1,5 +1,5 @@
 // ============================================
-// main.js — 系統啟動入口（V2 重構版 - 嚴格驗證）
+// main.js — 系統啟動入口（V2 重構版）
 // 位置：engine/main.js
 // ============================================
 
@@ -23,15 +23,17 @@ if ('serviceWorker' in navigator) {
 async function bootstrap() {
   AppState.init();
 
-  // 初始化路由，但傳入 false 不立刻執行
+  // 1. 先建立骨架 (確保 app-content 存在)
+  initLayout('app-root');
+  
+  // 2. 初始化路由 (先不執行)
   initRouter(false);
 
   onAuthStateChanged(auth, async (user) => {
     const loadingEl = document.getElementById('app-loading');
-    const root = document.getElementById('app-root');
     
     if (user) {
-      // === 已登入（確認身分） ===
+      // === 已登入 ===
       AppState.setUser(user);
       const superAdmin = isSuperAdmin(user);
       AppState.setSuperAdmin(superAdmin);
@@ -59,17 +61,15 @@ async function bootstrap() {
           console.error('[main] 取得家庭資訊失敗：', err);
         }
 
-        // 關鍵：如果一般成員查無家庭，強制登出！
+        // 關鍵：如果查無家庭，強制登出並提示
         if (!hasFamily) {
           showToast('此帳號尚未建立家庭，請聯繫管理員', 'error', 5000);
           await signOut(auth);
           return; // 這裡 return 後會再次觸發 onAuthStateChanged，進入未登入區塊
         }
       } else {
-        // 超級管理員不需要家庭
         AppState.setRole(ROLES.SUPERADMIN);
         AppState.setDisplayName('超級管理員');
-        hasFamily = true;
       }
 
       if (AppState.getFamilyId()) {
@@ -78,12 +78,6 @@ async function bootstrap() {
         initEntityRegistry();
       }
 
-      // 渲染主骨架
-      if (root) {
-        root.innerHTML = ''; // 清空
-        root.style.display = 'block';
-      }
-      initLayout('app-root');
       updateNavbar();
       
       // 啟動路由
@@ -96,15 +90,9 @@ async function bootstrap() {
       // === 未登入 ===
       AppState.destroy();
       
-      // 清空畫面，確保沒有選單
-      if (root) {
-        root.innerHTML = '';
-        root.style.display = 'block';
-      }
-      
-      // 啟動路由並強制進入登入頁
-      initRouter(true);
+      // 強制進入登入頁
       window.location.hash = ROUTES.LOGIN;
+      initRouter(true);
     }
 
     if (loadingEl) loadingEl.style.display = 'none';
@@ -118,6 +106,6 @@ bootstrap().catch(err => {
 
 /* ═══ EOF ═══
 F: engine/main.js
-V: 1792900650
-W: ai-system-20261024-012#60
+V: 1792900660
+W: ai-system-20261024-012#61
 ═══ EOF ═══ */
