@@ -27,11 +27,11 @@ let _isInitialized = false;
 
 /**
  * 初始化路由
- * @param {string|null} initialPath - 若傳入字串，則強制執行該路徑；若傳 true/null，則依當前 hash 執行。
+ * @param {string|boolean} initialPath - 若傳入字串，則強制執行該路徑；若傳 true，則依當前 hash 執行。
  */
 export function initRouter(initialPath = null) {
   if (!_isInitialized) {
-    window.addEventListener('hashchange', _handleRoute);
+    window.addEventListener('hashchange', () => _handleRoute());
     _isInitialized = true;
   }
   
@@ -44,8 +44,18 @@ export function initRouter(initialPath = null) {
   }
 }
 
+/**
+ * 處理路由切換
+ * @param {string|null} targetPath - 若為 null，則從 window.location.hash 取得。
+ */
 async function _handleRoute(targetPath = null) {
-  const path = targetPath || window.location.hash.replace('#', '') || ROUTES.DASHBOARD;
+  // 確保 targetPath 是字串，防止 Event 物件傳入
+  let path = typeof targetPath === 'string' ? targetPath : null;
+  
+  if (!path) {
+    path = window.location.hash.replace('#', '') || ROUTES.DASHBOARD;
+  }
+
   const routeConfig = ROUTES_MAP[path];
   
   if (!routeConfig) {
@@ -117,6 +127,6 @@ function _render404(path) {
 
 /* ═══ EOF ═══
 F: engine/router.js
-V: 1792900810
-W: ai-system-20261024-012#72
+V: 1792900830
+W: ai-system-20261024-012#74
 ═══ EOF ═══ */
