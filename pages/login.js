@@ -10,7 +10,7 @@ import { esc } from '../ui/format.js';
 
 export default {
   async render() {
-    // 隱藏主畫面的側邊欄與導覽列，讓登入頁獨立呈現
+    // 隱藏主畫面的側邊欄與導覽列
     const sidebar = document.querySelector('.sidebar');
     const navbar = document.querySelector('.navbar');
     if (sidebar) sidebar.style.display = 'none';
@@ -68,7 +68,6 @@ export default {
       try {
         await loginWithCustomAccount(account, password);
         
-        // 登入成功後，重新整理頁面，讓系統重新跑初始化流程
         showToast('登入成功，正在載入系統…', 'success');
         setTimeout(() => {
           window.location.reload();
@@ -95,6 +94,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/login.js
-V: 1792900470
-W: ai-system-20261024-012#42
+V: 1792900660
+W: ai-system-20261024-012#61
 ═══ EOF ═══ */
