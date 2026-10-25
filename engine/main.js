@@ -1,8 +1,5 @@
 // ============================================
-// main.js — 系統啟動入口（V2 重構版）
-// 位置：engine/main.js
-// 說明：負責初始化 Firebase、AppState、Layout、Router。
-//       並等待 Auth 狀態確認後才渲染畫面。
+// main.js — 系統啟動入口（V2 重構版 - 修正版）
 // ============================================
 
 import { auth } from '../config/firebase.js';
@@ -16,28 +13,15 @@ import { initRouter } from './router.js';
 import { ROUTES, ROLES } from '../config/constants.js';
 import { showToast } from '../ui/toast.js';
 
-/* ============================================
-   1. 註冊 Service Worker (PWA)
-   ============================================ */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(err => {
-      console.warn('[PWA] SW 註冊失敗：', err);
-    });
+    navigator.serviceWorker.register('./sw.js').catch(err => console.warn('[PWA] SW 失敗', err));
   });
 }
 
-/* ============================================
-   2. 系統啟動
-   ============================================ */
 async function bootstrap() {
-  // 1. 初始化本地狀態 (讀取 localStorage)
   AppState.init();
 
-  // 2. 渲染基礎骨架 (此時側邊欄是空的，等待資料填入)
-  initLayout('app-root');
-
-  // 3. 監聽 Firebase 登入狀態
   onAuthStateChanged(auth, async (user) => {
     const loadingEl = document.getElementById('app-loading');
     
@@ -48,15 +32,11 @@ async function bootstrap() {
       AppState.setSuperAdmin(superAdmin);
 
       if (!superAdmin) {
-        // 一般成員：向後端查詢家庭資訊
         try {
           const token = await user.getIdToken();
           const res = await fetch('/api/lookup-family', {
             method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}` 
-            },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({})
           });
           
@@ -76,20 +56,18 @@ async function bootstrap() {
         AppState.setDisplayName('超級管理員');
       }
 
-      // 初始化設定與實體快取
       if (AppState.getFamilyId()) {
         await initAppConfig();
         watchConfigChanges();
         initEntityRegistry();
       }
 
-      // 更新 Navbar UI
+      // 已登入才渲染骨架
+      initLayout('app-root');
       updateNavbar();
-
-      // 啟動路由
-      initRouter();
       
-      // 如果當前是登入頁，導向首頁
+      // 啟動路由 (若在登入頁，導向首頁)
+      initRouter();
       if (window.location.hash === `#${ROUTES.LOGIN}` || !window.location.hash) {
         window.location.hash = ROUTES.DASHBOARD;
       }
@@ -98,29 +76,22 @@ async function bootstrap() {
       // === 未登入 ===
       AppState.destroy();
       
-      // 啟動路由 (這會載入 login.js)
+      // 直接啟動路由 (這會載入 login.js)，但不渲染側邊欄
       initRouter();
       window.location.hash = ROUTES.LOGIN;
     }
 
-    // 隱藏載入畫面
     if (loadingEl) loadingEl.style.display = 'none';
   });
 }
 
-// 啟動系統
 bootstrap().catch(err => {
   console.error('[main] 系統啟動失敗：', err);
-  document.body.innerHTML = `
-    <div style="padding:40px; text-align:center; color:var(--accent-danger);">
-      <h2>系統啟動失敗</h2>
-      <p>${err.message}</p>
-    </div>
-  `;
+  document.body.innerHTML = `<div style="padding:40px; text-align:center; color:var(--accent-danger);"><h2>系統啟動失敗</h2><p>${err.message}</p></div>`;
 });
 
 /* ═══ EOF ═══
 F: engine/main.js
-V: 1792900610
-W: ai-system-20261024-012#56
+V: 1792900620
+W: ai-system-20261024-012#57
 ═══ EOF ═══ */
