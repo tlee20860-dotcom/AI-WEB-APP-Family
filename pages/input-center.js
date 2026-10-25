@@ -90,11 +90,16 @@ export default {
       this._renderCurrentTab();
     });
 
-    // 6. 綁定操作按鈕（使用 onclick 防止多次渲染時事件累積）
+    // 6. 綁定操作按鈕（加入 try-catch 以捕捉報錯）
     const btnExpense = document.getElementById('btn-add-expense');
     if (btnExpense) {
-      btnExpense.onclick = () => {
-        openExpenseModal({ onSuccess: () => this._renderExpenseTab() });
+      btnExpense.onclick = async () => {
+        try {
+          await openExpenseModal({ onSuccess: () => this._renderExpenseTab() });
+        } catch (err) {
+          console.error(err);
+          alert('開啟新增支出失敗，錯誤訊息：\n' + err.message + '\n\n請將此訊息截圖回報。');
+        }
       };
     }
 
@@ -195,7 +200,12 @@ export default {
           showToast('✅ 已刪除支出', 'success');
         } catch (err) { showToast('刪除失敗：' + err.message, 'error'); }
       } else if (btn.dataset.action === 'edit') {
-        openExpenseModal({ row: expense, onSuccess: () => this._renderExpenseTab() });
+        try {
+          await openExpenseModal({ row: expense, onSuccess: () => this._renderExpenseTab() });
+        } catch (err) {
+          console.error(err);
+          alert('開啟編輯支出失敗，錯誤訊息：\n' + err.message);
+        }
       }
     };
   },
@@ -311,6 +321,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/input-center.js
-V: 1792901720
-W: webapp-20261025-001#22
+V: 1792901740
+W: webapp-20261025-001#24
 ═══ */
