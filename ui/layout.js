@@ -55,7 +55,7 @@ function _renderShell(root) {
           </div>
         </header>
 
-        <main class="content" id="app-content"></main>
+        <main class="content" id="app-content" style="width:100%; max-width:100%; box-sizing:border-box;"></main>
       </div>
     </div>
   `;
@@ -200,16 +200,17 @@ export function renderPageLayout(config) {
   if (stats && stats.length > 0) {
     const gridCols = window.innerWidth < 768 ? 2 : statsCols;
     statsHtml = `
-      <div id="page-stats-container" style="display:grid; grid-template-columns:repeat(${gridCols}, 1fr); gap:16px; margin-bottom:24px;">
+      <div id="page-stats-container" style="display:grid; grid-template-columns:repeat(${gridCols}, 1fr); gap:16px; margin-bottom:24px; width:100%;">
         ${stats.map(card => `
-          <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
+          <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px; min-width:0;">
             <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
-              <i data-lucide="${card.icon || 'info'}" style="width:14px;height:14px;"></i> ${esc(card.title)}
+              <i data-lucide="${card.icon || 'info'}" style="width:14px;height:14px; flex-shrink:0;"></i> 
+              <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(card.title)}</span>
             </div>
-            <div class="mono" style="font-size:20px; font-weight:700; color:${card.color || 'var(--text-primary)'}; white-space:nowrap;">
+            <div class="mono" style="font-size:20px; font-weight:700; color:${card.color || 'var(--text-primary)'}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
               ${esc(card.val)}
             </div>
-            ${card.hint ? `<div style="font-size:11px; color:var(--text-muted);">${esc(card.hint)}</div>` : ''}
+            ${card.hint ? `<div style="font-size:11px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(card.hint)}</div>` : ''}
           </div>
         `).join('')}
       </div>
@@ -220,7 +221,7 @@ export function renderPageLayout(config) {
   }
 
   const controlsHtml = controls ? `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; flex-wrap:wrap; gap:12px; width:100%;">
       ${controls}
     </div>
   ` : '';
@@ -229,17 +230,20 @@ export function renderPageLayout(config) {
     <h2 style="font-size:16px; margin-bottom:12px; color:var(--text-secondary);">${esc(listTitle)}</h2>
   ` : '';
 
+  // 加入外層 wrapper 約束寬度，防止內部 table 撐破手機版面
   content.innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-      <h1 style="font-size:24px; font-weight:700; color:var(--primary); margin:0;">${esc(title)}</h1>
-      <div>${headerActions}</div>
-    </div>
+    <div style="width:100%; max-width:100%; overflow-x:hidden; display:flex; flex-direction:column; box-sizing:border-box;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px; width:100%;">
+        <h1 style="font-size:24px; font-weight:700; color:var(--primary); margin:0;">${esc(title)}</h1>
+        <div style="flex-shrink:0;">${headerActions}</div>
+      </div>
 
-    ${statsHtml}
-    ${controlsHtml}
-    ${listTitleHtml}
-    <div id="${listContainerId}">
-      <div style="text-align:center; padding:40px; color:var(--text-muted);">載入資料中…</div>
+      ${statsHtml}
+      ${controlsHtml}
+      ${listTitleHtml}
+      <div id="${listContainerId}" style="width:100%; max-width:100%;">
+        <div style="text-align:center; padding:40px; color:var(--text-muted);">載入資料中…</div>
+      </div>
     </div>
   `;
 
@@ -285,6 +289,6 @@ function _toggleSidebar(open) {
 
 /* ═══ EOF ═══
 F: ui/layout.js
-V: 1792901000
-W: ai-system-20261024-012#2
-═══ EOF ═══ */
+V: 1792901290
+W: webapp-20261025-001#10
+═══ */
