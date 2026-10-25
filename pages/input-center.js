@@ -1,5 +1,6 @@
 // ============================================
-// input-center.js — 綜合輸入中心
+// input-center.js — 綜合輸入中心（V2 重構版 - 補回 Tab）
+// 位置：pages/input-center.js
 // ============================================
 
 import { AppState } from '../config/state.js';
@@ -11,12 +12,13 @@ import { renderViewToggle, renderYearMonth } from '../ui/controls.js';
 import { openModal, closeModal, openConfirm } from '../ui/modal.js';
 import { createForm } from '../ui/form.js';
 import { showToast } from '../ui/toast.js';
-import { todayISO } from '../ui/format.js';
+import { todayISO, esc } from '../ui/format.js';
 import { RESERVED_IDS } from '../config/constants.js';
 
 export default {
   _unsubExpenses: null,
   _expenses: [],
+  _activeTab: 'expense', // expense | insurance | fund | bank
 
   async render() {
     const content = document.getElementById('app-content');
@@ -27,30 +29,62 @@ export default {
         <h1 style="font-size:24px; font-weight:700; color:var(--primary); margin:0;">綜合輸入中心</h1>
       </div>
 
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
-        <div style="display:flex; flex-wrap:wrap; gap:12px;">
-          <button type="button" class="btn btn-primary" id="btn-add-expense">
-            <i data-lucide="plus" style="width:16px;height:16px;"></i> 新增支出
-          </button>
-          <button type="button" class="btn btn-ghost" id="btn-add-contribution">
-            <i data-lucide="trending-up" style="width:16px;height:16px;"></i> 家用轉入
-          </button>
-          <button type="button" class="btn btn-ghost" id="btn-add-income">
-            <i data-lucide="wallet" style="width:16px;height:16px;"></i> 個人收入
-          </button>
-        </div>
-        <div style="display:flex; align-items:center; gap:12px;">
-          <div id="ic-controls-period"></div>
-          <div id="ic-view-toggle"></div>
-        </div>
+      <!-- 第一排：操作按鈕 -->
+      <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:20px;">
+        <button type="button" class="btn btn-primary" id="btn-add-expense">
+          <i data-lucide="plus" style="width:16px;height:16px;"></i> 新增支出
+        </button>
+        <button type="button" class="btn btn-ghost" id="btn-add-contribution">
+          <i data-lucide="trending-up" style="width:16px;height:16px;"></i> 家用轉入
+        </button>
+        <button type="button" class="btn btn-ghost" id="btn-add-income">
+          <i data-lucide="wallet" style="width:16px;height:16px;"></i> 個人收入
+        </button>
       </div>
 
-      <div>
-        <h2 style="font-size:16px; margin-bottom:12px; color:var(--text-secondary);">最近支出紀錄</h2>
-        <div id="ic-expense-list"></div>
+      <!-- 第二排：Tab 切換 -->
+      <div id="ic-tabs" class="flex items-center gap-8 mb-16" style="overflow-x:auto; padding-bottom:4px;">
+        <button type="button" class="btn" data-tab="expense" style="white-space:nowrap;">支出</button>
+        <button type="button" class="btn" data-tab="insurance" style="white-space:nowrap;">保險</button>
+        <button type="button" class="btn" data-tab="fund" style="white-space:nowrap;">基金</button>
+        <button type="button" class="btn" data-tab="bank" style="white-space:nowrap;">銀行</button>
       </div>
+
+      <!-- 第三排：表格/卡片切換 -->
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+        <div id="ic-view-toggle"></div>
+      </div>
+
+      <!-- 第四排：年/月 與 列表 -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+        <h2 style="font-size:16px; margin:0; color:var(--text-secondary);" id="ic-list-title">最近支出紀錄</h2>
+        <div id="ic-controls-period"></div>
+      </div>
+
+      <div id="ic-expense-list"></div>
     `;
 
+    // 初始化 Tab 狀態
+    this._updateTabStyles();
+
+    // 綁定 Tab 事件
+    document.getElementById('ic-tabs')?.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-tab]');
+      if (!btn) return;
+      this._activeTab = btn.dataset.tab;
+      this._updateTabStyles();
+      
+      // 更新標題與渲染
+      const titleEl = document.getElementById('ic-list-title');
+      if (this._activeTab === 'expense') titleEl.textContent = '最近支出紀錄';
+      else if (this._activeTab === 'insurance') titleEl.textContent = '保險清單（唯讀預覽）';
+      else if (this._activeTab === 'fund') titleEl.textContent = '基金清單（唯讀預覽）';
+      else if (this._activeTab === 'bank') titleEl.textContent = '銀行帳號（唯讀預覽）';
+      
+      this._renderList();
+    });
+
+    // 渲染年月與切換
     renderYearMonth('ic-controls-period', { includeAllMonth: true }, () => {
       this._renderList();
     });
@@ -59,10 +93,12 @@ export default {
       this._renderList();
     });
 
+    // 綁定按鈕
     document.getElementById('btn-add-expense')?.addEventListener('click', () => this._openExpenseModal());
     document.getElementById('btn-add-contribution')?.addEventListener('click', () => this._openIncomeModal('contribution'));
     document.getElementById('btn-add-income')?.addEventListener('click', () => this._openIncomeModal('personal'));
 
+    // 監聽支出資料
     const { year } = AppState.getYearMonth();
     this._unsubExpenses = listenAllExpenses((list) => {
       this._expenses = list.filter(e => e.year === String(year));
@@ -70,9 +106,34 @@ export default {
     });
   },
 
+  _updateTabStyles() {
+    const tabsRoot = document.getElementById('ic-tabs');
+    if (!tabsRoot) return;
+
+    tabsRoot.querySelectorAll('button[data-tab]').forEach(btn => {
+      const isActive = btn.dataset.tab === this._activeTab;
+      if (isActive) {
+        btn.className = 'btn btn-primary';
+      } else {
+        btn.className = 'btn btn-ghost';
+      }
+    });
+  },
+
   _renderList() {
     const listRoot = document.getElementById('ic-expense-list');
     if (!listRoot) return;
+
+    // 這裡為了精簡，若切換到非「支出」的 Tab，我們暫時顯示提示，因為那些頁面有自己的列表
+    // 後續若要完整實作，可在此處替換成對應的清單
+    if (this._activeTab !== 'expense') {
+      listRoot.innerHTML = `
+        <div class="glass-card" style="text-align:center; padding:40px; color:var(--text-muted);">
+          請點擊上方按鈕切換到該頁面進行管理，或點擊「新增」直接建立資料。
+        </div>
+      `;
+      return;
+    }
 
     const { year, month } = AppState.getYearMonth();
     let displayData = this._expenses.filter(e => e.year === String(year));
@@ -219,6 +280,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/input-center.js
-V: 1792900850
-W: ai-system-20261024-012#76
+V: 1792900890
+W: ai-system-20261024-012#80
 ═══ EOF ═══ */
