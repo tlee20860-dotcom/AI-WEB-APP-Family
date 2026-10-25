@@ -1,6 +1,7 @@
 // ============================================
 // bank.js — 銀行交易頁面
 // 位置：pages/bank.js
+// 說明：顯示銀行帳號清單、交易明細，並計算即時餘額。
 // ============================================
 
 import { AppState } from '../config/state.js';
@@ -9,6 +10,7 @@ import { api } from '../domain/api-client.js';
 import { calcBankBalance, calcTotalBankBalance } from '../domain/bank.js';
 import { renderTable, renderCards } from '../ui/table.js';
 import { renderViewToggle, renderYearMonth } from '../ui/controls.js';
+import { renderPageLayout } from '../ui/layout.js';
 import { openModal, closeModal } from '../ui/modal.js';
 import { createForm } from '../ui/form.js';
 import { showToast } from '../ui/toast.js';
@@ -22,42 +24,30 @@ export default {
   _txns: [],
 
   async render() {
-    const content = document.getElementById('app-content');
-    if (!content) return;
-
-    content.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-        <h1 style="font-size:24px; font-weight:700; color:var(--primary); margin:0;">銀行交易</h1>
+    // 1. 準備控制列 HTML
+    const controlsHtml = `
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <button type="button" class="btn btn-primary" id="btn-add-txn">
+          <i data-lucide="plus" style="width:14px;height:14px;"></i> 新增交易
+        </button>
+        <button type="button" class="btn btn-ghost" id="btn-add-account">
+          <i data-lucide="plus" style="width:14px;height:14px;"></i> 新增帳號
+        </button>
+        <div id="bank-view-toggle"></div>
       </div>
-
-      <!-- 統計卡 -->
-      <div id="bank-stats" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; margin-bottom:24px;"></div>
-
-      <!-- 控制列 -->
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
-        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-          <button type="button" class="btn btn-primary" id="btn-add-txn">
-            <i data-lucide="plus" style="width:14px;height:14px;"></i> 新增交易
-          </button>
-          <button type="button" class="btn btn-ghost" id="btn-add-account">
-            <i data-lucide="plus" style="width:14px;height:14px;"></i> 新增帳號
-          </button>
-          <div id="bank-view-toggle"></div>
-        </div>
-        <div id="bank-controls-period"></div>
-      </div>
-      
-      <div style="margin-bottom:24px;">
-        <h2 style="font-size:16px; margin-bottom:12px; color:var(--text-secondary);">銀行帳號清單</h2>
-        <div id="bank-accounts-list"></div>
-      </div>
-
-      <div>
-        <h2 style="font-size:16px; margin-bottom:12px; color:var(--text-secondary);">交易記錄</h2>
-        <div id="bank-txns-list"></div>
-      </div>
+      <div id="bank-controls-period"></div>
     `;
 
+    // 2. 呼叫統一引擎繪製骨架
+    renderPageLayout({
+      title: '銀行交易',
+      stats: [],
+      controls: controlsHtml,
+      listTitle: '帳號與交易記錄',
+      listContainerId: 'bank-content-container'
+    });
+
+    // 3. 綁定控制列事件
     renderYearMonth('bank-controls-period', { includeAllMonth: true }, () => {
       this._renderData();
     });
@@ -69,6 +59,7 @@ export default {
     document.getElementById('btn-add-account')?.addEventListener('click', () => this._openAccountModal());
     document.getElementById('btn-add-txn')?.addEventListener('click', () => this._openTxnModal());
 
+    // 4. 監聽資料
     this._unsubAccounts = listenBankAccounts((accounts) => {
       this._accounts = accounts;
       this._renderData();
@@ -81,10 +72,8 @@ export default {
   },
 
   _renderData() {
-    const statsRoot = document.getElementById('bank-stats');
-    const accRoot = document.getElementById('bank-accounts-list');
-    const txnRoot = document.getElementById('bank-txns-list');
-    if (!statsRoot || !accRoot || !txnRoot) return;
+    const contentRoot = document.getElementById('bank-content-container');
+    if (!contentRoot) return;
 
     const { year, month } = AppState.getYearMonth();
     const y = year || String(new Date().getFullYear());
@@ -101,21 +90,56 @@ export default {
     const inTotal = monthTxns.filter(t => t.type === 'in').reduce((s, t) => s + (Number(t.amount) || 0), 0);
     const outTotal = monthTxns.filter(t => t.type !== 'in').reduce((s, t) => s + (Number(t.amount) || 0), 0);
 
-    statsRoot.innerHTML = `
-      <div class="glass-card" style="padding:16px;">
-        <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">家庭總餘額</div>
-        <div class="mono" style="font-size:20px; font-weight:700; color:${totalBalance >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}; white-space:nowrap;">${formatHKD(totalBalance)}</div>
+    // 更新統計卡
+    const statsContainer = document.getElementById('page-stats-container');
+    if (statsContainer) {
+      statsContainer.style.display = 'grid';
+      statsContainer.style.gridTemplateColumns = window.innerWidth < 768 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)';
+      
+      statsContainer.innerHTML = `
+        <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
+          <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+            <i data-lucide="landmark" style="width:14px;height:14px;"></i> 家庭總餘額
+          </div>
+          <div class="mono" style="font-size:20px; font-weight:700; color:${totalBalance >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}; white-space:nowrap;">
+            ${formatHKD(totalBalance)}
+          </div>
+        </div>
+        <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
+          <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+            <i data-lucide="arrow-down-circle" style="width:14px;height:14px;"></i> 本月入帳
+          </div>
+          <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-success); white-space:nowrap;">
+            ${formatHKD(inTotal)}
+          </div>
+        </div>
+        <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
+          <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+            <i data-lucide="arrow-up-circle" style="width:14px;height:14px;"></i> 本月出帳
+          </div>
+          <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-danger); white-space:nowrap;">
+            ${formatHKD(outTotal)}
+          </div>
+        </div>
+      `;
+    }
+
+    // 渲染清單內容
+    contentRoot.innerHTML = `
+      <div style="margin-bottom:24px;">
+        <h3 style="font-size:15px; margin-bottom:12px; color:var(--text-primary);">銀行帳號清單</h3>
+        <div id="bank-accounts-list"></div>
       </div>
-      <div class="glass-card" style="padding:16px;">
-        <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">本月入帳</div>
-        <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-success); white-space:nowrap;">${formatHKD(inTotal)}</div>
-      </div>
-      <div class="glass-card" style="padding:16px;">
-        <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">本月出帳</div>
-        <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-danger); white-space:nowrap;">${formatHKD(outTotal)}</div>
+      <div>
+        <h3 style="font-size:15px; margin-bottom:12px; color:var(--text-primary);">交易記錄</h3>
+        <div id="bank-txns-list"></div>
       </div>
     `;
 
+    const accRoot = document.getElementById('bank-accounts-list');
+    const txnRoot = document.getElementById('bank-txns-list');
+
+    // 渲染帳號 (使用動態餘額)
     const accCols = getColumns('bankAccounts');
     accCols.push({ id: 'dynamicBalance', label: '當前餘額', type: 'number' });
     const accResolvers = getResolvers('bankAccounts');
@@ -164,10 +188,12 @@ export default {
       `;
     }
 
+    // 渲染交易明細
+    const sortedTxns = [...monthTxns].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     if (currentView === 'card') {
-      renderCards({ container: txnRoot, rows: monthTxns.sort((a, b) => (b.date || '').localeCompare(a.date || '')), columnsKey: 'bankTransactions', emptyText: '本月尚無交易紀錄' });
+      renderCards({ container: txnRoot, rows: sortedTxns, columnsKey: 'bankTransactions', emptyText: '本月尚無交易紀錄' });
     } else {
-      renderTable({ container: txnRoot, rows: monthTxns.sort((a, b) => (b.date || '').localeCompare(a.date || '')), columnsKey: 'bankTransactions', emptyText: '本月尚無交易紀錄' });
+      renderTable({ container: txnRoot, rows: sortedTxns, columnsKey: 'bankTransactions', emptyText: '本月尚無交易紀錄' });
     }
 
     if (window.lucide) window.lucide.createIcons();
@@ -252,6 +278,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/bank.js
-V: 1792900860
-W: ai-system-20261024-012#77
+V: 1792901030
+W: ai-system-20261024-012#5
 ═══ EOF ═══ */
