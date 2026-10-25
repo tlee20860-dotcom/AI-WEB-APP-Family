@@ -1,0 +1,52 @@
+# ============================================
+# move-api.yml — 自動將 ./api 搬移至 ./functions/api
+# 用途：修正 Cloudflare Pages Functions 的目錄結構
+# ============================================
+
+name: Move API to Functions Directory
+
+on:
+  workflow_dispatch: # 僅允許手動觸發
+
+jobs:
+  move-api:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Move Directory
+        run: |
+          echo "開始搬移目錄..."
+          if [ -d "api" ]; then
+            mkdir -p functions
+            # 優先使用 git mv 保留追蹤歷史
+            git mv api functions/api || mv api functions/api
+            echo "✅ 已將 api 搬移至 functions/api"
+          else
+            echo "⚠️ 找不到 api 資料夾，可能已經搬移過。"
+          fi
+
+      - name: Commit and Push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add -A
+          
+          if git diff --cached --quiet; then
+            echo "沒有變更，無需提交。"
+          else
+            git commit -m "chore: move api to functions/api for CF Pages"
+            git push
+            echo "✅ 變更已推送到倉庫。"
+          fi
+
+# ═══ EOF ═══
+# F: .github/workflows/move-api.yml
+# V: 1792900680
+# W: ai-system-20261024-012#59
+# ═══ EOF ═══
