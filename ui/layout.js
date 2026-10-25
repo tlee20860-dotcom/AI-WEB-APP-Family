@@ -1,9 +1,10 @@
 // ============================================
-// layout.js — SPA 骨架與導覽
+// layout.js — SPA 骨架與導覽（V2 重構版）
+// 位置：ui/layout.js
 // ============================================
 
 import { AppState } from '../config/state.js';
-import { getSidebarGroupsByRole, ROLES, STORAGE_KEYS } from '../config/constants.js';
+import { getSidebarGroupsByRole, ROLES } from '../config/constants.js';
 import { logout } from '../domain/auth.js';
 import { esc } from './format.js';
 
@@ -74,13 +75,9 @@ export function updateNavbar() {
   }
 
   if (dbEl) {
-    // 開發模式顯示 DB
     const params = new URLSearchParams(window.location.search);
-    if (params.get('debug') === '1') {
-      dbEl.style.display = 'inline-block';
-    } else {
-      dbEl.style.display = 'none';
-    }
+    if (params.get('debug') === '1') dbEl.style.display = 'inline-block';
+    else dbEl.style.display = 'none';
   }
 
   if (userEl) {
@@ -90,7 +87,6 @@ export function updateNavbar() {
     if (role === ROLES.SUPERADMIN) badge = '<span class="badge badge-danger" style="font-size:10px; padding:2px 6px;">管理員</span>';
     else if (role === ROLES.OWNER) badge = '<span class="badge badge-info" style="font-size:10px; padding:2px 6px;">👑 擁有者</span>';
     
-    // 對齊舊版：圖示 -> 名字 -> Badge -> 登出
     userEl.innerHTML = `
       <i data-lucide="user" style="width:16px;height:16px;"></i>
       <span style="white-space:nowrap; font-weight:500;">${esc(name)}</span>
@@ -183,6 +179,71 @@ export function setPageTitle(title) {
   document.title = `${title} | FAMILY.FIN`;
 }
 
+/* ============================================
+   統一頁面排版引擎 (取代原本的 page-layout.js)
+   ============================================ */
+export function renderPageLayout(config) {
+  const content = document.getElementById('app-content');
+  if (!content) return null;
+
+  const {
+    title,
+    headerActions = '',
+    stats = null,
+    statsCols = 2,
+    controls = '',
+    listTitle = '',
+    listContainerId = 'page-list-container'
+  } = config;
+
+  let statsHtml = '';
+  if (stats && stats.length > 0) {
+    const gridCols = window.innerWidth < 768 ? 2 : statsCols;
+    statsHtml = `
+      <div style="display:grid; grid-template-columns:repeat(${gridCols}, 1fr); gap:16px; margin-bottom:24px;">
+        ${stats.map(card => `
+          <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
+            <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+              <i data-lucide="${card.icon || 'info'}" style="width:14px;height:14px;"></i> ${esc(card.title)}
+            </div>
+            <div class="mono" style="font-size:20px; font-weight:700; color:${card.color || 'var(--text-primary)'}; white-space:nowrap;">
+              ${esc(card.val)}
+            </div>
+            ${card.hint ? `<div style="font-size:11px; color:var(--text-muted);">${esc(card.hint)}</div>` : ''}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  const controlsHtml = controls ? `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+      ${controls}
+    </div>
+  ` : '';
+
+  const listTitleHtml = listTitle ? `
+    <h2 style="font-size:16px; margin-bottom:12px; color:var(--text-secondary);">${esc(listTitle)}</h2>
+  ` : '';
+
+  content.innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+      <h1 style="font-size:24px; font-weight:700; color:var(--primary); margin:0;">${esc(title)}</h1>
+      <div>${headerActions}</div>
+    </div>
+
+    ${statsHtml}
+    ${controlsHtml}
+    ${listTitleHtml}
+    <div id="${listContainerId}">
+      <div style="text-align:center; padding:40px; color:var(--text-muted);">載入資料中…</div>
+    </div>
+  `;
+
+  if (window.lucide) window.lucide.createIcons();
+  return document.getElementById(listContainerId);
+}
+
 function _bindGlobalEvents() {
   document.getElementById('app-hamburger')?.addEventListener('click', () => {
     _isMobileOpen = !_isMobileOpen;
@@ -201,9 +262,7 @@ function _bindGlobalEvents() {
     }
   });
 
-  AppState.on('theme-change', () => {
-    updateNavbar();
-  });
+  AppState.on('theme-change', () => updateNavbar());
 }
 
 function _toggleSidebar(open) {
@@ -220,3 +279,9 @@ function _toggleSidebar(open) {
     document.body.style.overflow = '';
   }
 }
+
+/* ═══ EOF ═══
+F: ui/layout.js
+V: 1792900910
+W: ai-system-20261024-012#82
+═══ EOF ═══ */
