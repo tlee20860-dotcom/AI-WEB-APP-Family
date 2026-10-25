@@ -1,5 +1,5 @@
 /* ============================================
-   app.css — 全站排版與元件樣式（對齊舊版）
+   app.css — 全站排版與元件樣式（完全對齊舊版）
    ============================================ */
 
 /* ============================================
@@ -19,7 +19,6 @@
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  transition: transform 0.3s ease;
   z-index: 100;
 }
 
@@ -29,7 +28,6 @@
   align-items: center;
   padding: 0 20px;
   border-bottom: 1px solid var(--border-color);
-  flex-shrink: 0;
 }
 
 .sidebar-logo {
@@ -62,7 +60,7 @@
 }
 
 /* ============================================
-   2. Navbar (對齊截圖右側資訊)
+   2. Navbar
    ============================================ */
 .navbar {
   height: 64px;
@@ -78,25 +76,9 @@
   z-index: 90;
 }
 
-.hamburger {
-  background: transparent;
-  border: none;
-  color: var(--text-primary);
-  cursor: pointer;
-  display: none;
-}
-
-.navbar-title {
-  font-size: 16px;
-  font-weight: 600;
-  flex: 1;
-}
-
-.navbar-right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
+.hamburger { display: none; background: transparent; border: none; color: var(--text-primary); }
+.navbar-title { font-size: 16px; font-weight: 600; flex: 1; }
+.navbar-right { display: flex; align-items: center; gap: 12px; }
 
 .navbar-db-tag {
   padding: 4px 12px;
@@ -107,38 +89,14 @@
   color: #fff;
 }
 
-.navbar-theme-btn {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-}
-
-.navbar-user {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--text-secondary);
-}
-
-.navbar-logout {
-  background: transparent;
-  border: none;
-  color: var(--accent-danger);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  padding: 4px;
-}
+.navbar-theme-btn { background: transparent; border: none; color: var(--text-secondary); cursor: pointer; }
+.navbar-user { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); }
+.navbar-logout { background: transparent; border: none; color: var(--accent-danger); cursor: pointer; padding: 4px; }
 
 /* ============================================
    3. Sidebar 選單
    ============================================ */
 .nav-group { margin-bottom: 4px; }
-
 .nav-group-title {
   padding: 12px 20px;
   font-size: 13px;
@@ -148,36 +106,28 @@
   align-items: center;
   justify-content: space-between;
 }
-
 .nav-group-label { display: flex; align-items: center; gap: 10px; }
 
 .nav-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 20px 12px 44px; /* 縮排子項目 */
+  padding: 12px 20px 12px 44px;
   color: var(--text-secondary);
   font-size: 14px;
   text-decoration: none;
-  transition: all 0.2s ease;
   border-left: 3px solid transparent;
-  cursor: pointer;
 }
-
-/* 只有單一項目的主分類，靠左對齊 */
 .nav-item.root-item { padding-left: 20px; }
-
-.nav-item:hover { background: var(--bg-hover); color: var(--primary); }
-.nav-item.active {
+.nav-item:hover, .nav-item.active {
   background: var(--bg-hover);
   color: var(--primary);
-  border-left-color: var(--primary);
-  font-weight: 500;
 }
+.nav-item.active { border-left-color: var(--primary); font-weight: 500; }
 .nav-icon { width: 18px; height: 18px; }
 
 /* ============================================
-   4. 基礎元件 (按鈕、輸入框、卡片)
+   4. 基礎元件 (卡片、按鈕)
    ============================================ */
 .btn {
   display: inline-flex;
@@ -192,63 +142,29 @@
   background: var(--bg-surface);
   color: var(--text-primary);
   cursor: pointer;
-  transition: all 0.2s ease;
-  font-family: inherit;
   text-decoration: none;
 }
-.btn:hover { background: var(--bg-hover); }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.btn-primary {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: #fff;
-  font-weight: 600;
-}
-.btn-primary:hover { background: var(--primary-dark); border-color: var(--primary-dark); }
-
-.btn-danger {
-  background: var(--accent-danger);
-  border-color: var(--accent-danger);
-  color: #fff;
-}
-.btn-danger:hover { filter: brightness(0.9); }
-
-.btn-ghost {
-  background: transparent;
-  border-color: transparent;
-  color: var(--text-secondary);
-}
-.btn-ghost:hover {
-  background: var(--bg-hover);
-  color: var(--primary);
-}
-
+.btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+.btn-danger { background: var(--accent-danger); border-color: var(--accent-danger); color: #fff; }
+.btn-ghost { background: transparent; border-color: transparent; color: var(--text-secondary); }
 .btn-sm { padding: 6px 12px; font-size: 12px; }
 
 .input {
-  width: 100%;
   padding: 10px 12px;
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-size: 14px;
-  font-family: inherit;
-  transition: border-color 0.2s;
-}
-.input:focus {
-  outline: none;
-  border-color: var(--primary);
 }
 
-/* 大卡片樣式 */
+/* 卡片 (對齊舊版：白底、微陰影、圓角 12px) */
 .glass-card {
   background: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  transition: box-shadow 0.2s;
 }
 
 /* ============================================
@@ -261,11 +177,7 @@
   overflow: hidden;
 }
 
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
+.data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
 
 .data-table th {
   text-align: left;
@@ -282,58 +194,21 @@
   padding: 16px;
   border-bottom: 1px solid var(--border-color);
   color: var(--text-primary);
-  vertical-align: middle;
 }
 
 .data-table tbody tr:last-child td { border-bottom: none; }
 .data-table tbody tr:hover { background: var(--bg-hover); }
+.data-table .num { text-align: right; font-family: var(--font-mono); font-weight: 600; }
 
-.data-table .num {
-  text-align: right;
-  font-family: var(--font-mono);
-  font-weight: 600;
-}
-
-/* ============================================
-   6. Modal & Badge
-   ============================================ */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-}
-.modal-overlay.active { display: flex; }
-
-.modal {
-  width: 100%;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 24px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.badge {
-  display: inline-block;
-  padding: 4px 12px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 500;
-}
+/* Badge */
+.badge { display: inline-block; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: 500; }
 .badge-success { background: rgba(16, 185, 129, 0.1); color: var(--accent-success); }
 .badge-danger { background: rgba(244, 63, 94, 0.1); color: var(--accent-danger); }
 .badge-info { background: rgba(29, 78, 216, 0.1); color: var(--primary); }
 .badge-warning { background: rgba(251, 191, 36, 0.1); color: var(--accent-warm); }
 .badge-muted { background: var(--bg-hover); color: var(--text-secondary); }
 
+/* 文字顏色 */
 .text-emerald { color: var(--accent-success); }
 .text-red { color: var(--accent-danger); }
 .text-primary { color: var(--primary); }
@@ -341,34 +216,22 @@
 .mono { font-family: var(--font-mono); }
 
 /* ============================================
-   7. 響應式 (Mobile)
+   6. 響應式 (Mobile)
    ============================================ */
 @media (max-width: 768px) {
-  .sidebar {
-    position: fixed;
-    top: 0;
-    left: 0;
-    height: 100vh;
-    transform: translateX(-100%);
-  }
+  .sidebar { position: fixed; top: 0; left: 0; height: 100vh; transform: translateX(-100%); }
   .sidebar.mobile-open { transform: translateX(0); }
   .hamburger { display: flex; }
-  .sidebar-backdrop {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 99;
-  }
+  .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 99; }
   .sidebar-backdrop.active { display: block; }
   .content { padding: 16px; }
   .navbar { padding: 0 16px; }
-  .navbar-db-tag { display: none; } /* 手機版隱藏 DB tag */
+  .navbar-db-tag { display: none; }
   .data-table th, .data-table td { padding: 12px 10px; font-size: 13px; }
 }
 
 /* ═══ EOF ═══
 F: css/app.css
-V: 1792900750
-W: ai-system-20261024-012#66
+V: 1792900780
+W: ai-system-20261024-012#69
 ═══ EOF ═══ */
