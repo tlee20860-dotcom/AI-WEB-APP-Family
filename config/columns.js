@@ -2,11 +2,10 @@
 // columns.js — 表格欄位與解析器 SSOT（V2 重構版）
 // 位置：config/columns.js
 // 說明：集中管理表格欄位結構與專屬的顯示解析（如金額、Badge）。
-//       通用格式化依賴未來的 ui/format.js。
+//       通用格式化依賴 ui/format.js。
 // ============================================
 
-import { esc } from '../ui/format.js';
-import { formatHKD, formatNumber } from '../ui/format.js';
+import { esc, formatHKD, formatNumber } from '../ui/format.js';
 import { resolveName } from './entity-registry.js';
 import { RESERVED_IDS } from './constants.js';
 import { badgeClass as statusBadgeClass, label as statusLabel } from './status.js';
@@ -75,6 +74,15 @@ export const COLUMNS = {
     { id: 'code', label: '編號', defaultVisible: true, defaultWidth: 180, sortable: true },
     { id: 'entityLabel', label: '類型', defaultVisible: true, defaultWidth: 120, sortable: true, filterable: true },
     { id: 'name', label: '名稱', defaultVisible: true, defaultWidth: 240, sortable: true },
+  ],
+
+  /* 🆕 Dashboard 專用 */
+  dashboardAnnual: [
+    { id: 'year', label: '年度', defaultVisible: true, defaultWidth: 100, sortable: true },
+    { id: 'totalIncome', label: '家庭收入', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
+    { id: 'totalExpense', label: '總支出', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
+    { id: 'insurance', label: '保險平攤', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
+    { id: 'net', label: '淨餘額', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
   ],
 };
 
@@ -160,6 +168,14 @@ export const RESOLVERS = {
     entityLabel: (v) => `<span class="badge badge-info">${esc(v || '—')}</span>`,
     name: (v) => esc(v || '（未命名）'),
   },
+
+  dashboardAnnual: {
+    year: (v, r) => `${v} 年${r.isCurrent ? ' <span class="badge badge-info" style="font-size:10px;">今年</span>' : ''}`,
+    totalIncome: (v) => `<span class="text-emerald mono">${formatHKD(v)}</span>`,
+    totalExpense: (v) => `<span class="text-red mono">${formatHKD(v)}</span>`,
+    insurance: (v) => `<span class="text-magenta mono">${formatHKD(v)}</span>`,
+    net: (v) => `<span class="${v >= 0 ? 'text-emerald' : 'text-red'} mono">${formatHKD(v)}</span>`,
+  },
 };
 
 /* ============================================
@@ -178,6 +194,6 @@ export function getResolvers(key) {
 
 /* ═══ EOF ═══
 F: config/columns.js
-V: 1792900200
-W: ai-system-20261024-012#15
+V: 1792900490
+W: ai-system-20261024-012#44
 ═══ EOF ═══ */
