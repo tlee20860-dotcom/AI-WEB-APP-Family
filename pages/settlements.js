@@ -226,7 +226,17 @@ export default {
       onCancel: () => { closeModal(modalId); overlay.remove(); },
       onSubmit: async (data) => {
         try {
-          await api.entityCreate({ action: 'update', entityType: 'expense', id: row._ref.expenseId, extra: { status: data.status } });
+          await api.entityCreate({
+            action: 'update',
+            entityType: 'expense',
+            id: row._ref.expenseId,
+            extra: {
+              status: data.status,
+              year: row.year,
+              month: row.month,
+              memberId: row.memberId,
+            },
+          });
           showToast('✅ 結算狀態已更新', 'success');
           closeModal(modalId);
           overlay.remove();
@@ -243,6 +253,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/settlements.js
-V: 1792901040
-W: ai-system-20261024-012#6
-═══ EOF ═══ */
+V: 1792901210
+W: webapp-20261025-001#2
+═══ */
