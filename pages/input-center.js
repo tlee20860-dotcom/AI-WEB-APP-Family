@@ -162,7 +162,8 @@ export default {
       renderTable({ container: listRoot, rows: displayData, columnsKey: 'recentExpense', renderActions });
     }
 
-    listRoot.addEventListener('click', async (e) => {
+    // 改用 onclick 屬性賦值，覆蓋舊監聽，避免多次切換 Tab 時累積事件
+    listRoot.onclick = async (e) => {
       const btn = e.target.closest('button[data-action]');
       if (!btn) return;
       const id = btn.dataset.id;
@@ -180,7 +181,7 @@ export default {
       } else if (btn.dataset.action === 'edit') {
         showToast('編輯功能開發中', 'info');
       }
-    });
+    };
   },
 
   _renderInsuranceTab() {
@@ -339,6 +340,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/input-center.js
-V: 1792901070
-W: ai-system-20261024-012#9
-═══ EOF ═══ */
+V: 1792901220
+W: webapp-20261025-001#3
+═══ */
