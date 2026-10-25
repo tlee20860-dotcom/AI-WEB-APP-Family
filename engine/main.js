@@ -62,11 +62,18 @@ async function bootstrap() {
         initEntityRegistry();
       }
 
-      // 已登入才渲染骨架
-      initLayout('app-root');
+      // 確保 DOM 存在，並渲染主骨架
+      const root = document.getElementById('app-root');
+      if (root && root.style.display === 'none') {
+        initLayout('app-root');
+      }
       updateNavbar();
       
-      // 啟動路由 (若在登入頁，導向首頁)
+      // 顯示選單與 Navbar
+      document.querySelector('.sidebar')?.style.setProperty('display', 'flex');
+      document.querySelector('.navbar')?.style.setProperty('display', 'flex');
+
+      // 啟動路由
       initRouter();
       if (window.location.hash === `#${ROUTES.LOGIN}` || !window.location.hash) {
         window.location.hash = ROUTES.DASHBOARD;
@@ -76,9 +83,26 @@ async function bootstrap() {
       // === 未登入 ===
       AppState.destroy();
       
-      // 直接啟動路由 (這會載入 login.js)，但不渲染側邊欄
-      initRouter();
+      // 確保 DOM 存在，但不渲染主骨架的選單
+      const root = document.getElementById('app-root');
+      if (root && root.style.display === 'none') {
+        root.style.display = 'block';
+        // 不呼叫 initLayout，避免渲染側邊欄
+        // 改為直接放入 app-content 容器
+        root.innerHTML = `
+          <div class="main-area" style="width:100%;">
+            <main class="content" id="app-content" style="padding:0;"></main>
+          </div>
+        `;
+      }
+
+      // 隱藏選單與 Navbar (如果存在的話)
+      document.querySelector('.sidebar')?.style.setProperty('display', 'none');
+      document.querySelector('.navbar')?.style.setProperty('display', 'none');
+
+      // 強制跳轉到登入頁
       window.location.hash = ROUTES.LOGIN;
+      initRouter();
     }
 
     if (loadingEl) loadingEl.style.display = 'none';
@@ -92,6 +116,6 @@ bootstrap().catch(err => {
 
 /* ═══ EOF ═══
 F: engine/main.js
-V: 1792900620
-W: ai-system-20261024-012#57
+V: 1792900640
+W: ai-system-20261024-012#59
 ═══ EOF ═══ */
