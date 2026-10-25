@@ -76,13 +76,21 @@ export const COLUMNS = {
     { id: 'name', label: '名稱', defaultVisible: true, defaultWidth: 240, sortable: true },
   ],
 
-  /* 🆕 Dashboard 專用 */
   dashboardAnnual: [
     { id: 'year', label: '年度', defaultVisible: true, defaultWidth: 100, sortable: true },
     { id: 'totalIncome', label: '家庭收入', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
     { id: 'totalExpense', label: '總支出', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
     { id: 'insurance', label: '保險平攤', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
     { id: 'net', label: '淨餘額', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
+  ],
+
+  /* 🆕 最近支出 (Input Center) */
+  recentExpense: [
+    { id: 'date', label: '日期', defaultVisible: true, defaultWidth: 100, sortable: true },
+    { id: 'memberName', label: '成員', defaultVisible: true, defaultWidth: 100, sortable: true, filterable: true },
+    { id: 'name', label: '項目名稱', defaultVisible: true, defaultWidth: 200, sortable: true },
+    { id: 'amount', label: '金額', defaultVisible: true, defaultWidth: 110, type: 'number', sortable: true },
+    { id: 'status', label: '狀態', defaultVisible: true, defaultWidth: 120, sortable: true, filterable: true },
   ],
 };
 
@@ -176,6 +184,14 @@ export const RESOLVERS = {
     insurance: (v) => `<span class="text-magenta mono">${formatHKD(v)}</span>`,
     net: (v) => `<span class="${v >= 0 ? 'text-emerald' : 'text-red'} mono">${formatHKD(v)}</span>`,
   },
+
+  recentExpense: {
+    date: (v) => esc(v || '—'),
+    memberName: (_, r) => r.memberId === RESERVED_IDS.SHARED_MEMBER ? '🏠 家庭共用' : esc(resolveName('members', r.memberId) || r.memberId || '—'),
+    name: (v) => esc(v || '（未命名）'),
+    amount: (v) => formatHKD(v),
+    status: (v) => `<span class="badge ${statusBadgeClass(v)}">${esc(statusLabel(v))}</span>`,
+  },
 };
 
 /* ============================================
@@ -194,6 +210,6 @@ export function getResolvers(key) {
 
 /* ═══ EOF ═══
 F: config/columns.js
-V: 1792900490
-W: ai-system-20261024-012#44
+V: 1792900550
+W: ai-system-20261024-012#50
 ═══ EOF ═══ */
