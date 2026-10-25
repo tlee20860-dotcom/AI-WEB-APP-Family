@@ -1,7 +1,5 @@
 // ============================================
 // dashboard.js — 總覽儀表板（V2 重構版）
-// 位置：pages/dashboard.js
-// 說明：顯示家庭總餘額、年度收支與歷年總覽。
 // ============================================
 
 import { AppState } from '../config/state.js';
@@ -17,7 +15,7 @@ export default {
     const content = document.getElementById('app-content');
     if (!content) return;
 
-    // 1. 渲染基礎骨架 (無年月切換控制列)
+    // 標題與按鈕
     content.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
         <h1 style="font-size:24px; font-weight:700; color:var(--primary);">總覽儀表板</h1>
@@ -26,8 +24,10 @@ export default {
         </a>
       </div>
 
+      <!-- 統計卡容器 (2x2 網格) -->
       <div id="dashboard-stats" style="display:grid; grid-template-columns:repeat(2, 1fr); gap:16px; margin-bottom:24px;"></div>
       
+      <!-- 年度總覽表格 -->
       <div class="table-container" style="margin-bottom:24px;">
         <div style="padding:16px; border-bottom:1px solid var(--border-color); display:flex; align-items:center; gap:8px;">
           <i data-lucide="calendar" style="width:18px;height:18px;color:var(--primary);"></i>
@@ -37,12 +37,10 @@ export default {
       </div>
     `;
 
-    // 3. 綁定 State 監聽 (若其他頁面切換年月，這裡也要連動)
     this._unsubYM = AppState.on('ym-change', () => {
       this._loadData();
     });
 
-    // 4. 載入資料
     await this._loadData();
   },
 
@@ -63,7 +61,7 @@ export default {
         api.fetchAnnualSummaryRange(y - 2, y + 2)
       ]);
 
-      // 渲染統計卡 (套用舊版風格)
+      // 渲染統計卡 (嚴格對齊截圖的內邊距與字體)
       const s = summaryRes;
       const statsHtml = [
         { title: '家庭總餘額', val: s.bankBalance + s.fundValue, color: (s.bankBalance + s.fundValue) >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)', icon: 'landmark', hint: `共 ${s.bankCount || 1} 個銀行帳號` },
@@ -71,12 +69,16 @@ export default {
         { title: `${year} 年度總支出`, val: s.totalExpense, color: 'var(--accent-danger)', icon: 'trending-down', hint: `${s.monthCount || 0} 個月有紀錄` },
         { title: `${year} 年度淨餘額`, val: s.netBalance, color: s.netBalance >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)', icon: 'wallet', hint: s.netBalance >= 0 ? '收支平衡' : '支出大於收入' }
       ].map(card => `
-        <div class="glass-card" style="padding:20px; display:flex; flex-direction:column; gap:8px;">
+        <div class="glass-card" style="padding:20px; display:flex; flex-direction:column; gap:8px; height:100%;">
           <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
             <i data-lucide="${card.icon}" style="width:14px;height:14px;"></i> ${esc(card.title)}
           </div>
-          <div class="mono" style="font-size:24px; font-weight:700; color:${card.color};">${formatHKD(card.val)}</div>
-          <div style="font-size:11px; color:var(--text-muted);">${esc(card.hint)}</div>
+          <div class="mono" style="font-size:24px; font-weight:700; color:${card.color}; white-space:nowrap;">
+            ${formatHKD(card.val)}
+          </div>
+          <div style="font-size:11px; color:var(--text-muted);">
+            ${esc(card.hint)}
+          </div>
         </div>
       `).join('');
       statsRoot.innerHTML = statsHtml;
@@ -121,6 +123,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/dashboard.js
-V: 1792900760
-W: ai-system-20261024-012#67
+V: 1792900780
+W: ai-system-20261024-012#69
 ═══ EOF ═══ */
