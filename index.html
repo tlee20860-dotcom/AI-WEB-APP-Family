@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>FAMILY.FIN V2</title>
   
-  <!-- PWA 設定 -->
   <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#0F172A">
   <meta name="mobile-web-app-capable" content="yes">
@@ -13,34 +12,29 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="FAMILY V2">
   
-  <!-- 預載 CDN 資源 -->
   <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <link rel="dns-prefetch" href="https://identitytoolkit.googleapis.com">
 
-  <!-- 樣式 -->
+  <!-- 引入主題與排版樣式 -->
   <link rel="stylesheet" href="./css/theme.css">
+  <link rel="stylesheet" href="./css/app.css">
 </head>
 <body>
-  <!-- 載入畫面 -->
   <div id="app-loading" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
     <div class="spinner"></div>
     <div style="font-family: monospace; color: #00F0FF; letter-spacing: 1px;">SYSTEM INITIALIZING...</div>
   </div>
 
-  <!-- SPA 掛載點 -->
   <div id="app-root" style="display: none;"></div>
 
-  <!-- 圖示庫 -->
   <script src="https://unpkg.com/lucide@0.462.0/dist/umd/lucide.min.js" defer></script>
-
-  <!-- 主程式入口 -->
   <script type="module" src="./engine/main.js"></script>
 </body>
 </html>
 
 <!-- ═══ EOF ═══
 F: index.html
-V: 1792900610
-W: ai-system-20261024-012#56
+V: 1792900620
+W: ai-system-20261024-012#57
 ═══ EOF ═══ -->
