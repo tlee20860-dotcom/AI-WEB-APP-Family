@@ -8,8 +8,8 @@ import { AppState } from '../config/state.js';
 import { listenBankAccounts, listenAllBankTransactions } from '../db/index.js';
 import { api } from '../domain/api-client.js';
 import { calcBankBalance, calcTotalBankBalance } from '../domain/bank.js';
-import { renderTable } from '../ui/table.js';
-import { renderYearMonth } from '../ui/controls.js';
+import { renderTable, renderCards } from '../ui/table.js';
+import { renderViewToggle, renderYearMonth } from '../ui/controls.js';
 import { openModal, closeModal } from '../ui/modal.js';
 import { createForm } from '../ui/form.js';
 import { showToast } from '../ui/toast.js';
@@ -39,7 +39,11 @@ export default {
         </div>
       </div>
 
-      <div id="bank-controls-period" style="margin-bottom:16px;"></div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+        <div id="bank-controls-period"></div>
+        <div id="bank-view-toggle"></div>
+      </div>
+      
       <div id="bank-stats" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px;"></div>
       
       <div style="margin-bottom:24px;">
@@ -55,6 +59,11 @@ export default {
 
     // 渲染年月控制列
     renderYearMonth('bank-controls-period', { includeAllMonth: true }, () => {
+      this._renderData();
+    });
+
+    // 渲染檢視切換
+    renderViewToggle('bank-view-toggle', () => {
       this._renderData();
     });
 
@@ -82,6 +91,7 @@ export default {
     const { year, month } = AppState.getYearMonth();
     const y = year || String(new Date().getFullYear());
     const tM = month === 'all' ? '12' : (month || '12');
+    const currentView = AppState.getCurrentView() || 'table';
 
     // 1. 計算統計
     const totalBalance = calcTotalBankBalance(this._accounts, this._txns, y, tM);
@@ -110,7 +120,7 @@ export default {
       </div>
     `;
 
-    // 2. 渲染帳號清單 (動態加上 balance 欄位)
+    // 2. 渲染帳號清單
     const accCols = getColumns('bankAccounts');
     accCols.push({ id: 'dynamicBalance', label: '當前餘額', type: 'number' });
     
@@ -120,45 +130,76 @@ export default {
       return `<span class="mono" style="font-weight:700; color:${bal >= 0 ? 'var(--text-primary)' : 'var(--accent-danger)'};">${formatHKD(bal)}</span>`;
     };
 
-    renderTable({
-      container: accRoot,
-      rows: this._accounts,
-      columnsKey: 'bankAccounts', // 這裡借用 key，但用自訂 columns 覆蓋
-      emptyText: '尚無銀行帳號'
-    });
-    
-    // 因為 renderTable 直接抓 config 的 key，這裡為了傳入動態欄位，直接手動替換 root
-    accRoot.innerHTML = `
-      <div class="glass-card" style="padding:0; overflow:hidden;">
-        <div class="data-table-scroll-wrapper" style="overflow-x:auto;">
-          <table class="data-table" style="width:100%; border-collapse:collapse;">
-            <thead>
-              <tr>${accCols.map(c => `<th class="${c.type === 'number' ? 'num' : ''}">${esc(c.label)}</th>`).join('')}</tr>
-            </thead>
-            <tbody>
-              ${this._accounts.map(row => `
-                <tr>
-                  ${accCols.map(col => {
-                    const val = row[col.id];
-                    const resolver = accResolvers[col.id];
-                    const content = resolver ? resolver(val, row) : esc(val);
-                    return `<td class="${col.type === 'number' ? 'num' : ''}">${content}</td>`;
-                  }).join('')}
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
+    // 手動渲染帳號表格 (因為有動態欄位)
+    if (currentView === 'card') {
+      // 帳號清單用卡片模式
+      accRoot.innerHTML = `
+        <div class="data-cards-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:16px;">
+          ${this._accounts.map(row => {
+            const bal = calcBankBalance(row, this._txns.filter(t => t.bankId === row.id), y, tM);
+            return `
+              <div class="glass-card" style="padding:16px;">
+                <div style="font-size:16px; font-weight:700; color:var(--primary); margin-bottom:8px;">${esc(row.name)}</div>
+                <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;">
+                  <span style="color:var(--text-muted);">類型</span>
+                  <span>${row.type === 'personal' ? '個人' : '家庭'}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;">
+                  <span style="color:var(--text-muted);">初始餘額</span>
+                  <span class="mono">${formatHKD(row.initialBalance)}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; font-size:14px; margin-top:12px; padding-top:12px; border-top:1px dashed var(--border-color);">
+                  <span style="color:var(--text-muted);">當前餘額</span>
+                  <span class="mono" style="font-weight:700; color:${bal >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'};">${formatHKD(bal)}</span>
+                </div>
+              </div>
+            `;
+          }).join('')}
         </div>
-      </div>
-    `;
+      `;
+    } else {
+      // 帳號清單用表格模式
+      accRoot.innerHTML = `
+        <div class="glass-card" style="padding:0; overflow:hidden;">
+          <div class="data-table-scroll-wrapper" style="overflow-x:auto;">
+            <table class="data-table" style="width:100%; border-collapse:collapse;">
+              <thead>
+                <tr>${accCols.map(c => `<th class="${c.type === 'number' ? 'num' : ''}">${esc(c.label)}</th>`).join('')}</tr>
+              </thead>
+              <tbody>
+                ${this._accounts.map(row => `
+                  <tr>
+                    ${accCols.map(col => {
+                      const val = row[col.id];
+                      const resolver = accResolvers[col.id];
+                      const content = resolver ? resolver(val, row) : esc(val);
+                      return `<td class="${col.type === 'number' ? 'num' : ''}">${content}</td>`;
+                    }).join('')}
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
 
     // 3. 渲染交易明細
-    renderTable({
-      container: txnRoot,
-      rows: monthTxns.sort((a, b) => (b.date || '').localeCompare(a.date || '')),
-      columnsKey: 'bankTransactions',
-      emptyText: '本月尚無交易紀錄'
-    });
+    if (currentView === 'card') {
+      renderCards({
+        container: txnRoot,
+        rows: monthTxns.sort((a, b) => (b.date || '').localeCompare(a.date || '')),
+        columnsKey: 'bankTransactions',
+        emptyText: '本月尚無交易紀錄'
+      });
+    } else {
+      renderTable({
+        container: txnRoot,
+        rows: monthTxns.sort((a, b) => (b.date || '').localeCompare(a.date || '')),
+        columnsKey: 'bankTransactions',
+        emptyText: '本月尚無交易紀錄'
+      });
+    }
 
     if (window.lucide) window.lucide.createIcons();
   },
@@ -275,6 +316,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/bank.js
-V: 1792900520
-W: ai-system-20261024-012#47
+V: 1792900710
+W: ai-system-20261024-012#62
 ═══ EOF ═══ */
