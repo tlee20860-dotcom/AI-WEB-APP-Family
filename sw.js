@@ -9,6 +9,7 @@ const CACHE_NAME = 'family-fin-v2-v1';
 
 const STATIC_ASSETS = [
   './manifest.json',
+  './meta.json',
   // 後續階段會加入 css、js 等檔案
 ];
 
@@ -90,6 +91,6 @@ async function _networkFirst(request) {
 
 /* ═══ EOF ═══
 F: sw.js
-V: 1792900120
-W: ai-system-20261024-012#4
-═══ EOF ═══ */
+V: 1792901730
+W: webapp-20261025-001#23
+═══ */
