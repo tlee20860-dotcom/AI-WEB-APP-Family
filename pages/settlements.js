@@ -1,6 +1,7 @@
 // ============================================
 // settlements.js — 結算清單
 // 位置：pages/settlements.js
+// 說明：整合一般支出與保險扣款，提供確認與取消功能。
 // ============================================
 
 import { AppState } from '../config/state.js';
@@ -8,6 +9,7 @@ import { api } from '../domain/api-client.js';
 import { mergeSettlementData } from '../domain/settlement.js';
 import { renderTable, renderCards } from '../ui/table.js';
 import { renderViewToggle, renderYearMonth } from '../ui/controls.js';
+import { renderPageLayout } from '../ui/layout.js';
 import { openConfirm, openModal, closeModal } from '../ui/modal.js';
 import { createForm } from '../ui/form.js';
 import { showToast } from '../ui/toast.js';
@@ -17,33 +19,31 @@ export default {
   _currentYear: '',
   _currentMonth: '',
   _data: [],
+  _unsubYM: null,
 
   async render() {
-    const content = document.getElementById('app-content');
-    if (!content) return;
-
-    content.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-        <h1 style="font-size:24px; font-weight:700; color:var(--primary); margin:0;">結算清單</h1>
-      </div>
-
-      <div id="settle-stats" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; margin-bottom:24px;"></div>
-
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
-        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-          <div style="display:flex; align-items:center; gap:8px;">
-            <input type="checkbox" id="settle-hide-done" style="cursor:pointer;">
-            <label for="settle-hide-done" style="font-size:13px; color:var(--text-secondary); cursor:pointer;">隱藏已處理</label>
-          </div>
-          <div id="settle-view-toggle"></div>
+    // 1. 準備控制列 HTML
+    const controlsHtml = `
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" id="settle-hide-done" style="cursor:pointer;">
+          <label for="settle-hide-done" style="font-size:13px; color:var(--text-secondary); cursor:pointer;">隱藏已處理</label>
         </div>
-        <div id="settle-controls-period"></div>
+        <div id="settle-view-toggle"></div>
       </div>
-      
-      <div id="settle-list-container"></div>
+      <div id="settle-controls-period"></div>
     `;
 
-    AppState.on('ym-change', () => this._loadData());
+    // 2. 呼叫統一引擎繪製骨架
+    renderPageLayout({
+      title: '結算清單',
+      stats: [],
+      controls: controlsHtml,
+      listContainerId: 'settle-list-container'
+    });
+
+    // 3. 綁定控制列事件
+    this._unsubYM = AppState.on('ym-change', () => this._loadData());
 
     renderYearMonth('settle-controls-period', { includeAllMonth: true }, () => {
       this._loadData();
@@ -57,6 +57,7 @@ export default {
       this._renderListAndStats();
     });
 
+    // 4. 載入資料
     await this._loadData();
   },
 
@@ -73,6 +74,7 @@ export default {
     try {
       const res = await api.fetchSettlementsYear(year);
       const memberExpenses = [];
+      
       if (month !== 'all') {
         const mm = String(month).padStart(2, '0');
         (res.memberExpensesByMonth[mm] || []).forEach(e => memberExpenses.push({ ...e, year, month: mm }));
@@ -102,14 +104,13 @@ export default {
     } catch (err) {
       console.error('[settlements] 載入失敗：', err);
       showToast('載入結算資料失敗', 'error');
-      listRoot.innerHTML = '<div style="color:var(--accent-danger); padding:20px;">載入失敗</div>';
+      listRoot.innerHTML = '<div style="color:var(--accent-danger); padding:20px; text-align:center;">載入失敗</div>';
     }
   },
 
   _renderListAndStats() {
-    const statsRoot = document.getElementById('settle-stats');
     const listRoot = document.getElementById('settle-list-container');
-    if (!statsRoot || !listRoot || !this._data) return;
+    if (!listRoot || !this._data) return;
 
     const hideDone = document.getElementById('settle-hide-done')?.checked;
     const currentView = AppState.getCurrentView() || 'table';
@@ -122,23 +123,36 @@ export default {
     const pt = pending.reduce((s, r) => s + (Number(r.amount) || 0), 0);
     const dt = done.reduce((s, r) => s + (Number(r.amount) || 0), 0);
 
-    statsRoot.innerHTML = `
-      <div class="glass-card" style="padding:16px;">
-        <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">待處理金額</div>
-        <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-danger); white-space:nowrap;">${formatHKD(pt)}</div>
-        <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">${pending.length} 筆</div>
-      </div>
-      <div class="glass-card" style="padding:16px;">
-        <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">已處理金額</div>
-        <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-success); white-space:nowrap;">${formatHKD(dt)}</div>
-        <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">${done.length} 筆</div>
-      </div>
-      <div class="glass-card" style="padding:16px;">
-        <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">總計</div>
-        <div class="mono" style="font-size:20px; font-weight:700; color:var(--primary); white-space:nowrap;">${formatHKD(pt + dt)}</div>
-        <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">${displayData.length} 筆</div>
-      </div>
-    `;
+    // 更新統計卡 (使用 layout.js 建立的固定容器)
+    const statsContainer = document.getElementById('page-stats-container');
+    if (statsContainer) {
+      statsContainer.style.display = 'grid';
+      statsContainer.style.gridTemplateColumns = window.innerWidth < 768 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)';
+      
+      statsContainer.innerHTML = `
+        <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
+          <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+            <i data-lucide="clock" style="width:14px;height:14px;"></i> 待處理金額
+          </div>
+          <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-danger); white-space:nowrap;">${formatHKD(pt)}</div>
+          <div style="font-size:11px; color:var(--text-muted);">${pending.length} 筆</div>
+        </div>
+        <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
+          <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+            <i data-lucide="check-circle" style="width:14px;height:14px;"></i> 已處理金額
+          </div>
+          <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-success); white-space:nowrap;">${formatHKD(dt)}</div>
+          <div style="font-size:11px; color:var(--text-muted);">${done.length} 筆</div>
+        </div>
+        <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
+          <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+            <i data-lucide="calculator" style="width:14px;height:14px;"></i> 總計
+          </div>
+          <div class="mono" style="font-size:20px; font-weight:700; color:var(--primary); white-space:nowrap;">${formatHKD(pt + dt)}</div>
+          <div style="font-size:11px; color:var(--text-muted);">${displayData.length} 筆</div>
+        </div>
+      `;
+    }
 
     if (displayData.length === 0) {
       listRoot.innerHTML = '<div class="glass-card" style="text-align:center; padding:40px; color:var(--text-muted);">此條件下無資料</div>';
@@ -172,6 +186,8 @@ export default {
       else if (action === 'ins-unsync') this._handleInsuranceUnsync(row);
       else if (action === 'settle') this._handleSettle(row);
     });
+
+    if (window.lucide) window.lucide.createIcons();
   },
 
   async _handleInsuranceSync(row) {
@@ -220,11 +236,13 @@ export default {
     });
   },
 
-  destroy() {}
+  destroy() {
+    if (this._unsubYM) { try { this._unsubYM(); } catch (e) {} this._unsubYM = null; }
+  }
 };
 
 /* ═══ EOF ═══
 F: pages/settlements.js
-V: 1792900860
-W: ai-system-20261024-012#77
+V: 1792901040
+W: ai-system-20261024-012#6
 ═══ EOF ═══ */
