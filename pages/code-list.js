@@ -1,7 +1,6 @@
 // ============================================
-// code-list.js — 編號對照清單（V2 重構版）
+// code-list.js — 編號對照清單
 // 位置：pages/code-list.js
-// 說明：整合所有基礎實體的編號與名稱，方便對照與搜尋。
 // ============================================
 
 import {
@@ -24,7 +23,10 @@ export default {
 
     content.innerHTML = `
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-        <h1 style="font-size:24px; font-weight:700; color:var(--primary);">編號對照清單</h1>
+        <h1 style="font-size:24px; font-weight:700; color:var(--primary); margin:0;">編號對照清單</h1>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
         <div id="code-view-toggle"></div>
       </div>
 
@@ -51,13 +53,11 @@ export default {
       </div>
     `;
 
-    // 渲染檢視切換
     renderViewToggle('code-view-toggle', () => {
       const filterType = document.getElementById('code-filter-type').value;
       this._renderList(filterType);
     });
 
-    // 綁定篩選事件
     document.getElementById('code-filter-type')?.addEventListener('change', (e) => {
       this._renderList(e.target.value);
     });
@@ -100,7 +100,6 @@ export default {
       _pushRows(policies, 'policy', '保單');
       _pushRows(funds, 'fund', '基金');
 
-      // 預設排序：依編號
       this._allRows.sort((a, b) => {
         if (a.code && b.code) return a.code.localeCompare(b.code);
         if (a.code) return -1;
@@ -134,19 +133,9 @@ export default {
     const currentView = AppState.getCurrentView() || 'table';
 
     if (currentView === 'card') {
-      renderCards({
-        container,
-        rows: displayData,
-        columnsKey: 'codeList',
-        emptyText: '尚無資料'
-      });
+      renderCards({ container, rows: displayData, columnsKey: 'codeList', emptyText: '尚無資料' });
     } else {
-      renderTable({
-        container,
-        rows: displayData,
-        columnsKey: 'codeList',
-        emptyText: '尚無資料'
-      });
+      renderTable({ container, rows: displayData, columnsKey: 'codeList', emptyText: '尚無資料' });
     }
   },
 
@@ -155,6 +144,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/code-list.js
-V: 1792900730
-W: ai-system-20261024-012#64
+V: 1792900870
+W: ai-system-20261024-012#78
 ═══ EOF ═══ */
