@@ -1,7 +1,5 @@
 // ============================================
 // login.js — 登入頁面（V2 重構版）
-// 位置：pages/login.js
-// 說明：處理使用者登入。未登入時隱藏側邊欄與導覽列。
 // ============================================
 
 import { loginWithCustomAccount } from '../domain/auth.js';
@@ -10,7 +8,7 @@ import { esc } from '../ui/format.js';
 
 export default {
   async render() {
-    // 隱藏主畫面的側邊欄與導覽列
+    // 隱藏選單
     const sidebar = document.querySelector('.sidebar');
     const navbar = document.querySelector('.navbar');
     if (sidebar) sidebar.style.display = 'none';
@@ -84,7 +82,6 @@ export default {
   },
 
   destroy() {
-    // 離開登入頁時，恢復側邊欄與導覽列的顯示
     const sidebar = document.querySelector('.sidebar');
     const navbar = document.querySelector('.navbar');
     if (sidebar) sidebar.style.display = 'flex';
@@ -94,6 +91,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/login.js
-V: 1792900660
-W: ai-system-20261024-012#61
+V: 1792900670
+W: ai-system-20261024-012#57
 ═══ EOF ═══ */
