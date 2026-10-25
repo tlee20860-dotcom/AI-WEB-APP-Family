@@ -132,6 +132,45 @@ export async function handleEntityPost(context) {
     if (auth instanceof Response) return auth;
     const { token } = auth;
 
+    // 特殊處理：expense 路徑含年 / 月 / 成員三層，非 ENTITY_PATH 單層列表
+    if (entityType === 'expense') {
+      if (action !== 'update') {
+        return errorResponse('INVALID_BODY', 'expense 僅支援 update（新增請走 db/write 的 addExpense）');
+      }
+      if (!id) return errorResponse('MISSING_FIELDS', '缺少 id');
+
+      const year = String(extra?.year || '');
+      const month = String(extra?.month || '').padStart(2, '0');
+      const memberId = String(extra?.memberId || '');
+
+      if (!year || !month || month === '00' || !memberId) {
+        return errorResponse('MISSING_FIELDS', 'expense 更新需 year / month / memberId');
+      }
+      if (!/^\d{4}$/.test(year)) {
+        return errorResponse('INVALID_BODY', 'year 需為四位數字');
+      }
+      if (!/^(0[1-9]|1[0-2])$/.test(month)) {
+        return errorResponse('INVALID_BODY', 'month 需為 01~12');
+      }
+
+      const expensePath = `families/${familyId}/expenses/${year}/${month}/member_expenses/${memberId}/${id}`;
+      const existing = await dbGet(expensePath, token);
+      if (!existing) return errorResponse('NOT_FOUND', `找不到支出：${id}`);
+
+      const patch = {};
+      if (extra.status !== undefined) patch.status = extra.status;
+      if (extra.name !== undefined) patch.name = String(extra.name);
+      if (extra.amount !== undefined) patch.amount = roundInt(extra.amount);
+      if (extra.date !== undefined) patch.date = String(extra.date);
+      if (!Object.keys(patch).length) {
+        return errorResponse('INVALID_BODY', '無可更新欄位');
+      }
+      patch.updatedAt = Date.now();
+
+      await dbPatch(expensePath, patch, token);
+      return successResponse({ id });
+    }
+
     if (!entityType || !ENTITY_PATH[entityType]) return errorResponse('INVALID_BODY', `未知的 entityType：${entityType}`);
     const listPath = `families/${familyId}/${ENTITY_PATH[entityType]}`;
 
@@ -375,6 +414,6 @@ function _findDoneStatus(statuses, category) {
 
 /* ═══ EOF ═══
 F: api/handlers-core.js
-V: 1792900370
-W: ai-system-20261024-012#32
-═══ EOF ═══ */
+V: 1792901200
+W: webapp-20261025-001#1
+═══ */
