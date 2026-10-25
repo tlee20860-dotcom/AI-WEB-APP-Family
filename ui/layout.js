@@ -180,7 +180,7 @@ export function setPageTitle(title) {
 }
 
 /* ============================================
-   統一頁面排版引擎 (取代原本的 page-layout.js)
+   統一頁面排版引擎
    ============================================ */
 export function renderPageLayout(config) {
   const content = document.getElementById('app-content');
@@ -200,7 +200,7 @@ export function renderPageLayout(config) {
   if (stats && stats.length > 0) {
     const gridCols = window.innerWidth < 768 ? 2 : statsCols;
     statsHtml = `
-      <div style="display:grid; grid-template-columns:repeat(${gridCols}, 1fr); gap:16px; margin-bottom:24px;">
+      <div id="page-stats-container" style="display:grid; grid-template-columns:repeat(${gridCols}, 1fr); gap:16px; margin-bottom:24px;">
         ${stats.map(card => `
           <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
             <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
@@ -214,6 +214,9 @@ export function renderPageLayout(config) {
         `).join('')}
       </div>
     `;
+  } else {
+    // 若無統計卡，依然保留一個隱藏的容器，方便後續動態塞入
+    statsHtml = `<div id="page-stats-container" style="display:none;"></div>`;
   }
 
   const controlsHtml = controls ? `
@@ -282,6 +285,6 @@ function _toggleSidebar(open) {
 
 /* ═══ EOF ═══
 F: ui/layout.js
-V: 1792900910
-W: ai-system-20261024-012#82
+V: 1792901000
+W: ai-system-20261024-012#2
 ═══ EOF ═══ */
