@@ -1,5 +1,7 @@
 // ============================================
 // portfolio.js — 基金投資表
+// 位置：pages/portfolio.js
+// 說明：顯示基金持倉與盈虧。整合保險基金的成本估算。
 // ============================================
 
 import { AppState } from '../config/state.js';
@@ -8,6 +10,7 @@ import { api } from '../domain/api-client.js';
 import { findPolicyByFund, getCostMapForPolicy, calcFundPnl } from '../domain/fund.js';
 import { renderTable, renderCards } from '../ui/table.js';
 import { renderViewToggle, renderYearMonth } from '../ui/controls.js';
+import { renderPageLayout } from '../ui/layout.js';
 import { openModal, closeModal, openConfirm } from '../ui/modal.js';
 import { createForm } from '../ui/form.js';
 import { showToast } from '../ui/toast.js';
@@ -21,29 +24,26 @@ export default {
   _snapshots: {},
 
   async render() {
-    const content = document.getElementById('app-content');
-    if (!content) return;
-
-    content.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-        <h1 style="font-size:24px; font-weight:700; color:var(--primary); margin:0;">基金投資表</h1>
+    // 1. 準備控制列 HTML
+    const controlsHtml = `
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <button type="button" class="btn btn-primary" id="btn-add-fund">
+          <i data-lucide="plus" style="width:16px;height:16px;"></i> 新增基金
+        </button>
+        <div id="portfolio-controls-view"></div>
       </div>
-
-      <div id="portfolio-stats" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; margin-bottom:24px;"></div>
-
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
-        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-          <button type="button" class="btn btn-primary" id="btn-add-fund">
-            <i data-lucide="plus" style="width:16px;height:16px;"></i> 新增基金
-          </button>
-          <div id="portfolio-controls-view"></div>
-        </div>
-        <div id="portfolio-controls-period"></div>
-      </div>
-
-      <div id="portfolio-list-container"></div>
+      <div id="portfolio-controls-period"></div>
     `;
 
+    // 2. 呼叫統一引擎繪製骨架
+    renderPageLayout({
+      title: '基金投資表',
+      stats: [],
+      controls: controlsHtml,
+      listContainerId: 'portfolio-list-container'
+    });
+
+    // 3. 綁定控制列事件
     renderYearMonth('portfolio-controls-period', { includeAllMonth: false }, () => {
       this._renderListAndStats();
     });
@@ -56,6 +56,7 @@ export default {
       this._openFundModal();
     });
 
+    // 4. 監聽資料
     this._unsubFunds = listenFunds((funds) => {
       this._funds = funds;
       this._loadSnapshotsAndRender();
@@ -80,9 +81,8 @@ export default {
   },
 
   _renderListAndStats() {
-    const statsRoot = document.getElementById('portfolio-stats');
     const listRoot = document.getElementById('portfolio-list-container');
-    if (!statsRoot || !listRoot) return;
+    if (!listRoot) return;
 
     const { year, month } = AppState.getYearMonth();
     const y = year || String(new Date().getFullYear());
@@ -99,6 +99,7 @@ export default {
       const snap = this._snapshots[f.id];
       const currentValue = snap ? (Number(snap.shares) * Number(snap.nav) * 7.8) : (Number(f.currentValue) || 0);
       let estimatedCost = 0;
+      
       if (f.type === 'insurance') {
         const policy = findPolicyByFund(f, this._policies);
         if (policy && costMaps[policy.id]) estimatedCost = costMaps[policy.id][f.id] || 0;
@@ -106,9 +107,11 @@ export default {
       } else {
         estimatedCost = Number(f.cost) || 0;
       }
+      
       const pnlInfo = calcFundPnl({ currentValue }, estimatedCost);
       totalCost += estimatedCost;
       totalValue += currentValue;
+      
       return { ...f, currentValue: Math.round(currentValue), cost: estimatedCost, pnl: Math.round(pnlInfo.pnl) };
     });
 
@@ -116,21 +119,35 @@ export default {
     const pnlCls = totalPnl >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
     const pnlPct = totalCost > 0 ? ((totalPnl / totalCost) * 100).toFixed(2) : '0.00';
 
-    statsRoot.innerHTML = `
-      <div class="glass-card" style="padding:16px;">
-        <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">總投入成本</div>
-        <div class="mono" style="font-size:20px; font-weight:700; color:var(--text-primary); white-space:nowrap;">${formatHKD(totalCost)}</div>
-      </div>
-      <div class="glass-card" style="padding:16px;">
-        <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">總現時價值 (HKD)</div>
-        <div class="mono" style="font-size:20px; font-weight:700; color:var(--primary); white-space:nowrap;">${formatHKD(totalValue)}</div>
-      </div>
-      <div class="glass-card" style="padding:16px;">
-        <div style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">總帳面盈虧</div>
-        <div class="mono" style="font-size:20px; font-weight:700; color:${pnlCls}; white-space:nowrap;">${totalPnl >= 0 ? '+' : ''}${formatHKD(totalPnl)} (${pnlPct}%)</div>
-      </div>
-    `;
+    // 更新統計卡 (使用 layout.js 建立的固定容器)
+    const statsContainer = document.getElementById('page-stats-container');
+    if (statsContainer) {
+      statsContainer.style.display = 'grid';
+      statsContainer.style.gridTemplateColumns = window.innerWidth < 768 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)';
+      
+      statsContainer.innerHTML = `
+        <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
+          <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+            <i data-lucide="wallet" style="width:14px;height:14px;"></i> 總投入成本
+          </div>
+          <div class="mono" style="font-size:20px; font-weight:700; color:var(--text-primary); white-space:nowrap;">${formatHKD(totalCost)}</div>
+        </div>
+        <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
+          <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+            <i data-lucide="line-chart" style="width:14px;height:14px;"></i> 總現時價值 (HKD)
+          </div>
+          <div class="mono" style="font-size:20px; font-weight:700; color:var(--primary); white-space:nowrap;">${formatHKD(totalValue)}</div>
+        </div>
+        <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
+          <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+            <i data-lucide="trending-up" style="width:14px;height:14px;"></i> 總帳面盈虧
+          </div>
+          <div class="mono" style="font-size:20px; font-weight:700; color:${pnlCls}; white-space:nowrap;">${totalPnl >= 0 ? '+' : ''}${formatHKD(totalPnl)} (${pnlPct}%)</div>
+        </div>
+      `;
+    }
 
+    // 渲染列表
     if (displayFunds.length === 0) {
       listRoot.innerHTML = '<div class="glass-card" style="text-align:center; padding:40px; color:var(--text-muted);">尚無基金資料</div>';
       return;
@@ -220,6 +237,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/portfolio.js
-V: 1792900850
-W: ai-system-20261024-012#76
+V: 1792901020
+W: ai-system-20261024-012#4
 ═══ EOF ═══ */
