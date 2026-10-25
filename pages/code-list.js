@@ -1,6 +1,7 @@
 // ============================================
 // code-list.js — 編號對照清單
 // 位置：pages/code-list.js
+// 說明：整合所有基礎實體的編號與名稱，方便對照與搜尋。
 // ============================================
 
 import {
@@ -10,6 +11,7 @@ import {
 } from '../db/index.js';
 import { renderTable, renderCards } from '../ui/table.js';
 import { renderViewToggle } from '../ui/controls.js';
+import { renderPageLayout } from '../ui/layout.js';
 import { AppState } from '../config/state.js';
 import { showToast } from '../ui/toast.js';
 import { esc } from '../ui/format.js';
@@ -18,41 +20,37 @@ export default {
   _allRows: [],
 
   async render() {
-    const content = document.getElementById('app-content');
-    if (!content) return;
-
-    content.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-        <h1 style="font-size:24px; font-weight:700; color:var(--primary); margin:0;">編號對照清單</h1>
-      </div>
-
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+    // 1. 準備控制列 HTML
+    const controlsHtml = `
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
         <div id="code-view-toggle"></div>
       </div>
-
-      <div class="glass-card" style="padding:16px; margin-bottom:20px;">
-        <div style="display:grid; grid-template-columns:100px 1fr; gap:12px; align-items:center; max-width:400px;">
-          <label style="font-size:13px; color:var(--text-secondary); text-align:right;">篩選類型：</label>
-          <select class="input" id="code-filter-type" style="width:100%; padding:8px;">
-            <option value="all">全部</option>
-            <option value="member">成員</option>
-            <option value="bank">銀行</option>
-            <option value="bankAccount">銀行帳號</option>
-            <option value="category">支出類別</option>
-            <option value="item">支出項目</option>
-            <option value="payment">支付方式</option>
-            <option value="company">保險公司</option>
-            <option value="policy">保單</option>
-            <option value="fund">基金</option>
-          </select>
-        </div>
-      </div>
-
-      <div id="code-list-container">
-        <div style="text-align:center; padding:40px; color:var(--text-muted);">載入資料中…</div>
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <label style="font-size:13px; color:var(--text-secondary); white-space:nowrap;">篩選類型：</label>
+        <select class="input" id="code-filter-type" style="padding:8px; min-width:120px;">
+          <option value="all">全部</option>
+          <option value="member">成員</option>
+          <option value="bank">銀行</option>
+          <option value="bankAccount">銀行帳號</option>
+          <option value="category">支出類別</option>
+          <option value="item">支出項目</option>
+          <option value="payment">支付方式</option>
+          <option value="company">保險公司</option>
+          <option value="policy">保單</option>
+          <option value="fund">基金</option>
+        </select>
       </div>
     `;
 
+    // 2. 呼叫統一引擎繪製骨架
+    renderPageLayout({
+      title: '編號對照清單',
+      stats: [], 
+      controls: controlsHtml,
+      listContainerId: 'code-list-container'
+    });
+
+    // 3. 綁定事件
     renderViewToggle('code-view-toggle', () => {
       const filterType = document.getElementById('code-filter-type').value;
       this._renderList(filterType);
@@ -62,10 +60,16 @@ export default {
       this._renderList(e.target.value);
     });
 
+    // 4. 載入資料
     await this._loadData();
   },
 
   async _loadData() {
+    const listRoot = document.getElementById('code-list-container');
+    if (!listRoot) return;
+
+    listRoot.innerHTML = '<div style="text-align:center; padding:40px; color:var(--text-muted);">載入資料中…</div>';
+
     try {
       const [
         members, banks, bankAccounts, categories, items, 
@@ -112,7 +116,7 @@ export default {
     } catch (err) {
       console.error('[code-list] 載入失敗：', err);
       showToast('載入編號清單失敗', 'error');
-      document.getElementById('code-list-container').innerHTML = '<div style="color:var(--accent-danger); text-align:center; padding:20px;">載入失敗</div>';
+      listRoot.innerHTML = '<div style="color:var(--accent-danger); text-align:center; padding:20px;">載入失敗</div>';
     }
   },
 
@@ -144,6 +148,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/code-list.js
-V: 1792900870
-W: ai-system-20261024-012#78
+V: 1792901050
+W: ai-system-20261024-012#7
 ═══ EOF ═══ */
