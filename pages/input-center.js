@@ -1,36 +1,37 @@
 // ============================================
-// input-center.js — 綜合輸入中心（V2 重構版 - 補回 Tab）
+// input-center.js — 綜合輸入中心
 // 位置：pages/input-center.js
+// 說明：整合新增操作與各類別清單預覽。
 // ============================================
 
 import { AppState } from '../config/state.js';
-import { listenAllExpenses } from '../db/index.js';
+import { 
+  listenAllExpenses, 
+  getInsurancePoliciesOnce, 
+  getFundsOnce, 
+  getBankAccountsOnce 
+} from '../db/index.js';
 import { saveIncome, savePersonalIncome, addExpense, removeExpense } from '../db/write.js';
 import { getList as getMembersList } from '../config/entity-registry.js';
 import { renderTable, renderCards } from '../ui/table.js';
 import { renderViewToggle, renderYearMonth } from '../ui/controls.js';
+import { renderPageLayout } from '../ui/layout.js';
 import { openModal, closeModal, openConfirm } from '../ui/modal.js';
 import { createForm } from '../ui/form.js';
 import { showToast } from '../ui/toast.js';
-import { todayISO, esc } from '../ui/format.js';
+import { todayISO, formatHKD, esc } from '../ui/format.js';
 import { RESERVED_IDS } from '../config/constants.js';
 
 export default {
   _unsubExpenses: null,
   _expenses: [],
   _activeTab: 'expense', // expense | insurance | fund | bank
+  _otherData: { insurance: [], fund: [], bank: [] },
 
   async render() {
-    const content = document.getElementById('app-content');
-    if (!content) return;
-
-    content.innerHTML = `
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
-        <h1 style="font-size:24px; font-weight:700; color:var(--primary); margin:0;">綜合輸入中心</h1>
-      </div>
-
-      <!-- 第一排：操作按鈕 -->
-      <div style="display:flex; flex-wrap:wrap; gap:12px; margin-bottom:20px;">
+    // 1. 準備 Header Actions (新增按鈕)
+    const headerActions = `
+      <div style="display:flex; flex-wrap:wrap; gap:12px;">
         <button type="button" class="btn btn-primary" id="btn-add-expense">
           <i data-lucide="plus" style="width:16px;height:16px;"></i> 新增支出
         </button>
@@ -41,108 +42,107 @@ export default {
           <i data-lucide="wallet" style="width:16px;height:16px;"></i> 個人收入
         </button>
       </div>
-
-      <!-- 第二排：Tab 切換 -->
-      <div id="ic-tabs" class="flex items-center gap-8 mb-16" style="overflow-x:auto; padding-bottom:4px;">
-        <button type="button" class="btn" data-tab="expense" style="white-space:nowrap;">支出</button>
-        <button type="button" class="btn" data-tab="insurance" style="white-space:nowrap;">保險</button>
-        <button type="button" class="btn" data-tab="fund" style="white-space:nowrap;">基金</button>
-        <button type="button" class="btn" data-tab="bank" style="white-space:nowrap;">銀行</button>
-      </div>
-
-      <!-- 第三排：表格/卡片切換 -->
-      <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
-        <div id="ic-view-toggle"></div>
-      </div>
-
-      <!-- 第四排：年/月 與 列表 -->
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
-        <h2 style="font-size:16px; margin:0; color:var(--text-secondary);" id="ic-list-title">最近支出紀錄</h2>
-        <div id="ic-controls-period"></div>
-      </div>
-
-      <div id="ic-expense-list"></div>
     `;
 
-    // 初始化 Tab 狀態
-    this._updateTabStyles();
+    // 2. 準備控制列 (Tab + 年月 + 檢視切換)
+    const controlsHtml = `
+      <div style="display:flex; align-items:center; gap:8px; overflow-x:auto; padding-bottom:4px; width:100%;">
+        <button type="button" class="btn" data-tab="expense">支出</button>
+        <button type="button" class="btn" data-tab="insurance">保險</button>
+        <button type="button" class="btn" data-tab="fund">基金</button>
+        <button type="button" class="btn" data-tab="bank">銀行</button>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; margin-top:12px; flex-wrap:wrap;">
+        <div id="ic-view-toggle"></div>
+        <div id="ic-controls-period"></div>
+      </div>
+    `;
 
-    // 綁定 Tab 事件
+    // 3. 呼叫統一引擎繪製骨架
+    renderPageLayout({
+      title: '綜合輸入中心',
+      headerActions,
+      stats: [],
+      controls: controlsHtml,
+      listTitle: '資料清單',
+      listContainerId: 'ic-content-container'
+    });
+
+    // 4. 初始化 Tab 與按鈕狀態
+    this._updateTabStyles();
+    
     document.getElementById('ic-tabs')?.addEventListener('click', (e) => {
       const btn = e.target.closest('button[data-tab]');
       if (!btn) return;
       this._activeTab = btn.dataset.tab;
       this._updateTabStyles();
-      
-      // 更新標題與渲染
-      const titleEl = document.getElementById('ic-list-title');
-      if (this._activeTab === 'expense') titleEl.textContent = '最近支出紀錄';
-      else if (this._activeTab === 'insurance') titleEl.textContent = '保險清單（唯讀預覽）';
-      else if (this._activeTab === 'fund') titleEl.textContent = '基金清單（唯讀預覽）';
-      else if (this._activeTab === 'bank') titleEl.textContent = '銀行帳號（唯讀預覽）';
-      
-      this._renderList();
+      this._renderCurrentTab();
     });
 
-    // 渲染年月與切換
+    // 5. 渲染年月與切換器
     renderYearMonth('ic-controls-period', { includeAllMonth: true }, () => {
-      this._renderList();
+      this._renderCurrentTab();
     });
 
     renderViewToggle('ic-view-toggle', () => {
-      this._renderList();
+      this._renderCurrentTab();
     });
 
-    // 綁定按鈕
+    // 6. 綁定操作按鈕
     document.getElementById('btn-add-expense')?.addEventListener('click', () => this._openExpenseModal());
     document.getElementById('btn-add-contribution')?.addEventListener('click', () => this._openIncomeModal('contribution'));
     document.getElementById('btn-add-income')?.addEventListener('click', () => this._openIncomeModal('personal'));
 
-    // 監聽支出資料
+    // 7. 載入資料
     const { year } = AppState.getYearMonth();
     this._unsubExpenses = listenAllExpenses((list) => {
       this._expenses = list.filter(e => e.year === String(year));
-      this._renderList();
+      if (this._activeTab === 'expense') this._renderExpenseTab();
     });
+
+    // 背景載入其他 Tab 的資料
+    this._loadOtherTabsData();
   },
 
   _updateTabStyles() {
-    const tabsRoot = document.getElementById('ic-tabs');
-    if (!tabsRoot) return;
-
-    tabsRoot.querySelectorAll('button[data-tab]').forEach(btn => {
+    const controlsRoot = document.querySelector('#app-content > div[style*="flex-wrap"]');
+    if (!controlsRoot) return;
+    controlsRoot.querySelectorAll('button[data-tab]').forEach(btn => {
       const isActive = btn.dataset.tab === this._activeTab;
-      if (isActive) {
-        btn.className = 'btn btn-primary';
-      } else {
-        btn.className = 'btn btn-ghost';
-      }
+      btn.className = isActive ? 'btn btn-primary' : 'btn btn-ghost';
     });
   },
 
-  _renderList() {
-    const listRoot = document.getElementById('ic-expense-list');
-    if (!listRoot) return;
-
-    // 這裡為了精簡，若切換到非「支出」的 Tab，我們暫時顯示提示，因為那些頁面有自己的列表
-    // 後續若要完整實作，可在此處替換成對應的清單
-    if (this._activeTab !== 'expense') {
-      listRoot.innerHTML = `
-        <div class="glass-card" style="text-align:center; padding:40px; color:var(--text-muted);">
-          請點擊上方按鈕切換到該頁面進行管理，或點擊「新增」直接建立資料。
-        </div>
-      `;
-      return;
+  async _loadOtherTabsData() {
+    try {
+      this._otherData.insurance = await getInsurancePoliciesOnce();
+      this._otherData.fund = await getFundsOnce();
+      this._otherData.bank = await getBankAccountsOnce();
+      if (this._activeTab !== 'expense') this._renderCurrentTab();
+    } catch (e) {
+      console.error('[input-center] 載入其他資料失敗：', e);
     }
+  },
+
+  _renderCurrentTab() {
+    if (this._activeTab === 'expense') this._renderExpenseTab();
+    else if (this._activeTab === 'insurance') this._renderInsuranceTab();
+    else if (this._activeTab === 'fund') this._renderFundTab();
+    else if (this._activeTab === 'bank') this._renderBankTab();
+  },
+
+  _renderExpenseTab() {
+    const listRoot = document.getElementById('ic-content-container');
+    if (!listRoot) return;
+    const titleEl = document.getElementById('page-list-title') || document.querySelector('h2');
+    if (titleEl) titleEl.textContent = '最近支出紀錄';
 
     const { year, month } = AppState.getYearMonth();
     let displayData = this._expenses.filter(e => e.year === String(year));
-    
     if (month !== 'all') {
       const mm = String(month).padStart(2, '0');
       displayData = displayData.filter(e => e.month === mm);
     }
-
     displayData.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
     if (displayData.length === 0) {
@@ -156,7 +156,6 @@ export default {
     `;
 
     const currentView = AppState.getCurrentView() || 'table';
-
     if (currentView === 'card') {
       renderCards({ container: listRoot, rows: displayData, columnsKey: 'recentExpense', renderActions });
     } else {
@@ -182,6 +181,66 @@ export default {
         showToast('編輯功能開發中', 'info');
       }
     });
+  },
+
+  _renderInsuranceTab() {
+    const listRoot = document.getElementById('ic-content-container');
+    if (!listRoot) return;
+    const titleEl = document.getElementById('page-list-title') || document.querySelector('h2');
+    if (titleEl) titleEl.textContent = '保險清單 (唯讀預覽)';
+
+    const data = this._otherData.insurance;
+    if (data.length === 0) {
+      listRoot.innerHTML = '<div class="glass-card" style="text-align:center; padding:40px; color:var(--text-muted);">尚無保險資料</div>';
+      return;
+    }
+
+    const currentView = AppState.getCurrentView() || 'table';
+    if (currentView === 'card') {
+      renderCards({ container: listRoot, rows: data, columnsKey: 'insurancePolicies' });
+    } else {
+      renderTable({ container: listRoot, rows: data, columnsKey: 'insurancePolicies' });
+    }
+  },
+
+  _renderFundTab() {
+    const listRoot = document.getElementById('ic-content-container');
+    if (!listRoot) return;
+    const titleEl = document.getElementById('page-list-title') || document.querySelector('h2');
+    if (titleEl) titleEl.textContent = '基金清單 (唯讀預覽)';
+
+    const data = this._otherData.fund;
+    if (data.length === 0) {
+      listRoot.innerHTML = '<div class="glass-card" style="text-align:center; padding:40px; color:var(--text-muted);">尚無基金資料</div>';
+      return;
+    }
+
+    const currentView = AppState.getCurrentView() || 'table';
+    if (currentView === 'card') {
+      renderCards({ container: listRoot, rows: data, columnsKey: 'funds' });
+    } else {
+      renderTable({ container: listRoot, rows: data, columnsKey: 'funds' });
+    }
+  },
+
+  _renderBankTab() {
+    const listRoot = document.getElementById('ic-content-container');
+    if (!listRoot) return;
+    const titleEl = document.getElementById('page-list-title') || document.querySelector('h2');
+    if (titleEl) titleEl.textContent = '銀行帳號 (唯讀預覽)';
+
+    const data = this._otherData.bank;
+    if (data.length === 0) {
+      listRoot.innerHTML = '<div class="glass-card" style="text-align:center; padding:40px; color:var(--text-muted);">尚無銀行帳號</div>';
+      return;
+    }
+
+    const currentView = AppState.getCurrentView() || 'table';
+    if (currentView === 'card') {
+      renderCards({ container: listRoot, rows: data, columnsKey: 'bankAccounts' });
+    } else {
+      renderTable({ container: listRoot, rows: data, columnsKey: 'bankAccounts' });
+    }
   },
 
   _openExpenseModal() {
@@ -280,6 +339,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/input-center.js
-V: 1792900890
-W: ai-system-20261024-012#80
+V: 1792901070
+W: ai-system-20261024-012#9
 ═══ EOF ═══ */
