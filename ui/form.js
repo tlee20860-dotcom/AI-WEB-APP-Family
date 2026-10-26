@@ -1,8 +1,8 @@
 // ============================================
-// form.js — 通用動態表單建構器（V2 重構版）
+// form.js — 通用動態表單建構器（V2 引擎版）
 // 位置：ui/form.js
-// 說明：根據傳入的 fields 陣列，自動生成 HTML 表單。
-//       負責收集資料、基本驗證與回呼。
+// 說明：支援 dependsOn 聯動、custom 自訂區塊、plusEntity。
+//       徹底取代 V1 破碎的表單邏輯。
 // ============================================
 
 import { esc } from './format.js';
@@ -60,6 +60,9 @@ export function createForm(options) {
 
   // 綁定「+」按鈕事件
   _bindPlusEvents(fields, formEl);
+  
+  // 綁定聯動事件 (dependsOn)
+  _bindDependencies(fields, formEl);
 
   // 表單送出
   formEl.addEventListener('submit', async (e) => {
@@ -114,7 +117,17 @@ export function createForm(options) {
    內部實作：渲染欄位
    ============================================ */
 function _renderField(f, value) {
-  const { id, label, type = 'text', required, placeholder = '', options = [], min, max, step, plusEntity, onPlusReload } = f;
+  // 支援自訂區塊 (如基金分配器)
+  if (f.type === 'custom') {
+    const html = typeof f.html === 'function' ? f.html(value) : (f.html || '');
+    return `
+      <div class="field" id="field-wrapper-${f.id || 'custom'}">
+        ${html}
+      </div>
+    `;
+  }
+
+  const { id, label, type = 'text', required, placeholder = '', options = [], min, max, step, plusEntity } = f;
   const reqMark = required ? '<span style="color:var(--accent-danger); margin-left:4px;">*</span>' : '';
   const valStr = value != null ? String(value) : '';
 
@@ -193,12 +206,8 @@ function _bindPlusEvents(fields, formEl) {
         const result = await handlePlusClick(f.plusEntity);
         if (!result) return;
 
-        // 若有自訂的重載邏輯，優先呼叫
         if (typeof f.onPlusReload === 'function') {
           await f.onPlusReload(result, formEl);
-        } else {
-          // 預設：重新讀取該欄位的選項，並選中新增的項目
-          // 注意：這裡需要依賴 entity-registry 重新獲取資料，通常需要一點時間，或者由呼叫端傳入 onPlusReload
         }
       } catch (err) {
         console.error('[ui/form] 快速新增失敗：', err);
@@ -210,11 +219,40 @@ function _bindPlusEvents(fields, formEl) {
 }
 
 /* ============================================
+   內部實作：綁定聯動事件 (dependsOn)
+   ============================================ */
+function _bindDependencies(fields, formEl) {
+  fields.forEach(f => {
+    if (!f.dependsOn) return;
+    
+    const targetEl = formEl.querySelector(`#field-${f.id}`);
+    const sourceEl = formEl.querySelector(`#field-${f.dependsOn}`);
+    
+    if (!targetEl || !sourceEl) return;
+
+    sourceEl.addEventListener('change', () => {
+      const sourceVal = sourceEl.value;
+      
+      // 清空當前選項
+      targetEl.innerHTML = '<option value="">— 請先選擇上層項目 —</option>';
+      targetEl.value = '';
+
+      // 若有傳入動態載入回呼，則觸發
+      if (typeof f.onDependsChange === 'function') {
+        f.onDependsChange(sourceVal, targetEl, formEl);
+      }
+    });
+  });
+}
+
+/* ============================================
    內部實作：收集資料
    ============================================ */
 function _collectData(fields, formEl) {
   const data = {};
   fields.forEach(f => {
+    if (f.type === 'custom') return;
+    
     const el = formEl.querySelector(`#field-${f.id}`);
     if (!el) return;
 
@@ -234,7 +272,7 @@ function _collectData(fields, formEl) {
    ============================================ */
 function _validate(fields, data, formEl) {
   for (const f of fields) {
-    if (!f.required) continue;
+    if (!f.required || f.type === 'custom') continue;
 
     const val = data[f.id];
     const isEmpty = val === '' || val === null || val === undefined;
@@ -263,6 +301,6 @@ function _resolveEl(target) {
 
 /* ═══ EOF ═══
 F: ui/form.js
-V: 1792901500
-W: webapp-20261025-001#12
+V: 1792901830
+W: webapp-20261025-001#31
 ═══ */
