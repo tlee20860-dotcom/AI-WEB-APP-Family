@@ -2,6 +2,7 @@
 // member-report.js — 成員收支明細
 // 位置：pages/member-report.js
 // 說明：顯示各成員的收支與保險平攤狀況。
+//       已完全套用 renderPageLayout 解決排版問題。
 // ============================================
 
 import { AppState } from '../config/state.js';
@@ -43,7 +44,7 @@ export default {
     });
 
     renderViewToggle('mr-view-toggle', () => {
-      this._renderList();
+      this._renderListAndStats();
     });
 
     // 4. 載入資料
@@ -115,47 +116,7 @@ export default {
       }
 
       this._data = rows;
-
-      // 更新統計卡
-      const statsContainer = document.getElementById('page-stats-container');
-      if (statsContainer) {
-        statsContainer.style.display = 'grid';
-        statsContainer.style.gridTemplateColumns = window.innerWidth < 768 ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)';
-        
-        const tIncome = rows.reduce((sum, r) => sum + r.income, 0);
-        const tPersonal = rows.reduce((sum, r) => sum + r.personalIncome, 0);
-        const tExpense = rows.reduce((sum, r) => sum + r.expense, 0);
-        const tIns = rows.reduce((sum, r) => sum + r.insurance, 0);
-
-        statsContainer.innerHTML = `
-          <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
-            <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
-              <i data-lucide="trending-up" style="width:14px;height:14px;"></i> 家用轉入
-            </div>
-            <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-success); white-space:nowrap;">${formatHKD(tIncome)}</div>
-          </div>
-          <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
-            <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
-              <i data-lucide="wallet" style="width:14px;height:14px;"></i> 個人收入
-            </div>
-            <div class="mono" style="font-size:20px; font-weight:700; color:var(--primary); white-space:nowrap;">${formatHKD(tPersonal)}</div>
-          </div>
-          <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
-            <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
-              <i data-lucide="trending-down" style="width:14px;height:14px;"></i> 總支出
-            </div>
-            <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-danger); white-space:nowrap;">${formatHKD(tExpense)}</div>
-          </div>
-          <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
-            <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
-              <i data-lucide="shield" style="width:14px;height:14px;"></i> 保險平攤
-            </div>
-            <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-warm); white-space:nowrap;">${formatHKD(tIns)}</div>
-          </div>
-        `;
-      }
-
-      this._renderList();
+      this._renderListAndStats();
 
     } catch (err) {
       console.error('[member-report] 載入失敗：', err);
@@ -164,21 +125,55 @@ export default {
     }
   },
 
-  _renderList() {
+  _renderListAndStats() {
     const listRoot = document.getElementById('mr-list-container');
+    const statsRoot = document.getElementById('page-stats-container');
     if (!listRoot || !this._data) return;
 
-    if (this._data.length === 0) {
+    const currentView = AppState.getCurrentView() || 'table';
+    const rows = this._data;
+
+    // 更新統計卡 (防破版樣式)
+    if (statsRoot) {
+      statsRoot.style.display = 'grid';
+      
+      const tIncome = rows.reduce((sum, r) => sum + r.income, 0);
+      const tPersonal = rows.reduce((sum, r) => sum + r.personalIncome, 0);
+      const tExpense = rows.reduce((sum, r) => sum + r.expense, 0);
+      const tIns = rows.reduce((sum, r) => sum + r.insurance, 0);
+
+      statsRoot.innerHTML = [
+        { title: '家庭收入', val: tIncome, color: 'var(--accent-success)', icon: 'trending-up', hint: '家用轉入' },
+        { title: '個人收入', val: tPersonal, color: 'var(--primary)', icon: 'wallet', hint: '成員個人' },
+        { title: '一般支出', val: tExpense, color: 'var(--accent-danger)', icon: 'trending-down', hint: '包含家庭共用' },
+        { title: '保險平攤', val: tIns, color: 'var(--accent-warm)', icon: 'shield', hint: '自動扣款' },
+        { title: '淨結餘', val: tIncome + tPersonal - tExpense - tIns, color: (tIncome + tPersonal - tExpense - tIns) >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)', icon: 'calculator', hint: '收入 - 支出' }
+      ].map(card => `
+        <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px; min-width:0; overflow:hidden;">
+          <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+            <i data-lucide="${card.icon}" style="width:14px;height:14px; flex-shrink:0;"></i> 
+            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${card.title}</span>
+          </div>
+          <div class="mono" style="font-size:20px; font-weight:700; color:${card.color}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            ${formatHKD(card.val)}
+          </div>
+          <div style="font-size:11px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(card.hint)}</div>
+        </div>
+      `).join('');
+      
+      // 如果有 5 張卡片，在手機版上可能 2x3 或 1x5，在桌面版上預設 grid 會自動排。這裡不強制改 grid-template。
+      if (window.lucide) window.lucide.createIcons();
+    }
+
+    if (rows.length === 0) {
       listRoot.innerHTML = '<div class="glass-card" style="text-align:center; padding:40px; color:var(--text-muted);">尚無資料</div>';
       return;
     }
 
-    const currentView = AppState.getCurrentView() || 'table';
-
     if (currentView === 'card') {
-      renderCards({ container: listRoot, rows: this._data, columnsKey: 'memberReport', emptyText: '尚無資料' });
+      renderCards({ container: listRoot, rows, columnsKey: 'memberReport', emptyText: '尚無資料' });
     } else {
-      renderTable({ container: listRoot, rows: this._data, columnsKey: 'memberReport', emptyText: '尚無資料' });
+      renderTable({ container: listRoot, rows, columnsKey: 'memberReport', emptyText: '尚無資料' });
     }
   },
 
@@ -189,6 +184,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/member-report.js
-V: 1792901060
-W: ai-system-20261024-012#8
-═══ EOF ═══ */
+V: 1792901910
+W: webapp-20261025-001#39
+═══ */
