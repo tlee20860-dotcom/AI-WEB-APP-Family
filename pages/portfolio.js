@@ -2,18 +2,25 @@
 // portfolio.js — 基金投資表（V2 引擎版）
 // 位置：pages/portfolio.js
 // 說明：整合保險基金與獨立基金，支援歷史快照與對比。
-//       已套用 renderPageLayout 解決統計卡破版問題。
+//       已移除 entity-modal 幽靈依賴，並將動態 import 改為靜態引入。
 // ============================================
 
 import { AppState } from '../config/state.js';
-import { listenFunds, listenInsurancePolicies, getFundSnapshotListOnce, saveFundSnapshot, removeFundSnapshot } from '../db/index.js';
-import { openModal, closeModal, openConfirm, destroyModal } from '../ui/modal.js';
+import { 
+  listenFunds, 
+  listenInsurancePolicies, 
+  getFundSnapshotListOnce, 
+  saveFundSnapshot, 
+  removeFundSnapshot,
+  saveObject,
+  pushObject,
+  removeObject
+} from '../db/index.js';
+import { openModal, closeModal, openConfirm } from '../ui/modal.js';
 import { createForm } from '../ui/form.js';
 import { showToast } from '../ui/toast.js';
 import { renderPageLayout } from '../ui/layout.js';
 import { formatHKD, esc } from '../ui/format.js';
-import { openEntityModal } from '../ui/entity-modal.js'; // 假設有通用實體 Modal，若無則用 createForm
-import { ENTITY_KEYS } from '../config/constants.js';
 import { calcFundCostEstimate } from '../domain/insurance.js';
 
 const DEFAULT_FX = 7.8;
@@ -41,7 +48,7 @@ export default {
     // 2. 準備控制列（年月）
     const controlsHtml = `<div id="portfolio-controls-period"></div>`;
 
-    // 3. 呼叫統一引擎繪製骨架 (stats 先給空，載入後由 _updateStats 填入)
+    // 3. 呼叫統一引擎繪製骨架
     renderPageLayout({
       title: '基金投資表',
       headerActions,
@@ -54,7 +61,7 @@ export default {
     document.getElementById('btn-add-fund').onclick = () => this._openFundModal();
     document.getElementById('btn-import-snap').onclick = () => this._openImportSnapshotModal();
 
-    // 5. 初始化年月（僅作顯示用，若無需切換可移除）
+    // 5. 初始化年月（僅作顯示用）
     const periodRoot = document.getElementById('portfolio-controls-period');
     if (periodRoot) {
       const ym = AppState.getYearMonth();
@@ -120,7 +127,7 @@ export default {
 
     const totalPnl = totalValue - totalCost;
 
-    // 更新統計卡 (使用 layout.js 建立的容器)
+    // 更新統計卡
     this._updateStats(totalCost, totalValue, totalPnl);
 
     const insFunds = displayFunds.filter(f => f.type === 'insurance');
@@ -158,7 +165,6 @@ export default {
     if (!statsRoot) return;
     statsRoot.style.display = 'grid';
     
-    // 依照 layout.js 的結構直接替換內容
     statsRoot.innerHTML = `
       <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px; min-width:0; overflow:hidden;">
         <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
@@ -233,7 +239,6 @@ export default {
       else if (action === 'delete') {
         const ok = await openConfirm(`確定要刪除基金「${name}」嗎？`, { okClass: 'btn-danger' });
         if (ok) {
-          const { removeObject } = await import('../db/write.js');
           await removeObject(`funds/${id}`);
           showToast('✅ 已刪除基金', 'success');
         }
@@ -265,10 +270,9 @@ export default {
       submitText: isEdit ? '儲存' : '新增',
       onCancel: () => { closeModal(modalId); overlay.remove(); },
       onSubmit: async (data) => {
-        const { saveObject } = await import('../db/write.js');
-        if (isEdit) await saveObject(`funds/${fund.id}`, { ...fund, ...data, cost: Number(data.cost) || 0, currentValue: Number(data.currentValue) || 0 });
-        else {
-          const { pushObject } = await import('../db/write.js');
+        if (isEdit) {
+          await saveObject(`funds/${fund.id}`, { ...fund, ...data, cost: Number(data.cost) || 0, currentValue: Number(data.currentValue) || 0 });
+        } else {
           await pushObject('funds', { ...data, cost: Number(data.cost) || 0, currentValue: Number(data.currentValue) || 0, createdAt: Date.now() });
         }
         showToast('✅ 基金已儲存', 'success');
@@ -308,7 +312,6 @@ export default {
       }
     });
 
-    // 自動計算綁定
     const formEl = document.querySelector(`#${modalId}-root form`);
     const sEl = formEl.querySelector('#field-shares');
     const nEl = formEl.querySelector('#field-nav');
@@ -538,6 +541,6 @@ function _getCostMapForPolicy(policy, allFunds, targetYear, targetMonth) {
 
 /* ═══ EOF ═══
 F: pages/portfolio.js
-V: 1792901860
-W: webapp-20261025-001#34
+V: 1792901980
+W: webapp-20261025-001#46
 ═══ */
