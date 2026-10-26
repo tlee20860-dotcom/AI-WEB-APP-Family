@@ -1,10 +1,11 @@
 // ============================================
 // layout.js — SPA 骨架與導覽（V2 重構版）
 // 位置：ui/layout.js
+// 說明：統一頁面骨架、導覽列、側邊欄與防破版佈局引擎。
 // ============================================
 
 import { AppState } from '../config/state.js';
-import { getSidebarGroupsByRole, ROLES } from '../config/constants.js';
+import { getSidebarGroupsByRole, ROLES, ROUTES } from '../config/constants.js';
 import { logout } from '../domain/auth.js';
 import { esc } from './format.js';
 
@@ -19,7 +20,7 @@ export function initLayout(containerId = 'app-root') {
   _renderShell(root);
   _bindGlobalEvents();
   updateNavbar();
-  updateSidebarActive(window.location.hash.replace('#', '') || '/dashboard');
+  updateSidebarActive(window.location.hash.replace('#', '') || ROUTES.DASHBOARD);
 
   const loading = document.getElementById('app-loading');
   if (loading) loading.style.display = 'none';
@@ -47,7 +48,6 @@ function _renderShell(root) {
           <div class="navbar-title" id="app-navbar-title"></div>
           
           <div class="navbar-right">
-            <span class="navbar-db-tag" id="app-navbar-db" style="display:none;">DB: 2026-10-12-fam</span>
             <button type="button" class="navbar-theme-btn" id="app-theme-toggle">
               <i data-lucide="moon" style="width:18px;height:18px;"></i>
             </button>
@@ -55,7 +55,7 @@ function _renderShell(root) {
           </div>
         </header>
 
-        <main class="content" id="app-content" style="width:100%; max-width:100%; box-sizing:border-box;"></main>
+        <main class="content" id="app-content" style="width:100%; max-width:100%; overflow-x:hidden; box-sizing:border-box;"></main>
       </div>
     </div>
   `;
@@ -67,17 +67,12 @@ function _renderShell(root) {
 export function updateNavbar() {
   const titleEl = document.getElementById('app-navbar-title');
   const userEl = document.getElementById('app-user-info');
-  const dbEl = document.getElementById('app-navbar-db');
   const themeBtn = document.getElementById('app-theme-toggle');
 
   if (titleEl && AppState.currentFamilyName) {
     titleEl.textContent = AppState.currentFamilyName;
-  }
-
-  if (dbEl) {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('debug') === '1') dbEl.style.display = 'inline-block';
-    else dbEl.style.display = 'none';
+  } else if (titleEl && AppState.isSuperAdmin) {
+    titleEl.textContent = '系統管理後台';
   }
 
   if (userEl) {
@@ -159,7 +154,7 @@ function _updateSidebarNav() {
 export function updateSidebarActive(currentPath) {
   document.querySelectorAll('.sidebar-nav .nav-item').forEach((el) => {
     const path = el.getAttribute('data-path');
-    if (currentPath === path || (currentPath === '/' && path === '/dashboard')) {
+    if (currentPath === path || (currentPath === '/' && path === ROUTES.DASHBOARD)) {
       el.classList.add('active');
     } else {
       el.classList.remove('active');
@@ -180,7 +175,7 @@ export function setPageTitle(title) {
 }
 
 /* ============================================
-   統一頁面排版引擎
+   統一頁面排版引擎（防破版核心）
    ============================================ */
 export function renderPageLayout(config) {
   const content = document.getElementById('app-content');
@@ -202,7 +197,7 @@ export function renderPageLayout(config) {
     statsHtml = `
       <div id="page-stats-container" style="display:grid; grid-template-columns:repeat(${gridCols}, 1fr); gap:16px; margin-bottom:24px; width:100%;">
         ${stats.map(card => `
-          <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px; min-width:0;">
+          <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px; min-width:0; overflow:hidden;">
             <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
               <i data-lucide="${card.icon || 'info'}" style="width:14px;height:14px; flex-shrink:0;"></i> 
               <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(card.title)}</span>
@@ -216,7 +211,6 @@ export function renderPageLayout(config) {
       </div>
     `;
   } else {
-    // 若無統計卡，依然保留一個隱藏的容器，方便後續動態塞入
     statsHtml = `<div id="page-stats-container" style="display:none;"></div>`;
   }
 
@@ -230,7 +224,7 @@ export function renderPageLayout(config) {
     <h2 style="font-size:16px; margin-bottom:12px; color:var(--text-secondary);">${esc(listTitle)}</h2>
   ` : '';
 
-  // 加入外層 wrapper 約束寬度，防止內部 table 撐破手機版面
+  // 約束最外層寬度，防止內部 table 撐破版面
   content.innerHTML = `
     <div style="width:100%; max-width:100%; overflow-x:hidden; display:flex; flex-direction:column; box-sizing:border-box;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px; width:100%;">
@@ -289,6 +283,6 @@ function _toggleSidebar(open) {
 
 /* ═══ EOF ═══
 F: ui/layout.js
-V: 1792901290
-W: webapp-20261025-001#10
+V: 1792901820
+W: webapp-20261025-001#30
 ═══ */
