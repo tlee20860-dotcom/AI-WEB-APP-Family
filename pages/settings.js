@@ -2,26 +2,27 @@
 // settings.js — 系統設定頁面（V2 引擎版）
 // 位置：pages/settings.js
 // 說明：整合帳號資訊、統計模式、成員管理、年份範圍、頁面標題與除錯工具。
+//       已完全拔除 shared/ 依賴，改用原生引擎。
 // ============================================
 
 import { AppState } from '../config/state.js';
 import { logout } from '../domain/auth.js';
-import { openConfirm } from '../ui/modal.js';
+import { openConfirm, openModal, closeModal } from '../ui/modal.js';
 import { showToast } from '../ui/toast.js';
-import { esc } from '../ui/format.js';
+import { esc, formatHKD } from '../ui/format.js';
 import { ROLES, STORAGE_KEYS, ENTITY_KEYS } from '../config/constants.js';
 import { initTabPanel } from '../ui/tab-panel.js';
-import { initEntityListPage } from '../shared/entity-list-page.js';
-import { initBankAccountManager } from '../shared/bank-account-manager.js';
 import { createForm } from '../ui/form.js';
-import { listen, saveObject } from '../db/index.js';
+import { renderTable } from '../ui/table.js';
+import { listen, saveObject, listenMembers, listenBankAccounts, removeObject } from '../db/index.js';
 import { listPages, getDefaultMetadata } from '../config/page-metadata-registry.js';
+import { api } from '../domain/api-client.js';
 
 export default {
   _unsubMeta: null,
   _unsubYear: null,
-  _memberList: null,
-  _bankMgr: null,
+  _unsubMembers: null,
+  _unsubBanks: null,
 
   async render() {
     const content = document.getElementById('app-content');
@@ -46,7 +47,10 @@ export default {
 
       <div id="settings-panel-banks" class="tab-panel" style="display:none;">
         <div class="banner mb-16">ℹ️ 管理家庭的銀行帳號。每個帳號有「初始餘額」與「初始年月」。</div>
-        <div id="bank-account-manager-root"></div>
+        <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+          <button type="button" class="btn btn-primary" id="btn-add-bank"><i data-lucide="plus" style="width:14px;height:14px;"></i> 新增銀行</button>
+        </div>
+        <div id="settings-banks-list"></div>
       </div>
 
       <div id="settings-panel-personal" class="tab-panel" style="display:none;">
@@ -111,6 +115,9 @@ export default {
             <div class="glass-card-title" style="margin-bottom:16px; display:flex; align-items:center; gap:8px;">
               <i data-lucide="users" style="width:16px;height:16px;color:var(--primary);"></i> 家庭成員
             </div>
+            <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+              <button type="button" class="btn btn-primary" id="btn-add-member"><i data-lucide="plus" style="width:14px;height:14px;"></i> 新增成員</button>
+            </div>
             <div id="family-members-root"></div>
           </div>
         </div>
@@ -124,23 +131,103 @@ export default {
       defaultKey: isSuper ? 'platform' : 'banks',
       storageKey: 'settings-tab',
       onChange: (key) => {
-        if (key === 'banks' && !this._bankMgr) {
-          this._bankMgr = initBankAccountManager('bank-account-manager-root', { canInput: AppState.getCanInput() });
-        }
-        if (key === 'personal') {
-          this._initPersonalTab();
-        }
+        if (key === 'banks') this._renderBanksTab();
+        if (key === 'personal') this._initPersonalTab();
       }
     });
 
-    // 3. 若預設為個人化，直接初始化
-    if (tabPanel.getCurrent() === 'personal') {
-      this._initPersonalTab();
-    }
+    // 3. 若預設為個人化或銀行，直接初始化
+    if (tabPanel.getCurrent() === 'personal') this._initPersonalTab();
+    if (tabPanel.getCurrent() === 'banks') this._renderBanksTab();
   },
 
+  /* ============================================
+     銀行帳號管理 (拔除 initBankAccountManager)
+     ============================================ */
+  _renderBanksTab() {
+    const root = document.getElementById('settings-banks-list');
+    if (!root) return;
+
+    if (this._unsubBanks) this._unsubBanks();
+    this._unsubBanks = listenBankAccounts((accounts) => {
+      const renderActions = (row) => `
+        <button type="button" class="btn btn-sm btn-ghost" data-action="edit" data-id="${row.id}">編輯</button>
+        <button type="button" class="btn btn-sm btn-danger" data-action="delete" data-id="${row.id}">刪除</button>
+      `;
+      
+      renderTable({
+        container: root,
+        rows: accounts,
+        columnsKey: 'bankAccounts',
+        renderActions
+      });
+
+      root.onclick = async (e) => {
+        const btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        const id = btn.dataset.id;
+        const row = accounts.find(a => a.id === id);
+        if (!row) return;
+
+        if (btn.dataset.action === 'delete') {
+          const ok = await openConfirm(`確定要刪除「${row.name}」嗎？`, { okClass: 'btn-danger' });
+          if (ok) {
+            await removeObject(`bank_accounts/${id}`);
+            showToast('✅ 已刪除帳號', 'success');
+          }
+        } else if (btn.dataset.action === 'edit') {
+          this._openBankModal(row);
+        }
+      };
+    });
+
+    document.getElementById('btn-add-bank').onclick = () => this._openBankModal();
+  },
+
+  _openBankModal(bank = null) {
+    const isEdit = !!bank;
+    const modalId = 'bank-modal-settings';
+    document.getElementById(modalId)?.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = modalId;
+    overlay.innerHTML = `<div class="modal" style="max-width:400px;"><h2 class="modal-title">${isEdit ? '編輯' : '新增'}銀行</h2><div id="${modalId}-form"></div></div>`;
+    document.body.appendChild(overlay);
+    openModal(modalId);
+
+    createForm({
+      container: `${modalId}-form`,
+      fields: [
+        { id: 'name', label: '帳號名稱', type: 'text', required: true },
+        { id: 'type', label: '類型', type: 'select', required: true, options: [{ value: 'family', label: '家庭' }, { value: 'personal', label: '個人' }] },
+        { id: 'initialBalance', label: '初始餘額', type: 'number', required: true },
+        { id: 'initialYear', label: '初始年份', type: 'number', required: true },
+        { id: 'initialMonth', label: '初始月份', type: 'number', required: true, min: 1, max: 12 }
+      ],
+      initialData: isEdit ? bank : { type: 'family', initialBalance: 0, initialYear: new Date().getFullYear(), initialMonth: 1 },
+      submitText: isEdit ? '儲存' : '新增',
+      onCancel: () => { closeModal(modalId); overlay.remove(); },
+      onSubmit: async (data) => {
+        try {
+          if (isEdit) {
+            await saveObject(`bank_accounts/${bank.id}`, { ...bank, ...data });
+          } else {
+            const { pushObject } = await import('../db/write.js');
+            await pushObject('bank_accounts', { ...data, createdAt: Date.now() });
+          }
+          showToast('✅ 已儲存', 'success');
+          closeModal(modalId); overlay.remove();
+        } catch (err) { showToast('錯誤：' + err.message, 'error'); }
+      }
+    });
+  },
+
+  /* ============================================
+     個人化 Tab
+     ============================================ */
   _initPersonalTab() {
-    // 3.1 帳號資訊
+    // 1. 帳號資訊
     const accEl = document.getElementById('settings-account');
     const roleEl = document.getElementById('settings-role');
     const famEl = document.getElementById('settings-family');
@@ -150,11 +237,12 @@ export default {
     if (roleEl) roleEl.value = AppState.getRole() === ROLES.SUPERADMIN ? '超級管理員' : (AppState.getRole() === ROLES.OWNER ? '擁有者' : '成員');
     if (famEl) famEl.value = AppState.getFamilyName() || '—';
 
-    document.getElementById('settings-logout-btn')?.addEventListener('click', async () => {
+    const logoutBtn = document.getElementById('settings-logout-btn');
+    logoutBtn.onclick = async () => {
       if (await openConfirm('確定要登出嗎？', { title: '登出', okClass: 'btn-danger' })) logout();
-    });
+    };
 
-    // 3.2 統計模式
+    // 2. 統計模式
     const statsRoot = document.getElementById('stats-mode-options');
     if (statsRoot) {
       let curMode = 'auto';
@@ -171,27 +259,24 @@ export default {
         </label>
       `).join('');
 
-      document.getElementById('save-stats-mode-btn')?.addEventListener('click', () => {
+      document.getElementById('save-stats-mode-btn').onclick = () => {
         const selected = document.querySelector('input[name="stats-mode"]:checked');
         if (selected) {
           localStorage.setItem(STORAGE_KEYS.STATS_MODE, selected.value);
           showToast('✅ 已儲存顯示模式', 'success');
         }
-      });
+      };
     }
 
-    // 3.3 年份範圍
+    // 3. 年份範圍
     const yearFormRoot = document.getElementById('yearrange-form-root');
     if (yearFormRoot) {
-      let startYear = '', futureYears = 5;
       if (this._unsubYear) this._unsubYear();
       this._unsubYear = listen('settings/year_range', (snap) => {
         const data = snap.val() || {};
-        startYear = data.startYear || '';
-        futureYears = data.futureYears || 5;
         if (yearFormRoot.querySelector('form')) {
-          yearFormRoot.querySelector('#yr-start').value = startYear;
-          yearFormRoot.querySelector('#yr-future').value = futureYears;
+          yearFormRoot.querySelector('#yr-start').value = data.startYear || '';
+          yearFormRoot.querySelector('#yr-future').value = data.futureYears || 5;
         }
       });
 
@@ -212,7 +297,7 @@ export default {
       });
     }
 
-    // 3.4 頁面標題
+    // 4. 頁面標題
     const pageFormRoot = document.getElementById('pagemeta-form-root');
     if (pageFormRoot) {
       const pages = listPages();
@@ -222,12 +307,9 @@ export default {
       this._unsubMeta = listen('settings/page_metadata', (snap) => {
         allMeta = snap.val() || {};
         const pageSel = pageFormRoot.querySelector('#pm-page');
-        if (pageSel) {
-          _applyPageMeta(pageFormRoot, pageSel.value, allMeta, pages);
-        }
+        if (pageSel) _applyPageMeta(pageFormRoot, pageSel.value, allMeta, pages);
       });
 
-      // 構建自訂 HTML 表單
       pageFormRoot.innerHTML = `
         <div class="form-stack">
           <div class="field">
@@ -245,11 +327,11 @@ export default {
         </div>
       `;
 
-      pageFormRoot.querySelector('#pm-page').addEventListener('change', (e) => {
+      pageFormRoot.querySelector('#pm-page').onchange = (e) => {
         _applyPageMeta(pageFormRoot, e.target.value, allMeta, pages);
-      });
+      };
 
-      pageFormRoot.querySelector('#pm-save').addEventListener('click', async () => {
+      pageFormRoot.querySelector('#pm-save').onclick = async () => {
         const pk = pageFormRoot.querySelector('#pm-page').value;
         const title = pageFormRoot.querySelector('#pm-title').value.trim();
         const sub = pageFormRoot.querySelector('#pm-sub').value;
@@ -258,19 +340,19 @@ export default {
         const next = { ...allMeta, [pk]: { title, subtitleStatic: sub } };
         await saveObject('settings/page_metadata', next);
         showToast('✅ 頁面標題已更新', 'success');
-      });
+      };
 
-      pageFormRoot.querySelector('#pm-reset').addEventListener('click', async () => {
+      pageFormRoot.querySelector('#pm-reset').onclick = async () => {
         const pk = pageFormRoot.querySelector('#pm-page').value;
         const next = { ...allMeta };
         delete next[pk];
         await saveObject('settings/page_metadata', next);
         _applyPageMeta(pageFormRoot, pk, next, pages);
         showToast('✅ 已恢復預設', 'success');
-      });
+      };
     }
 
-    // 3.5 vConsole 除錯工具
+    // 5. vConsole 除錯工具
     const debugStatus = document.getElementById('debug-status');
     const updateDebugUI = async () => {
       try {
@@ -280,34 +362,110 @@ export default {
     };
     updateDebugUI();
 
-    document.getElementById('debug-enable-btn')?.addEventListener('click', async () => {
+    document.getElementById('debug-enable-btn').onclick = async () => {
       const mod = await import('../core/debug.js');
       await mod.forceEnableDebug();
       updateDebugUI();
-    });
-    document.getElementById('debug-disable-btn')?.addEventListener('click', async () => {
+    };
+    document.getElementById('debug-disable-btn').onclick = async () => {
       const mod = await import('../core/debug.js');
       mod.forceDisableDebug();
       updateDebugUI();
-    });
+    };
 
-    // 3.6 家庭成員
-    if (!this._memberList) {
-      this._memberList = initEntityListPage({
-        entity: ENTITY_KEYS.MEMBER,
-        containerId: 'family-members-root',
-        options: { defaultView: 'table', showViewToggle: false }
+    // 6. 家庭成員 (拔除 initEntityListPage)
+    const memberRoot = document.getElementById('family-members-root');
+    if (memberRoot) {
+      if (this._unsubMembers) this._unsubMembers();
+      this._unsubMembers = listenMembers((members) => {
+        const renderActions = (row) => `
+          <button type="button" class="btn btn-sm btn-ghost" data-action="edit" data-id="${row.id}">編輯</button>
+          <button type="button" class="btn btn-sm btn-danger" data-action="delete" data-id="${row.id}">刪除</button>
+        `;
+        renderTable({
+          container: memberRoot,
+          rows: members,
+          columnsKey: 'memberReport', // 借用 memberReport 的欄位定義（name, net...），或自訂
+          customColumns: [
+            { id: 'name', label: '名稱' },
+            { id: 'role', label: '角色' },
+            { id: 'order', label: '排序' }
+          ],
+          customResolvers: {
+            name: (v) => esc(v),
+            role: (v) => esc(v),
+            order: (v) => `<span class="mono">${v || 0}</span>`
+          },
+          renderActions
+        });
+
+        memberRoot.onclick = async (e) => {
+          const btn = e.target.closest('button[data-action]');
+          if (!btn) return;
+          const id = btn.dataset.id;
+          const row = members.find(m => m.id === id);
+          if (!row) return;
+
+          if (btn.dataset.action === 'delete') {
+            const ok = await openConfirm(`確定要刪除成員「${row.name}」嗎？`, { okClass: 'btn-danger' });
+            if (ok) {
+              await removeObject(`members/${id}`);
+              showToast('✅ 已刪除成員', 'success');
+            }
+          } else if (btn.dataset.action === 'edit') {
+            this._openMemberModal(row);
+          }
+        };
       });
+
+      document.getElementById('btn-add-member').onclick = () => this._openMemberModal();
     }
 
     if (window.lucide) window.lucide.createIcons();
   },
 
+  _openMemberModal(member = null) {
+    const isEdit = !!member;
+    const modalId = 'member-modal-settings';
+    document.getElementById(modalId)?.remove();
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = modalId;
+    overlay.innerHTML = `<div class="modal" style="max-width:400px;"><h2 class="modal-title">${isEdit ? '編輯' : '新增'}成員</h2><div id="${modalId}-form"></div></div>`;
+    document.body.appendChild(overlay);
+    openModal(modalId);
+
+    createForm({
+      container: `${modalId}-form`,
+      fields: [
+        { id: 'name', label: '成員名稱', type: 'text', required: true },
+        { id: 'role', label: '角色', type: 'text', required: false, placeholder: '例如：husband' },
+        { id: 'order', label: '排序', type: 'number', required: false }
+      ],
+      initialData: isEdit ? member : { order: 0 },
+      submitText: isEdit ? '儲存' : '新增',
+      onCancel: () => { closeModal(modalId); overlay.remove(); },
+      onSubmit: async (data) => {
+        try {
+          if (isEdit) {
+            await saveObject(`members/${member.id}`, { ...member, ...data });
+          } else {
+            const { pushObject } = await import('../db/write.js');
+            await pushObject('members', { ...data, createdAt: Date.now() });
+          }
+          showToast('✅ 已儲存', 'success');
+          closeModal(modalId); overlay.remove();
+        } catch (err) { showToast('錯誤：' + err.message, 'error'); }
+      }
+    });
+  },
+
   destroy() {
     if (this._unsubMeta) { try { this._unsubMeta(); } catch (e) {} this._unsubMeta = null; }
     if (this._unsubYear) { try { this._unsubYear(); } catch (e) {} this._unsubYear = null; }
-    if (this._memberList) { try { this._memberList.destroy(); } catch (e) {} this._memberList = null; }
-    if (this._bankMgr) { try { this._bankMgr.destroy(); } catch (e) {} this._bankMgr = null; }
+    if (this._unsubMembers) { try { this._unsubMembers(); } catch (e) {} this._unsubMembers = null; }
+    if (this._unsubBanks) { try { this._unsubBanks(); } catch (e) {} this._unsubBanks = null; }
   }
 };
 
@@ -323,6 +481,6 @@ function _applyPageMeta(formRoot, pageKey, allMeta, pages) {
 
 /* ═══ EOF ═══
 F: pages/settings.js
-V: 1792901850
-W: webapp-20261025-001#33
+V: 1792901970
+W: webapp-20261025-001#45
 ═══ */
