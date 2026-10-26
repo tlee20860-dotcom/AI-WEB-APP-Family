@@ -84,7 +84,6 @@ export const COLUMNS = {
     { id: 'net', label: '淨餘額', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
   ],
 
-  /* 🆕 最近支出 (Input Center) */
   recentExpense: [
     { id: 'date', label: '日期', defaultVisible: true, defaultWidth: 100, sortable: true },
     { id: 'memberName', label: '成員', defaultVisible: true, defaultWidth: 100, sortable: true, filterable: true },
@@ -93,7 +92,6 @@ export const COLUMNS = {
     { id: 'status', label: '狀態', defaultVisible: true, defaultWidth: 120, sortable: true, filterable: true },
   ],
 
-  /* 🆕 成員收支明細 (Member Report) */
   memberReport: [
     { id: 'name', label: '成員', defaultVisible: true, defaultWidth: 140, sortable: true },
     { id: 'income', label: '家用轉入', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
@@ -101,6 +99,22 @@ export const COLUMNS = {
     { id: 'expense', label: '一般支出', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
     { id: 'insurance', label: '保險平攤', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
     { id: 'net', label: '淨結餘', defaultVisible: true, defaultWidth: 140, type: 'number', sortable: true },
+  ],
+
+  /* 🆕 管理員家庭列表 */
+  adminFamilies: [
+    { id: 'uid', label: 'UID', defaultVisible: true, defaultWidth: 220, sortable: true },
+    { id: 'name', label: '名稱', defaultVisible: true, defaultWidth: 160, sortable: true },
+    { id: 'ownerEmail', label: '擁有者 Email', defaultVisible: true, defaultWidth: 200, sortable: true },
+    { id: 'createdAt', label: '建立時間', defaultVisible: true, defaultWidth: 170, sortable: true },
+  ],
+
+  /* 🆕 年度報表月度明細 */
+  annualMonthly: [
+    { id: 'month', label: '月份', defaultVisible: true, defaultWidth: 100, sortable: true },
+    { id: 'totalIncome', label: '總收入', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
+    { id: 'totalExpense', label: '總支出', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
+    { id: 'netBalance', label: '淨餘額', defaultVisible: true, defaultWidth: 130, type: 'number', sortable: true },
   ],
 };
 
@@ -203,7 +217,6 @@ export const RESOLVERS = {
     status: (v) => `<span class="badge ${statusBadgeClass(v)}">${esc(statusLabel(v))}</span>`,
   },
 
-  /* 🆕 成員收支明細 */
   memberReport: {
     name: (v, r) => r.id === RESERVED_IDS.SHARED_MEMBER
       ? '🏠 家庭共用'
@@ -213,6 +226,22 @@ export const RESOLVERS = {
     expense: (v) => `<span class="mono text-red">${formatHKD(v)}</span>`,
     insurance: (v) => `<span class="mono text-magenta">${formatHKD(v)}</span>`,
     net: (v) => `<span class="mono ${v >= 0 ? 'text-emerald' : 'text-red'}" style="font-weight:700;">${formatHKD(v)}</span>`,
+  },
+
+  /* 🆕 管理員家庭列表 */
+  adminFamilies: {
+    uid: (v) => `<span class="mono" style="font-size:12px;">${esc(v)}</span>`,
+    name: (v) => esc(v || '（未命名）'),
+    ownerEmail: (v) => `<span class="mono" style="font-size:12px; color:var(--text-muted);">${esc(v || '—')}</span>`,
+    createdAt: (v) => `<span class="mono" style="font-size:12px; color:var(--text-muted);">${v ? new Date(v).toLocaleString('zh-HK') : '—'}</span>`,
+  },
+
+  /* 🆕 年度報表月度明細 */
+  annualMonthly: {
+    month: (v) => esc(v),
+    totalIncome: (v) => `<span class="mono text-emerald">${formatHKD(v)}</span>`,
+    totalExpense: (v) => `<span class="mono text-red">${formatHKD(v)}</span>`,
+    netBalance: (v) => `<span class="mono ${v >= 0 ? 'text-emerald' : 'text-red'}">${formatHKD(v)}</span>`,
   },
 };
 
@@ -232,6 +261,6 @@ export function getResolvers(key) {
 
 /* ═══ EOF ═══
 F: config/columns.js
-V: 1792901230
-W: webapp-20261025-001#4
+V: 1792901930
+W: webapp-20261025-001#41
 ═══ */
