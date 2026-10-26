@@ -1,9 +1,10 @@
 // ============================================
 // router.js — SPA 前端路由（V2 重構版）
 // 位置：engine/router.js
+// 說明：負責頁面載入、路由守衛（權限/登入判定）與頁面生命週期管理。
 // ============================================
 
-import { ROUTES } from '../config/constants.js';
+import { ROUTES, ROLES } from '../config/constants.js';
 import { AppState } from '../config/state.js';
 import { setContent, setPageTitle, updateSidebarActive } from '../ui/layout.js';
 
@@ -18,7 +19,7 @@ const ROUTES_MAP = {
   [ROUTES.ANNUAL_REPORT]:{ module: () => import('../pages/annual-report.js'),title: '年度報表', auth: true, family: true },
   [ROUTES.MEMBER_REPORT]:{ module: () => import('../pages/member-report.js'),title: '成員收支明細', auth: true, family: true },
   [ROUTES.SETTINGS]:     { module: () => import('../pages/settings.js'),     title: '系統設定', auth: true, family: false },
-  [ROUTES.ADMIN]:        { module: () => import('../admin/admin.js'),        title: '平台管理', auth: true, family: false, role: 'superadmin' },
+  [ROUTES.ADMIN]:        { module: () => import('../admin/admin.js'),        title: '平台管理', auth: true, family: false, role: ROLES.SUPERADMIN },
   [ROUTES.LOGIN]:        { module: () => import('../pages/login.js'),        title: '登入', auth: false, family: false },
 };
 
@@ -63,34 +64,64 @@ async function _handleRoute(targetPath = null) {
     return;
   }
 
-  // 路由守衛
-  if (routeConfig.auth && !AppState.currentUser) {
+  // ============================================
+  // 路由守衛 (Route Guards)
+  // ============================================
+  
+  const isLoggedIn = !!AppState.currentUser;
+  const isSuper = AppState.getRole() === ROLES.SUPERADMIN;
+  const hasFamily = !!AppState.getFamilyId();
+
+  // 1. 若目標是登入頁，但已登入：直接踢回對應的首頁
+  if (path === ROUTES.LOGIN && isLoggedIn) {
+    window.location.hash = isSuper ? ROUTES.ADMIN : ROUTES.DASHBOARD;
+    return;
+  }
+
+  // 2. 需要登入，但未登入
+  if (routeConfig.auth && !isLoggedIn) {
     window.location.hash = ROUTES.LOGIN;
     return;
   }
-  
-  if (routeConfig.family && !AppState.getFamilyId()) {
-    window.location.hash = ROUTES.LOGIN;
-    return;
-  }
-  
+
+  // 3. 需要特定角色 (如超級管理員)，但權限不符
   if (routeConfig.role && AppState.getRole() !== routeConfig.role) {
+    // 不是超管卻想進 admin，踢回 dashboard
     window.location.hash = ROUTES.DASHBOARD;
     return;
   }
 
+  // 4. 需要家庭，但沒有家庭 (且不是超管)
+  if (routeConfig.family && !hasFamily) {
+    if (isSuper) {
+      // 超管沒有家庭是正常的，若超管誤入家庭頁面，導向管理頁
+      window.location.hash = ROUTES.ADMIN;
+    } else {
+      // 一般成員沒有家庭，退回登入
+      window.location.hash = ROUTES.LOGIN;
+    }
+    return;
+  }
+
+  // ============================================
+  // 執行頁面切換
+  // ============================================
+
   setPageTitle(routeConfig.title);
   updateSidebarActive(path);
 
+  // 銷毀上一個頁面
   if (_currentPage && typeof _currentPage.destroy === 'function') {
     try { _currentPage.destroy(); } catch (e) { console.error('[router] 頁面銷毀失敗：', e); }
     _currentPage = null;
   }
 
+  // 顯示載入中 (登入頁除外，避免閃爍)
   if (path !== ROUTES.LOGIN) {
     setContent('<div style="text-align:center; padding:40px; color:var(--text-muted);">載入中…</div>');
   }
 
+  // 動態載入模組並渲染
   try {
     const module = await routeConfig.module();
     const page = module.default;
@@ -109,6 +140,7 @@ async function _handleRoute(targetPath = null) {
         <h2 style="color:var(--accent-danger); margin-bottom:12px;">載入失敗</h2>
         <p class="text-muted">${err.message}</p>
         <p style="font-size:12px; margin-top:8px;">請檢查 Console 或重新整理頁面。</p>
+        <button type="button" class="btn btn-ghost" style="margin-top:16px;" onclick="window.location.reload()">重新整理</button>
       </div>
     `);
   }
@@ -127,6 +159,6 @@ function _render404(path) {
 
 /* ═══ EOF ═══
 F: engine/router.js
-V: 1792900830
-W: ai-system-20261024-012#74
-═══ EOF ═══ */
+V: 1792901810
+W: webapp-20261025-001#29
+═══ */
