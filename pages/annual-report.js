@@ -2,7 +2,7 @@
 // annual-report.js — 年度報表
 // 位置：pages/annual-report.js
 // 說明：顯示全年總合與月度明細，支援匯出 CSV。
-//       使用 renderPageLayout 統一排版。
+//       使用 renderPageLayout 統一排版，並將月度明細改為引擎渲染。
 // ============================================
 
 import { AppState } from '../config/state.js';
@@ -155,34 +155,16 @@ export default {
         netBalance: m.netBalance
       }));
 
-      // 使用手寫表格（因為欄位是動態的，不適合用通用的 renderTable）
-      container.innerHTML = `
-        <div class="glass-card" style="padding:0; overflow:hidden;">
-          <div style="overflow-x:auto;">
-            <table class="data-table" style="width:100%; border-collapse:collapse; min-width:500px;">
-              <thead>
-                <tr>
-                  <th style="white-space:nowrap;">月份</th>
-                  <th class="num" style="white-space:nowrap;">總收入</th>
-                  <th class="num" style="white-space:nowrap;">總支出</th>
-                  <th class="num" style="white-space:nowrap;">淨餘額</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${rows.map(r => `
-                  <tr>
-                    <td style="white-space:nowrap;">${esc(r.month)}</td>
-                    <td class="num text-emerald mono" style="white-space:nowrap;">${formatHKD(r.totalIncome)}</td>
-                    <td class="num text-red mono" style="white-space:nowrap;">${formatHKD(r.totalExpense)}</td>
-                    <td class="num mono ${r.netBalance >= 0 ? 'text-emerald' : 'text-red'}" style="white-space:nowrap;">${formatHKD(r.netBalance)}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      `;
+      // 🆕 改用引擎渲染
+      renderTable({
+        container,
+        rows,
+        columnsKey: 'annualMonthly',
+        emptyText: '尚無月度資料'
+      });
+
     } else {
+      // 全年總合（單行統計表，保留手寫結構，因為它是特殊報表而非列表）
       container.innerHTML = `
         <div class="glass-card" style="padding:0; overflow:hidden;">
           <div style="overflow-x:auto;">
@@ -249,6 +231,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/annual-report.js
-V: 1792901870
-W: webapp-20261025-001#35
+V: 1792901950
+W: webapp-20261025-001#43
 ═══ */
