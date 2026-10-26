@@ -2,6 +2,7 @@
 // bank.js — 銀行交易頁面
 // 位置：pages/bank.js
 // 說明：顯示銀行帳號清單、交易明細，並計算即時餘額。
+//       已完全套用 renderPageLayout 解決排版問題。
 // ============================================
 
 import { AppState } from '../config/state.js';
@@ -11,7 +12,7 @@ import { calcBankBalance, calcTotalBankBalance } from '../domain/bank.js';
 import { renderTable, renderCards } from '../ui/table.js';
 import { renderViewToggle, renderYearMonth } from '../ui/controls.js';
 import { renderPageLayout } from '../ui/layout.js';
-import { openModal, closeModal } from '../ui/modal.js';
+import { openModal, closeModal, openConfirm } from '../ui/modal.js';
 import { createForm } from '../ui/form.js';
 import { showToast } from '../ui/toast.js';
 import { formatHKD, esc } from '../ui/format.js';
@@ -38,12 +39,11 @@ export default {
       <div id="bank-controls-period"></div>
     `;
 
-    // 2. 呼叫統一引擎繪製骨架
+    // 2. 繪製骨架
     renderPageLayout({
       title: '銀行交易',
       stats: [],
       controls: controlsHtml,
-      listTitle: '帳號與交易記錄',
       listContainerId: 'bank-content-container'
     });
 
@@ -56,8 +56,8 @@ export default {
       this._renderData();
     });
 
-    document.getElementById('btn-add-account')?.addEventListener('click', () => this._openAccountModal());
-    document.getElementById('btn-add-txn')?.addEventListener('click', () => this._openTxnModal());
+    document.getElementById('btn-add-account').onclick = () => this._openAccountModal();
+    document.getElementById('btn-add-txn').onclick = () => this._openTxnModal();
 
     // 4. 監聽資料
     this._unsubAccounts = listenBankAccounts((accounts) => {
@@ -73,7 +73,8 @@ export default {
 
   _renderData() {
     const contentRoot = document.getElementById('bank-content-container');
-    if (!contentRoot) return;
+    const statsRoot = document.getElementById('page-stats-container');
+    if (!contentRoot || !statsRoot) return;
 
     const { year, month } = AppState.getYearMonth();
     const y = year || String(new Date().getFullYear());
@@ -89,40 +90,27 @@ export default {
 
     const inTotal = monthTxns.filter(t => t.type === 'in').reduce((s, t) => s + (Number(t.amount) || 0), 0);
     const outTotal = monthTxns.filter(t => t.type !== 'in').reduce((s, t) => s + (Number(t.amount) || 0), 0);
+    const netChange = inTotal - outTotal;
 
     // 更新統計卡
-    const statsContainer = document.getElementById('page-stats-container');
-    if (statsContainer) {
-      statsContainer.style.display = 'grid';
-      statsContainer.style.gridTemplateColumns = window.innerWidth < 768 ? 'repeat(2, 1fr)' : 'repeat(3, 1fr)';
-      
-      statsContainer.innerHTML = `
-        <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
-          <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
-            <i data-lucide="landmark" style="width:14px;height:14px;"></i> 家庭總餘額
-          </div>
-          <div class="mono" style="font-size:20px; font-weight:700; color:${totalBalance >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'}; white-space:nowrap;">
-            ${formatHKD(totalBalance)}
-          </div>
+    statsRoot.style.display = 'grid';
+    statsRoot.innerHTML = [
+      { title: '家庭總餘額', val: formatHKD(totalBalance), color: totalBalance >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)', icon: 'landmark', hint: '所有帳號加總' },
+      { title: '本月入帳', val: formatHKD(inTotal), color: 'var(--accent-success)', icon: 'arrow-down-circle', hint: `${monthTxns.filter(t => t.type === 'in').length} 筆` },
+      { title: '本月出帳', val: formatHKD(outTotal), color: 'var(--accent-danger)', icon: 'arrow-up-circle', hint: `${monthTxns.filter(t => t.type !== 'in').length} 筆` },
+      { title: '本月淨變動', val: formatHKD(netChange), color: netChange >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)', icon: 'trending-up', hint: '入帳 - 出帳' }
+    ].map(card => `
+      <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px; min-width:0; overflow:hidden;">
+        <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+          <i data-lucide="${card.icon}" style="width:14px;height:14px; flex-shrink:0;"></i> 
+          <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${card.title}</span>
         </div>
-        <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
-          <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
-            <i data-lucide="arrow-down-circle" style="width:14px;height:14px;"></i> 本月入帳
-          </div>
-          <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-success); white-space:nowrap;">
-            ${formatHKD(inTotal)}
-          </div>
+        <div class="mono" style="font-size:20px; font-weight:700; color:${card.color}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+          ${card.val}
         </div>
-        <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
-          <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
-            <i data-lucide="arrow-up-circle" style="width:14px;height:14px;"></i> 本月出帳
-          </div>
-          <div class="mono" style="font-size:20px; font-weight:700; color:var(--accent-danger); white-space:nowrap;">
-            ${formatHKD(outTotal)}
-          </div>
-        </div>
-      `;
-    }
+        <div style="font-size:11px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(card.hint)}</div>
+      </div>
+    `).join('');
 
     // 渲染清單內容
     contentRoot.innerHTML = `
@@ -141,7 +129,7 @@ export default {
 
     // 渲染帳號 (使用動態餘額)
     const accCols = getColumns('bankAccounts');
-    accCols.push({ id: 'dynamicBalance', label: '當前餘額', type: 'number' });
+    accCols.push({ id: 'dynamicBalance', label: '當前餘額', type: 'number', sortable: true });
     const accResolvers = getResolvers('bankAccounts');
     accResolvers.dynamicBalance = (_, row) => {
       const bal = calcBankBalance(row, this._txns.filter(t => t.bankId === row.id), y, tM);
@@ -149,43 +137,9 @@ export default {
     };
 
     if (currentView === 'card') {
-      accRoot.innerHTML = `
-        <div class="data-cards-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:16px;">
-          ${this._accounts.map(row => {
-            const bal = calcBankBalance(row, this._txns.filter(t => t.bankId === row.id), y, tM);
-            return `
-              <div class="glass-card" style="padding:16px;">
-                <div style="font-size:16px; font-weight:700; color:var(--primary); margin-bottom:8px;">${esc(row.name)}</div>
-                <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;"><span style="color:var(--text-muted);">類型</span><span>${row.type === 'personal' ? '個人' : '家庭'}</span></div>
-                <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;"><span style="color:var(--text-muted);">初始餘額</span><span class="mono">${formatHKD(row.initialBalance)}</span></div>
-                <div style="display:flex; justify-content:space-between; font-size:14px; margin-top:12px; padding-top:12px; border-top:1px dashed var(--border-color);"><span style="color:var(--text-muted);">當前餘額</span><span class="mono" style="font-weight:700; color:${bal >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)'};">${formatHKD(bal)}</span></div>
-              </div>
-            `;
-          }).join('')}
-        </div>
-      `;
+      renderCards({ container: accRoot, rows: this._accounts, columnsKey: 'bankAccounts', customResolvers: accResolvers, customColumns: accCols });
     } else {
-      accRoot.innerHTML = `
-        <div class="glass-card" style="padding:0; overflow:hidden;">
-          <div class="data-table-scroll-wrapper" style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
-            <table class="data-table" style="width:100%; border-collapse:collapse; min-width:600px;">
-              <thead><tr>${accCols.map(c => `<th class="${c.type === 'number' ? 'num' : ''}" style="white-space:nowrap;">${esc(c.label)}</th>`).join('')}</tr></thead>
-              <tbody>
-                ${this._accounts.map(row => `
-                  <tr>
-                    ${accCols.map(col => {
-                      const val = row[col.id];
-                      const resolver = accResolvers[col.id];
-                      const content = resolver ? resolver(val, row) : esc(val);
-                      return `<td class="${col.type === 'number' ? 'num' : ''}" style="white-space:nowrap;">${content}</td>`;
-                    }).join('')}
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      `;
+      renderTable({ container: accRoot, rows: this._accounts, columnsKey: 'bankAccounts', customResolvers: accResolvers, customColumns: accCols });
     }
 
     // 渲染交易明細
@@ -205,7 +159,7 @@ export default {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.id = modalId;
-    overlay.innerHTML = `<div class="modal" style="max-width:400px; background:var(--bg-surface);"><h2 style="font-size:18px; font-weight:700; margin-bottom:16px; color:var(--text-primary);">新增銀行帳號</h2><div id="account-form-root"></div></div>`;
+    overlay.innerHTML = `<div class="modal" style="max-width:400px; background:var(--bg-surface);"><h2 class="modal-title">新增銀行帳號</h2><div id="account-form-root"></div></div>`;
     document.body.appendChild(overlay);
     openModal(modalId);
 
@@ -241,7 +195,7 @@ export default {
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.id = modalId;
-    overlay.innerHTML = `<div class="modal" style="max-width:450px; background:var(--bg-surface);"><h2 style="font-size:18px; font-weight:700; margin-bottom:16px; color:var(--text-primary);">新增交易</h2><div id="txn-form-root"></div></div>`;
+    overlay.innerHTML = `<div class="modal" style="max-width:450px; background:var(--bg-surface);"><h2 class="modal-title">新增交易</h2><div id="txn-form-root"></div></div>`;
     document.body.appendChild(overlay);
     openModal(modalId);
 
@@ -278,6 +232,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/bank.js
-V: 1792901030
-W: ai-system-20261024-012#5
-═══ EOF ═══ */
+V: 1792901920
+W: webapp-20261025-001#40
+═══ */
