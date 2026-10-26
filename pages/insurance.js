@@ -1,6 +1,8 @@
 // ============================================
 // insurance.js — 保險清單表
 // 位置：pages/insurance.js
+// 說明：顯示保單清單與明細，包含已供滿區塊。
+//       已完全套用 renderPageLayout 解決排版問題。
 // ============================================
 
 import { AppState } from '../config/state.js';
@@ -15,6 +17,8 @@ import { createForm } from '../ui/form.js';
 import { showToast } from '../ui/toast.js';
 import { formatHKD, esc } from '../ui/format.js';
 import { getMembersOnce } from '../db/index.js';
+import { resolveName } from '../config/entity-registry.js';
+import { deleteEntity } from '../entity/entity-helpers.js';
 
 export default {
   _unsubPolicies: null,
@@ -22,37 +26,44 @@ export default {
   _payments: {},
 
   async render() {
-    // 1. 準備控制列 HTML
+    // 1. 準備 Header Actions
+    const headerActions = `
+      <button type="button" class="btn btn-primary" id="btn-add-policy">
+        <i data-lucide="plus" style="width:16px;height:16px;"></i> 新增保單
+      </button>
+    `;
+
+    // 2. 準備控制列
     const controlsHtml = `
       <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
-        <button type="button" class="btn btn-primary" id="btn-add-policy">
-          <i data-lucide="plus" style="width:16px;height:16px;"></i> 新增保單
-        </button>
         <div id="insurance-controls-view"></div>
       </div>
       <div id="insurance-controls-period"></div>
     `;
 
-    // 2. 呼叫統一引擎繪製骨架
+    // 3. 繪製骨架
     renderPageLayout({
       title: '保險清單表',
+      headerActions,
       stats: [], 
       controls: controlsHtml,
       listContainerId: 'insurance-list-container'
     });
 
-    // 3. 渲染控制列事件
+    // 4. 渲染控制列事件
     renderYearMonth('insurance-controls-period', { includeAllMonth: false }, () => {
       this._renderListAndStats();
     });
+    
     renderViewToggle('insurance-controls-view', () => {
       this._renderListAndStats();
     });
+    
     document.getElementById('btn-add-policy')?.addEventListener('click', () => {
       this._openPolicyModal();
     });
 
-    // 4. 監聽資料
+    // 5. 監聽資料
     this._unsubPolicies = listenInsurancePolicies(async (policies) => {
       this._policies = policies;
       await this._loadPaymentsAndRender();
@@ -70,6 +81,7 @@ export default {
 
   _renderListAndStats() {
     const listRoot = document.getElementById('insurance-list-container');
+    const statsRoot = document.getElementById('page-stats-container');
     if (!listRoot) return;
 
     const { year } = AppState.getYearMonth();
@@ -83,52 +95,145 @@ export default {
     const totalAnnual = enriched.reduce((s, p) => s + (p._currentAnnualPremium || 0), 0);
     const totalPaid = enriched.reduce((s, p) => s + (p._paidTotal || 0), 0);
 
-    // 更新統計卡 (透過 layout.js 繪製的結構，尋找 grid 容器)
-    const statsContainer = document.querySelector('#app-content > div[style*="grid"]');
-    if (statsContainer) {
-      statsContainer.innerHTML = [
-        { title: `${targetYear} 年度總供款`, val: formatHKD(totalAnnual), color: 'var(--primary)', icon: 'calendar', hint: `共 ${enriched.length} 張` },
-        { title: '累計已供款', val: formatHKD(totalPaid), color: 'var(--accent-success)', icon: 'check-circle', hint: '已扣款總和' },
+    // 更新統計卡 (防破版樣式)
+    if (statsRoot) {
+      statsRoot.style.display = 'grid';
+      statsRoot.innerHTML = [
+        { title: `${targetYear} 年度保單總供款`, val: formatHKD(totalAnnual), color: 'var(--primary)', icon: 'calendar', hint: `共 ${enriched.length} 張` },
+        { title: '累計已供款總額', val: formatHKD(totalPaid), color: 'var(--accent-success)', icon: 'check-circle', hint: '已扣款總和' },
         { title: '供款中保單', val: `${active.length} 張`, color: 'var(--text-primary)', icon: 'shield', hint: '未供滿' },
         { title: '已供滿保單', val: `${completed.length} 張`, color: 'var(--accent-success)', icon: 'check-circle', hint: '已完成' }
       ].map(card => `
-        <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px;">
+        <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px; min-width:0; overflow:hidden;">
           <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
-            <i data-lucide="${card.icon}" style="width:14px;height:14px;"></i> ${esc(card.title)}
+            <i data-lucide="${card.icon}" style="width:14px;height:14px; flex-shrink:0;"></i> 
+            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${card.title}</span>
           </div>
-          <div class="mono" style="font-size:20px; font-weight:700; color:${card.color}; white-space:nowrap;">${esc(card.val)}</div>
-          ${card.hint ? `<div style="font-size:11px; color:var(--text-muted);">${esc(card.hint)}</div>` : ''}
+          <div class="mono" style="font-size:20px; font-weight:700; color:${card.color}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            ${esc(card.val)}
+          </div>
+          <div style="font-size:11px; color:var(--text-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(card.hint)}</div>
         </div>
       `).join('');
-      if (window.lucide) window.lucide.createIcons();
     }
 
-    // 渲染列表
-    if (enriched.length === 0) {
-      listRoot.innerHTML = '<div class="glass-card" style="text-align:center; padding:40px; color:var(--text-muted);">尚無保單資料</div>';
-      return;
+    // 組合：已供滿區塊 + 列表區塊
+    let html = '';
+
+    if (completed.length > 0) {
+      html += `
+        <div class="glass-card" style="margin-bottom:20px; border-color:rgba(16,185,129,0.3); background:rgba(16,185,129,0.04);">
+          <div style="padding:14px 20px; display:flex; justify-content:space-between; align-items:center; cursor:pointer;" id="completed-header">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <i data-lucide="check-circle" style="width:18px;height:18px;color:var(--accent-success);"></i>
+              <span style="font-weight:700; color:var(--accent-success);">已供滿保單</span>
+              <span class="badge badge-success">${completed.length}</span>
+            </div>
+            <i data-lucide="chevron-down" id="completed-arrow" style="transition:transform 0.3s;"></i>
+          </div>
+          <div id="completed-body" style="display:none; padding:0 20px 20px; border-top:1px dashed rgba(16,185,129,0.2);">
+            <div class="data-cards-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:16px; padding-top:16px;">
+              ${completed.map(p => this._cardHtml(p)).join('')}
+            </div>
+          </div>
+        </div>
+      `;
     }
 
-    const renderActions = (row) => `
-      <button type="button" class="btn btn-sm btn-ghost" data-action="edit" data-id="${row.id}">編輯</button>
-      <button type="button" class="btn btn-sm btn-danger" data-action="delete" data-id="${row.id}">刪除</button>
+    html += `
+      <div style="margin-bottom:16px;">
+        <h2 style="font-size:16px; color:var(--text-secondary);">供款中保單 (${active.length})</h2>
+      </div>
+      <div id="active-list-container"></div>
     `;
+    
+    listRoot.innerHTML = html;
 
-    if (currentView === 'card') {
-      renderCards({ container: listRoot, rows: enriched, columnsKey: 'insurancePolicies', renderActions });
-    } else {
-      renderTable({ container: listRoot, rows: enriched, columnsKey: 'insurancePolicies', renderActions });
+    // 綁定折疊事件
+    const header = document.getElementById('completed-header');
+    const body = document.getElementById('completed-body');
+    const arrow = document.getElementById('completed-arrow');
+    if (header && body) {
+      header.onclick = () => {
+        const isOpen = body.style.display === 'block';
+        body.style.display = isOpen ? 'none' : 'block';
+        if (arrow) arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+      };
     }
 
-    listRoot.addEventListener('click', (e) => {
+    // 渲染供款中列表
+    const activeRoot = document.getElementById('active-list-container');
+    if (activeRoot) {
+      if (active.length === 0) {
+        activeRoot.innerHTML = '<div class="glass-card" style="text-align:center; padding:40px; color:var(--text-muted);">所有保單均已供滿</div>';
+      } else {
+        const renderActions = (row) => `
+          <button type="button" class="btn btn-sm btn-ghost" data-action="edit" data-id="${row.id}">編輯</button>
+          <button type="button" class="btn btn-sm btn-danger" data-action="delete" data-id="${row.id}">刪除</button>
+        `;
+
+        if (currentView === 'card') {
+          renderCards({ container: activeRoot, rows: active, columnsKey: 'insurancePolicies', renderActions });
+        } else {
+          renderTable({ container: activeRoot, rows: active, columnsKey: 'insurancePolicies', renderActions });
+        }
+
+        activeRoot.onclick = (e) => {
+          const btn = e.target.closest('button[data-action]');
+          if (!btn) return;
+          const id = btn.dataset.id;
+          const policy = this._policies.find(p => p.id === id);
+          if (!policy) return;
+          if (btn.dataset.action === 'edit') this._openPolicyModal(policy);
+          else if (btn.dataset.action === 'delete') this._deletePolicy(policy);
+        };
+      }
+    }
+
+    // 綁定已供滿卡片的事件
+    listRoot.onclick = (e) => {
       const btn = e.target.closest('button[data-action]');
       if (!btn) return;
+      if (btn.closest('#active-list-container')) return; // 避開供款中列表
+      
       const id = btn.dataset.id;
       const policy = this._policies.find(p => p.id === id);
       if (!policy) return;
       if (btn.dataset.action === 'edit') this._openPolicyModal(policy);
       else if (btn.dataset.action === 'delete') this._deletePolicy(policy);
-    });
+    };
+
+    if (window.lucide) window.lucide.createIcons();
+  },
+
+  _cardHtml(p) {
+    const holderId = getPolicyHolderId(p);
+    const holder = resolveName('members', holderId) || holderId || '—';
+    const insured = resolveName('members', p.memberId) || p.memberId || '—';
+    const isFund = p.type === 'fund_insurance';
+    
+    const actions = `
+      <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:12px;">
+        <button type="button" class="btn btn-sm btn-ghost" data-action="edit" data-id="${p.id}">編輯</button>
+        <button type="button" class="btn btn-sm btn-danger" data-action="delete" data-id="${p.id}">刪除</button>
+      </div>
+    `;
+
+    return `
+      <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:12px;">
+        <div>
+          <div style="font-size:15px; font-weight:700; color:var(--primary); line-height:1.3;">${esc(p.name)}</div>
+          <div style="font-size:11px; color:var(--accent-warm); margin-top:4px;">${esc(p.company || '')} · ${isFund ? '基金保險' : '普通保險'}</div>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:6px; font-size:13px;">
+          <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">持有人</span><span>${esc(holder)}</span></div>
+          <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">受保人</span><span>${esc(insured)}</span></div>
+          <div style="display:flex; justify-content:space-between; border-top:1px dashed var(--border-color); padding-top:6px;"><span style="color:var(--text-muted);">本期年繳</span><span class="mono text-primary">${formatHKD(p._currentAnnualPremium)}</span></div>
+          <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-muted);">已供款</span><span class="mono text-emerald">${formatHKD(p._paidTotal)}</span></div>
+        </div>
+        ${actions}
+      </div>
+    `;
   },
 
   async _openPolicyModal(policy = null) {
@@ -136,7 +241,6 @@ export default {
     const modalId = 'policy-modal';
     document.getElementById(modalId)?.remove();
 
-    // 取得成員列表
     const members = await getMembersOnce();
     const memberOpts = members.map(m => ({ value: m.id, label: m.name }));
 
@@ -145,7 +249,7 @@ export default {
     overlay.id = modalId;
     overlay.innerHTML = `
       <div class="modal" style="max-width:600px; background:var(--bg-surface); max-height:90vh; overflow-y:auto;">
-        <h2 style="font-size:18px; font-weight:700; margin-bottom:16px; color:var(--text-primary);">${isEdit ? '編輯' : '新增'}保單</h2>
+        <h2 class="modal-title">${isEdit ? '編輯' : '新增'}保單</h2>
         <div id="policy-form-root"></div>
       </div>
     `;
@@ -160,7 +264,7 @@ export default {
         { value: 'fund_insurance', label: '基金保險' }
       ]},
       { id: 'memberId', label: '受保人', type: 'select', required: true, options: memberOpts },
-      { id: 'policyHolderId', label: '持有人 (留空同受保人)', type: 'select', options: memberOpts, includeEmpty: true },
+      { id: 'policyHolderId', label: '持有人 (留空同受保人)', type: 'select', options: memberOpts },
       { id: 'firstStartYear', label: '開始年份', type: 'number', required: true },
       { id: 'firstStartMonth', label: '開始月份', type: 'number', required: true, min: 1, max: 12 },
       { id: 'totalPolicyYears', label: '總供款年期', type: 'number', required: true },
@@ -177,10 +281,7 @@ export default {
       fields,
       initialData: isEdit ? { ...policy } : { type: 'normal', firstStartYear: new Date().getFullYear(), firstStartMonth: 1, paymentMode: 'direct' },
       submitText: isEdit ? '儲存' : '新增',
-      onCancel: () => {
-        closeModal(modalId);
-        overlay.remove();
-      },
+      onCancel: () => { closeModal(modalId); overlay.remove(); },
       onSubmit: async (data) => {
         try {
           const payload = {
@@ -214,7 +315,7 @@ export default {
     const ok = await openConfirm(`⚠️ 確定要刪除保單「${policy.name}」嗎？`, { title: '刪除保單', okText: '刪除', okClass: 'btn-danger' });
     if (!ok) return;
     try {
-      await api.entityCreate({ action: 'delete', entityType: 'policy', id: policy.id });
+      await deleteEntity('policy', policy.id, getPolicyHolderId(policy));
       showToast('✅ 已刪除保單', 'success');
     } catch (err) {
       showToast('刪除失敗：' + err.message, 'error');
@@ -228,6 +329,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/insurance.js
-V: 1792900930
-W: ai-system-20261024-012#84
-═══ EOF ═══ */
+V: 1792901900
+W: webapp-20261025-001#38
+═══ */
