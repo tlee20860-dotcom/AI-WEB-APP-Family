@@ -2,12 +2,14 @@
 // annual-report.js — 年度報表
 // 位置：pages/annual-report.js
 // 說明：顯示全年總合與月度明細，支援匯出 CSV。
+//       使用 renderPageLayout 統一排版。
 // ============================================
 
 import { AppState } from '../config/state.js';
 import { api } from '../domain/api-client.js';
 import { getYearList } from '../config/app-config.js';
 import { renderPageLayout } from '../ui/layout.js';
+import { renderTable } from '../ui/table.js';
 import { showToast } from '../ui/toast.js';
 import { formatHKD, esc } from '../ui/format.js';
 
@@ -28,22 +30,22 @@ export default {
 
     // 2. 準備控制列 HTML
     const controlsHtml = `
-      <div class="flex items-center gap-8">
-        <select class="input" id="report-year" style="padding:6px 28px 6px 10px;">
+      <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+        <select class="input" id="report-year" style="padding:6px 28px 6px 10px; width:auto;">
           ${years.map(y => `<option value="${y}" ${String(y) === currentYear ? 'selected' : ''}>${y} 年</option>`).join('')}
         </select>
-      </div>
-      <div class="flex gap-4" style="background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:4px;">
-        <button type="button" class="btn" data-view="monthly" style="padding:6px 12px; border:none; border-radius:var(--radius-sm); transition:all 0.2s;">月度明細</button>
-        <button type="button" class="btn" data-view="summary" style="padding:6px 12px; border:none; border-radius:var(--radius-sm); transition:all 0.2s;">全年總合</button>
+        <div style="display:flex; gap:4px; background:var(--bg-surface); border:1px solid var(--border-color); border-radius:var(--radius-md); padding:4px;">
+          <button type="button" class="btn" data-view="monthly" style="padding:6px 12px; border:none; border-radius:var(--radius-sm); transition:all 0.2s;">月度明細</button>
+          <button type="button" class="btn" data-view="summary" style="padding:6px 12px; border:none; border-radius:var(--radius-sm); transition:all 0.2s;">全年總合</button>
+        </div>
       </div>
     `;
 
-    // 3. 呼叫統一引擎繪製骨架
+    // 3. 繪製骨架
     renderPageLayout({
       title: '年度報表',
       headerActions,
-      stats: [], // 年報表不需要額外統計卡
+      stats: [],
       controls: controlsHtml,
       listContainerId: 'report-table-container'
     });
@@ -53,8 +55,9 @@ export default {
     
     // 5. 綁定事件
     document.getElementById('report-year')?.addEventListener('change', (e) => {
-      AppState.setYearMonth(e.target.value, AppState.month);
-      this._loadData(Number(e.target.value));
+      const y = e.target.value;
+      AppState.setYearMonth(y, AppState.month);
+      this._loadData(Number(y));
     });
 
     document.querySelectorAll('button[data-view]').forEach(btn => {
@@ -95,6 +98,7 @@ export default {
       }
 
       this._data = res.years[0];
+      this._updateStats();
       this._renderTable();
 
     } catch (err) {
@@ -102,6 +106,34 @@ export default {
       showToast('載入報表失敗', 'error');
       tableRoot.innerHTML = '<div style="color:var(--accent-danger); padding:20px; text-align:center;">載入失敗</div>';
     }
+  },
+
+  _updateStats() {
+    const statsRoot = document.getElementById('page-stats-container');
+    if (!statsRoot || !this._data) return;
+
+    statsRoot.style.display = 'grid';
+    const d = this._data;
+    const pnlCls = d.netBalance >= 0 ? 'var(--accent-success)' : 'var(--accent-danger)';
+
+    statsRoot.innerHTML = [
+      { title: '年度總收入', val: formatHKD(d.totalIncome), color: 'var(--accent-success)', icon: 'trending-up' },
+      { title: '年度總支出', val: formatHKD(d.totalExpense), color: 'var(--accent-danger)', icon: 'trending-down' },
+      { title: '年度保險平攤', val: formatHKD(d.yearlyInsuranceTotal || 0), color: 'var(--accent-warm)', icon: 'shield' },
+      { title: '年度淨餘額', val: formatHKD(d.netBalance), color: pnlCls, icon: 'wallet' }
+    ].map(card => `
+      <div class="glass-card" style="padding:16px; display:flex; flex-direction:column; gap:6px; min-width:0; overflow:hidden;">
+        <div style="font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+          <i data-lucide="${card.icon}" style="width:14px;height:14px; flex-shrink:0;"></i> 
+          <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${card.title}</span>
+        </div>
+        <div class="mono" style="font-size:20px; font-weight:700; color:${card.color}; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+          ${card.val}
+        </div>
+      </div>
+    `).join('');
+
+    if (window.lucide) window.lucide.createIcons();
   },
 
   _renderTable() {
@@ -115,7 +147,7 @@ export default {
         container.innerHTML = '<div class="glass-card" style="text-align:center; padding:40px; color:var(--text-muted);">尚無月度資料</div>';
         return;
       }
-      
+
       const rows = monthlyData.map(m => ({
         month: `${m.monthNum} 月`,
         totalIncome: m.totalIncome,
@@ -123,9 +155,10 @@ export default {
         netBalance: m.netBalance
       }));
 
+      // 使用手寫表格（因為欄位是動態的，不適合用通用的 renderTable）
       container.innerHTML = `
         <div class="glass-card" style="padding:0; overflow:hidden;">
-          <div class="data-table-scroll-wrapper" style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
+          <div style="overflow-x:auto;">
             <table class="data-table" style="width:100%; border-collapse:collapse; min-width:500px;">
               <thead>
                 <tr>
@@ -152,7 +185,7 @@ export default {
     } else {
       container.innerHTML = `
         <div class="glass-card" style="padding:0; overflow:hidden;">
-          <div class="data-table-scroll-wrapper" style="overflow-x:auto; -webkit-overflow-scrolling:touch;">
+          <div style="overflow-x:auto;">
             <table class="data-table" style="width:100%; border-collapse:collapse; min-width:700px;">
               <thead>
                 <tr>
@@ -170,9 +203,9 @@ export default {
                   <td style="white-space:nowrap;">${this._data.year} 年</td>
                   <td class="num text-emerald mono" style="white-space:nowrap;">${formatHKD(this._data.totalIncome)}</td>
                   <td class="num text-red mono" style="white-space:nowrap;">${formatHKD(this._data.totalExpense)}</td>
-                  <td class="num text-magenta mono" style="white-space:nowrap;">${formatHKD(this._data.yearlyInsuranceTotal)}</td>
-                  <td class="num mono" style="white-space:nowrap;">${formatHKD(this._data.bankBalance)}</td>
-                  <td class="num mono" style="white-space:nowrap;">${formatHKD(this._data.fundValue)}</td>
+                  <td class="num text-magenta mono" style="white-space:nowrap;">${formatHKD(this._data.yearlyInsuranceTotal || 0)}</td>
+                  <td class="num mono" style="white-space:nowrap;">${formatHKD(this._data.bankBalance || 0)}</td>
+                  <td class="num mono" style="white-space:nowrap;">${formatHKD(this._data.fundValue || 0)}</td>
                   <td class="num mono ${this._data.netBalance >= 0 ? 'text-emerald' : 'text-red'}" style="white-space:nowrap;">${formatHKD(this._data.netBalance)}</td>
                 </tr>
               </tbody>
@@ -209,11 +242,13 @@ export default {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
     showToast('✅ 已匯出 CSV', 'success');
-  }
+  },
+
+  destroy() {}
 };
 
 /* ═══ EOF ═══
 F: pages/annual-report.js
-V: 1792901010
-W: ai-system-20261024-012#3
-═══ EOF ═══ */
+V: 1792901870
+W: webapp-20261025-001#35
+═══ */
