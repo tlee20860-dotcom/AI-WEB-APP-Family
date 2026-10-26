@@ -2,7 +2,7 @@
 // insurance.js — 保險清單表
 // 位置：pages/insurance.js
 // 說明：顯示保單清單與明細，包含已供滿區塊。
-//       已完全套用 renderPageLayout 解決排版問題。
+//       已移除 entity-helpers 幽靈依賴，全面使用 V2 API。
 // ============================================
 
 import { AppState } from '../config/state.js';
@@ -18,7 +18,6 @@ import { showToast } from '../ui/toast.js';
 import { formatHKD, esc } from '../ui/format.js';
 import { getMembersOnce } from '../db/index.js';
 import { resolveName } from '../config/entity-registry.js';
-import { deleteEntity } from '../entity/entity-helpers.js';
 
 export default {
   _unsubPolicies: null,
@@ -315,7 +314,8 @@ export default {
     const ok = await openConfirm(`⚠️ 確定要刪除保單「${policy.name}」嗎？`, { title: '刪除保單', okText: '刪除', okClass: 'btn-danger' });
     if (!ok) return;
     try {
-      await deleteEntity('policy', policy.id, getPolicyHolderId(policy));
+      // 🆕 移除 entity-helpers，改用 API
+      await api.entityCreate({ action: 'delete', entityType: 'policy', id: policy.id });
       showToast('✅ 已刪除保單', 'success');
     } catch (err) {
       showToast('刪除失敗：' + err.message, 'error');
@@ -329,6 +329,6 @@ export default {
 
 /* ═══ EOF ═══
 F: pages/insurance.js
-V: 1792901900
-W: webapp-20261025-001#38
+V: 1792901960
+W: webapp-20261025-001#44
 ═══ */
