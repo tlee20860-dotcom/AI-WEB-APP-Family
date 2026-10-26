@@ -2,6 +2,7 @@
 // admin.js — 平台管理（V2 重構版）
 // 位置：admin/admin.js
 // 說明：供超級管理員管理家庭清單與平台預設資料。
+//       已移除手寫表格，全面改用 renderTable 引擎。
 // ============================================
 
 import { api } from '../domain/api-client.js';
@@ -86,48 +87,16 @@ export default {
         <button type="button" class="btn btn-sm btn-danger" data-action="remove" data-uid="${row.uid}">刪除</button>
       `;
 
+      // 使用引擎渲染表格
       renderTable({
         container: listRoot,
         rows: this._families,
-        columnsKey: 'adminFamilies', // 需手動補一個 key 或直接手刻
+        columnsKey: 'adminFamilies',
         renderActions
       });
 
-      // 因為 adminFamilies 沒有預設的 columnsKey，這裡直接手刻表格
-      listRoot.innerHTML = `
-        <div class="glass-card" style="padding:0; overflow:hidden;">
-          <div style="overflow-x:auto;">
-            <table class="data-table" style="width:100%; border-collapse:collapse;">
-              <thead>
-                <tr>
-                  <th>UID</th>
-                  <th>名稱</th>
-                  <th>擁有者 Email</th>
-                  <th>建立時間</th>
-                  <th style="text-align:right;">操作</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${this._families.map(f => `
-                  <tr>
-                    <td><span class="mono" style="font-size:12px;">${esc(f.uid)}</span></td>
-                    <td>${esc(f.name || '—')}</td>
-                    <td><span class="mono" style="font-size:12px;">${esc(f.ownerEmail || '—')}</span></td>
-                    <td><span class="mono" style="font-size:12px; color:var(--text-muted);">${f.createdAt ? new Date(f.createdAt).toLocaleString() : '—'}</span></td>
-                    <td style="text-align:right;">
-                      <button type="button" class="btn btn-sm btn-ghost" data-action="init" data-uid="${esc(f.uid)}">初始化</button>
-                      <button type="button" class="btn btn-sm btn-danger" data-action="remove" data-uid="${esc(f.uid)}">刪除</button>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      `;
-
-      // 綁定操作
-      listRoot.addEventListener('click', async (e) => {
+      // 改用 onclick 屬性賦值，覆蓋舊監聽，避免累積事件
+      listRoot.onclick = async (e) => {
         const btn = e.target.closest('button[data-action]');
         if (!btn) return;
         const uid = btn.dataset.uid;
@@ -139,7 +108,7 @@ export default {
         } else if (btn.dataset.action === 'remove') {
           await this._handleRemove(uid, family.name);
         }
-      });
+      };
 
     } catch (err) {
       console.error('[admin] 載入家庭失敗：', err);
@@ -156,7 +125,7 @@ export default {
     overlay.id = modalId;
     overlay.innerHTML = `
       <div class="modal" style="max-width:450px; background:var(--bg-surface);">
-        <h2 style="font-size:18px; font-weight:700; margin-bottom:16px; color:var(--text-primary);">新增家庭</h2>
+        <h2 class="modal-title">新增家庭</h2>
         <div id="family-form-root"></div>
       </div>
     `;
@@ -249,6 +218,6 @@ export default {
 
 /* ═══ EOF ═══
 F: admin/admin.js
-V: 1792900600
-W: ai-system-20261024-012#55
-═══ EOF ═══ */
+V: 1792901940
+W: webapp-20261025-001#42
+═══ */
